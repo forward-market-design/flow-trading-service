@@ -1,0 +1,30 @@
+[package]
+name = "fts-solver"
+description = "A reference solver for flow trading optimization"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+# black-box solvers we can pull in
+clarabel = { version = "0.10", optional = true }
+osqp = { version = "0.6", optional = true }
+
+fxhash = { workspace = true }
+indexmap = { workspace = true, features = ["std"] }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+approx = "0.5"
+rstest = { workspace = true }
+rstest_reuse = { workspace = true }
+fts-solver = { path = ".", features = ["clarabel", "osqp"] }
+
+[features]
+default = ["clarabel"]
+clarabel = ["dep:clarabel"]
+osqp = ["dep:osqp"]
