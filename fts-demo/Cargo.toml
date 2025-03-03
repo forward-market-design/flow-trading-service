@@ -1,0 +1,40 @@
+[package]
+name = "fts-demo"
+description = "A simple, reference backend for `fts` implemented with SQLite"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+fts-core = { path = "../fts-core" }
+fts-server = { path = "../fts-server" }
+fts-solver = { path = "../fts-solver", features = ["clarabel"] }
+
+clap = { workspace = true, features = ["derive", "env"] }
+fxhash = { workspace = true }
+humantime = { workspace = true }
+indexmap = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+time = { workspace = true, features = ["serde", "formatting", "parsing"] }
+uuid = { workspace = true, features = ["serde", "v4"] }
+
+dotenvy = { version = "0.15" }
+r2d2 = { version = "0.8" }
+r2d2_sqlite = { version = "0.26" }
+refinery = { version = "0.8", features = ["rusqlite"] }
+rusqlite = { version = "0.33", features = ["bundled", "serde_json", "time", "uuid"] }
+
+# For running the server
+tokio = { workspace = true, features = ["full"] }
+
+# For reporting the traces
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[features]
+default = []
+testmode = []
