@@ -84,6 +84,9 @@ impl<T> Into<Vec<fts_solver::Submission<AuthId, ProductId>>> for RawAuctionInput
     }
 }
 
+// TODO: this is probably unnecessary with the right sequence of invocations,
+// but it is easy enough to maintain.
+
 fn optional_humantime<'de, D: Deserializer<'de>>(
     deserializer: D,
 ) -> Result<Option<Duration>, D::Error> {

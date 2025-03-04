@@ -14,7 +14,7 @@ pub use cost::{
     Constant, CostData, CostDto, CostDtoCreate, CostDtoRead, CostDtoUpdate, CostHistoryRecord,
     CostId, CostRecord, Curve, Group, GroupDisplay, Point,
 };
-pub use datetime::{DateTimeRangeQuery, DateTimeRangeResponse, Versioned};
+pub use datetime::{DateTimeRangeQuery, DateTimeRangeResponse};
 pub use outcome::{AuctionOutcome, Outcome};
 pub use product::{ProductQueryResponse, ProductRecord};
 pub use submission::SubmissionRecord;

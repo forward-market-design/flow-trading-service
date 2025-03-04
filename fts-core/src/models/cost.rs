@@ -31,15 +31,15 @@ impl Default for GroupDisplay {
 
 /// The data representing the "cost"
 //
-// TODO: Doesn't seem like the Schema is taking try_from and into into account:
-// https://docs.rs/utoipa/latest/utoipa/derive.ToSchema.html#partial-serde-attributes-support
-// Fixed currently with an example
+// TODO: Utoipa doesn't fully support all the Serde annotations,
+// so we injected `untagged` (which Serde will ignore given the presence of
+// of `try_from` and `into`), then inline the actual fields. This appears
+// to correctly generate the OpenAPI schema, but we should revisit.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
-#[serde(try_from = "RawCostData", into = "RawCostData")]
-#[schema(example = json!([{"x": 0.0, "y": 0.0}, {"x": 1.0, "y": 1.0}]))]
+#[serde(untagged, try_from = "RawCostData", into = "RawCostData")]
 pub enum CostData {
-    Curve(Curve),
-    Constant(Constant),
+    Curve(#[schema(inline)] Curve),
+    Constant(#[schema(inline)] Constant),
 }
 
 #[derive(Error, Debug)]

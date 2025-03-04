@@ -3,7 +3,7 @@ use time::OffsetDateTime;
 use utoipa::ToSchema;
 
 #[derive(Serialize, Deserialize, Debug, ToSchema)]
-pub struct Outcome<T: ToSchema> {
+pub struct Outcome<T> {
     pub price: f64,
     pub trade: f64,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -11,7 +11,7 @@ pub struct Outcome<T: ToSchema> {
 }
 
 #[derive(Serialize, Deserialize, Debug, ToSchema)]
-pub struct AuctionOutcome<T: ToSchema> {
+pub struct AuctionOutcome<T> {
     #[serde(with = "time::serde::rfc3339")]
     pub from: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]

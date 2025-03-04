@@ -3,7 +3,7 @@ use fts_demo::{
     Config,
     db::{self, Database},
 };
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
 #[cfg(feature = "testmode")]
 use fts_server::generate_jwt;
@@ -73,7 +73,7 @@ pub struct Args {
     #[arg(long)]
     pub test: Option<u32>,
 
-    /// The location of the orderbook database (if omitted, use an in-memory db)
+    /// The location of the database (if omitted, use an in-memory db)
     #[arg(long, env = "DATABASE")]
     pub database: Option<std::path::PathBuf>,
 

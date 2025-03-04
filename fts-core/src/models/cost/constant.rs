@@ -7,8 +7,11 @@ use crate::models::Bound;
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(try_from = "RawConstant", into = "RawConstant")]
 pub struct Constant {
+    #[schema(value_type = Option<f64>)]
     pub min_rate: f64,
+    #[schema(value_type = Option<f64>)]
     pub max_rate: f64,
+    #[schema(value_type = Option<f64>)]
     pub price: f64,
 }
 

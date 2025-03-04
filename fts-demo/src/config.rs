@@ -4,6 +4,10 @@ use std::time::Duration;
 
 use crate::db;
 
+/// For now, the only configuration option that is used widely is the scale
+/// factor for converting rates into batched quantities.  Eventually, we would
+/// like to provide the server endpoints with pagination instructions rather
+/// than hardcoding the limits. TODO.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(from = "RawConfig", into = "RawConfig")]
 pub struct Config {

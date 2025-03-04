@@ -28,14 +28,9 @@ pub async fn solve_auctions<T: MarketRepository>(
     Json(auction): Json<AuctionSolveRequest>,
 ) -> StatusCode {
     // Get the inputs for the auction
-    let inputs = AuctionRepository::prepare(
-        &state.market,
-        auction.from.as_ref(),
-        &auction.thru,
-        auction.by.as_ref(),
-        &now,
-    )
-    .await;
+    let inputs =
+        AuctionRepository::prepare(&state.market, auction.from, auction.thru, auction.by, now)
+            .await;
 
     match inputs {
         // Did we successfully create an auction? If so, queue it up for solution

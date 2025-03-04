@@ -1,9 +1,11 @@
-use rusqlite::types::FromSql;
 use rusqlite::ToSql;
+use rusqlite::types::FromSql;
 use std::borrow::Borrow;
 use time::{OffsetDateTime, PrimitiveDateTime, UtcOffset};
 
-// We use this type to canonicalize all values stored in db columns to UTC+0.
+/// This type acts as a bridge between `fts-core`'s use of `OffsetDateTime` and
+/// how SQLite stores timestamps. Whenever we read or store a timestamp, it
+/// should go through this wrapper to ensure consistency.
 pub struct DateTime(PrimitiveDateTime);
 
 impl<T: Borrow<OffsetDateTime>> From<T> for DateTime {

@@ -12,7 +12,7 @@ use tracing::{Level, event};
 
 #[utoipa::path(
     get,
-    path = "/v0/submissions/{bidder_id}/costs/{cost_id}/history",
+    path = "/v0/costs/{cost_id}/history",
     responses(
         (status = OK, body = crate::openapi::ExampleCostHistoryResponse),
         (status = UNAUTHORIZED), // no jwt token, handled by extractor

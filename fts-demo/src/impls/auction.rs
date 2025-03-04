@@ -20,10 +20,10 @@ impl AuctionRepository for db::Database {
 
     async fn prepare(
         &self,
-        from: Option<&OffsetDateTime>,
-        thru: &OffsetDateTime,
-        by: Option<&Duration>,
-        timestamp: &OffsetDateTime,
+        from: Option<OffsetDateTime>,
+        thru: OffsetDateTime,
+        by: Option<Duration>,
+        timestamp: OffsetDateTime,
     ) -> Result<Option<Vec<RawAuctionInput<Self::AuctionId>>>, Self::Error> {
         let ctx = self.connect(false)?;
 
@@ -42,18 +42,18 @@ impl AuctionRepository for db::Database {
         {
             from
         } else if let Some(by) = by {
-            *thru - *by
+            thru - by
         } else {
             timestamp.clone()
         };
 
         // Sanity check
-        if from >= *thru {
+        if from >= thru {
             return Ok(None);
         }
 
         // How long is each batch?
-        let auction_duration = by.map(|x| x.clone()).unwrap_or(*thru - from);
+        let auction_duration = by.map(|x| x.clone()).unwrap_or(thru - from);
 
         // What units are the bids specified in?
         let reference_duration = {
@@ -65,7 +65,7 @@ impl AuctionRepository for db::Database {
         // Collect the batches to run
         let mut submissions = Vec::new();
         let mut as_of = from;
-        while as_of + auction_duration <= *thru {
+        while as_of + auction_duration <= thru {
             let from = DateTime::from(as_of);
             let thru = DateTime::from(as_of + auction_duration);
             let auths = active_auths(&ctx, None, as_of, PortfolioDisplay::Expand)?;
@@ -93,10 +93,10 @@ impl AuctionRepository for db::Database {
 
     async fn report(
         &self,
-        auction_id: &Self::AuctionId,
+        auction_id: Self::AuctionId,
         auth_outcomes: impl Iterator<Item = (AuthId, Outcome<()>)>,
         product_outcomes: impl Iterator<Item = (ProductId, Outcome<()>)>,
-        timestamp: &OffsetDateTime,
+        timestamp: OffsetDateTime,
     ) -> Result<Option<AuctionMetaData>, Self::Error> {
         let mut ctx = self.connect(true)?;
         let tx = ctx.transaction_with_behavior(TransactionBehavior::Immediate)?;

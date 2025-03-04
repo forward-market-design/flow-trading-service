@@ -95,7 +95,7 @@ async fn get_product<T: MarketRepository>(
         ("product_id" = ProductId, description = "Unique identifier of the product"),
         DateTimeRangeQuery
     ),
-    tags = ["products"]
+    tags = ["products", "outcomes"]
 )]
 /// Retrieves any outcomes associated to the product
 async fn product_outcomes<T: MarketRepository>(

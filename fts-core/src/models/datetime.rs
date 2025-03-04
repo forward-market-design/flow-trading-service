@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
+
 #[derive(Serialize, Deserialize, Debug, ToSchema, IntoParams)]
 pub struct DateTimeRangeQuery {
     #[serde(
@@ -18,15 +19,8 @@ pub struct DateTimeRangeQuery {
 }
 
 #[derive(Serialize, Deserialize, Debug, ToSchema)]
-pub struct DateTimeRangeResponse<T: ToSchema> {
+pub struct DateTimeRangeResponse<T> {
     pub results: Vec<T>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub more: Option<DateTimeRangeQuery>,
-}
-
-#[derive(Serialize, Deserialize, Debug, ToSchema)]
-pub struct Versioned<T: ToSchema> {
-    pub value: T,
-    #[serde(with = "time::serde::rfc3339")]
-    pub version: OffsetDateTime,
 }

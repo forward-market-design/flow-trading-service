@@ -106,11 +106,12 @@ fn pool(
     }
     .with_flags(flags)
     .with_init(|c| {
-        // TODO: validate these settings and possibly add to them.
-        // TODO: there are only a handful of queries that we use.
-        //       there might be major performance wins to cache the
-        //       prepared statements here and figure out how to pass
-        //       that context along.
+        // TODO: validate these settings and possibly add to them. Some helpful resources:
+        // * https://lobste.rs/s/fxkk7v/why_does_sqlite_production_have_such_bad
+        // * https://kerkour.com/sqlite-for-servers
+        // * https://gcollazo.com/optimal-sqlite-settings-for-django/
+        // * https://lobste.rs/s/rvsgqy/gotchas_with_sqlite_production
+        // * https://blog.pecar.me/sqlite-prod
         c.execute_batch(
             r#"
             PRAGMA journal_mode = WAL;

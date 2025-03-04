@@ -15,18 +15,18 @@ pub trait AuctionRepository: SubmissionRepository {
     // Gather all the required submissions for the requested auction period
     fn prepare(
         &self,
-        from: Option<&OffsetDateTime>,
-        thru: &OffsetDateTime,
-        by: Option<&Duration>,
-        timestamp: &OffsetDateTime,
+        from: Option<OffsetDateTime>,
+        thru: OffsetDateTime,
+        by: Option<Duration>,
+        timestamp: OffsetDateTime,
     ) -> impl Future<Output = Result<Option<Vec<RawAuctionInput<Self::AuctionId>>>, Self::Error>> + Send;
 
     // Store the outcomes
     fn report(
         &self,
-        id: &Self::AuctionId,
+        id: Self::AuctionId,
         auth_outcomes: impl Iterator<Item = (AuthId, Outcome<()>)> + Send,
         product_outcomes: impl Iterator<Item = (ProductId, Outcome<()>)> + Send,
-        timestamp: &OffsetDateTime,
+        timestamp: OffsetDateTime,
     ) -> impl Future<Output = Result<Option<AuctionMetaData>, Self::Error>> + Send;
 }

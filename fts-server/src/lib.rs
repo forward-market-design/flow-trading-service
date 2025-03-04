@@ -115,10 +115,10 @@ pub fn state<T: MarketRepository>(
                 // indirection to have.
                 let metadata = AuctionRepository::report(
                     &market.clone(),
-                    &id,
+                    id,
                     auth_outcomes.into_iter(),
                     product_outcomes.into_iter(),
-                    &now,
+                    now,
                 )
                 .await?;
 
