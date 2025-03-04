@@ -11,7 +11,7 @@ use marketplace::utils::generate_jwt;
 #[tokio::main]
 async fn main() -> Result<(), db::Error> {
     // By convention, we leverage `tracing` to instrument and log various
-    // operations in our `simple_` and `marketplace_api` implementations.
+    // operations throughout this project.
     // Accordingly, we likely want to subscribe to these events so we can
     // write them to stdio and possibly some durable location.
     tracing_subscriber::registry()
@@ -20,13 +20,13 @@ async fn main() -> Result<(), db::Error> {
         .init();
 
     // We will need to collect whatever data is necessary to configure the API
-    // server and the orderbook, directory, and ledger implementations. The `Args`
-    // struct, defined after this function, does this job for us.
+    // server. The `Args` struct, defined after this function, does this job for us.
     let args = Args::import();
 
     match args {
         Ok(args) => {
-            // We now need to configure the OrderBook implementation.
+            // We check (and store) the configuration into our database,
+            // so we're not in an inconsistent state.
             let database = Database::open(
                 args.database.as_ref(),
                 Some(&Config {
@@ -77,7 +77,7 @@ pub struct Args {
     #[arg(long, env = "DATABASE")]
     pub database: Option<std::path::PathBuf>,
 
-    /// The duration of time rates are specified with respect to
+    /// The time unit of rate data
     #[arg(long, env = "TRADE_RATE")]
     pub trade_rate: humantime::Duration,
 }

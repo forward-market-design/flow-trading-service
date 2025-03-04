@@ -1,55 +1,42 @@
-# Simple Backend
+# FTS Demo
 
-The sibling package `marketplace` defines a `MarketRepository` trait and
-a generic HTTP server that is parameterized by an implementation thereof.
+The sibling crate `fts-core` defines a core set of data primitives and
+operations, but defers the actual implementation of these operations. The
+sibling crate `fts-server` builds a full-featured REST service on top of a
+concrete implementation of these operations. This crate, `fts-demo`, is such an
+implementation, knitting it together with `fts-server` to provide a server binary.
 
-This package is that implementation: all of the IO operations required to
-implement a flow trading service. In particular, this package prioritizes the
-following considerations in order:
-1. Correctness.
-2. Simplicity.
-3. Performance.
+As suggested by the name, this implementation is intended to demonstrate the
+capabilities of flow trading. Accordingly, correctness and simplicity are
+prioritized over performance, though the use of SQLite allows for very fast operations.
 
-Correctness, because `marketplace` depends on this package for testing, then
-simplicity because we are still exploring the implementation space and
-simulating markets, and performance last, although this implementation should
-easily handle real-time markets with thousands of bidders.
+It is recommended to pair this binary with a frontend client, such as [this one](https://github.com/forward-market-design/fts-client). The client provides a graphical interface for familiarizing oneself with the primitives and operations of flow trading.
 
-For information on the API server, refer to the `marketplace` documentation:
-requests are authenticated via JWT with the `sub:` claim set to the
-`bidder_id`, and admin routes are restricted to tokens with `admin: true` in
-the claims.
+## Configuration
 
 Run the binary with the `--help` flag to see the available CLI arguments. This
 output is duplicated below:
 ```
-$ simple_backend --help
+$ fts-demo --help
 
-A simple, reference backend for `marketplace` implemented with SQLite
+A simple, reference backend for `fts` implemented with SQLite
 
-Usage: simple_backend [OPTIONS] --api-secret <API_SECRET> --trade-rate <TRADE_RATE>
+Usage: fts-demo [OPTIONS] --api-secret <API_SECRET> --trade-rate <TRADE_RATE>
 
 Options:
       --api-port <API_PORT>      The port to listen on [env: API_PORT=] [default: 8080]
       --api-secret <API_SECRET>  The HMAC-secret for verification of JWT claims [env: API_SECRET=]
       --database <DATABASE>      The location of the orderbook database (if omitted, use an in-memory db) [env: DATABASE=]
-      --trade-rate <TRADE_RATE>  The duration of time rates are specified with respect to [env: TRADE_RATE=]
+      --trade-rate <TRADE_RATE>  The time unit of rate data [env: TRADE_RATE=]
   -h, --help                     Print help
   -V, --version                  Print version
 ```
 
-Note that `--trade-rate` is specified in as a string that can be parsed by [humantime](https://docs.rs/humantime/latest/humantime/), e.g. `1h` or `30min`.
+As indicated by the help output, these arguments can alternatively be specified via a `.env` file, useful for container-based deployments. 
 
-For convenience, a compile-time feature (disabled by default) is available, that when enabled also adds a `--test N` flag which will print credentials for 1 admin user and `N` randomly generated bidders, valid for 1 day, for use in external tooling and testing scenarios. Use with the appropriate care. To enable support, build with the `testmode` feature:
+Note that `--trade-rate` is specified as a string that can be parsed by [humantime](https://docs.rs/humantime/latest/humantime/), e.g. `1h` or `30min`. This value provides the units for *auths* and *costs*, e.g. if an auth specifies a `max_rate` of `5` and the server was configured with `--trade-rate 1h`, then this means the authorization allows for trading the associated portfolio at a rate not exceeding 5 units per hour.
+
+For convenience, a compile-time feature (disabled by default) is available, that when enabled, adds a `--test N` flag which will print credentials for 1 admin user and `N` randomly generated bidders, valid for 1 day, for use in external tooling and testing scenarios. Use with the appropriate care. To enable support, build with the `testmode` feature:
 ```bash
-cargo build --release --bin simple_backend --features testmode
+cargo build --release --bin fts-demo --features testmode
 ```
-
-## TODO
-
-There are lots of blog posts about "the right flags" to use with SQLite. The current flags are a first attempt at incorporating some of this best practice, but these can likely be improved. Relevant resources:
-  * https://lobste.rs/s/fxkk7v/why_does_sqlite_production_have_such_bad
-  * https://kerkour.com/sqlite-for-servers
-  * https://gcollazo.com/optimal-sqlite-settings-for-django/
-  * https://lobste.rs/s/rvsgqy/gotchas_with_sqlite_production
-  * https://blog.pecar.me/sqlite-prod

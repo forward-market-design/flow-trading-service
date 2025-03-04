@@ -16,9 +16,9 @@ FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
-RUN cargo build --release --bin simple_backend
+RUN cargo build --release --bin fts-demo
 
 FROM debian:bookworm-slim AS runtime
 WORKDIR /app
-COPY --from=builder /app/target/release/simple_backend /usr/local/bin
-ENTRYPOINT ["/usr/local/bin/simple_backend"]
+COPY --from=builder /app/target/release/fts-demo /usr/local/bin
+ENTRYPOINT ["/usr/local/bin/fts-demo"]

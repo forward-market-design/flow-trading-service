@@ -36,6 +36,8 @@ impl Config {
 // that contains only primitive values. We tell Serde to use the raw version
 // to handle (de)serialization, then call .into() to get our rich version.
 // It's a little verbose, but fairly clean.
+// Note that the u64<>u32 conversion is because JSON serialization does not
+// support 64 bit integers.
 
 #[derive(Serialize, Deserialize)]
 pub struct RawConfig {
