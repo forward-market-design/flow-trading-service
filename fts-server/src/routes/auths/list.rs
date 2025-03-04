@@ -1,3 +1,6 @@
+#![allow(unused)]
+// ^ TODO: remove this
+
 use crate::{AppState, Now, utils::Bidder};
 use axum::{
     Json,

@@ -1,11 +1,8 @@
-use super::{auth::get_auth, cost::get_cost};
-use crate::{
-    db,
-    r#impl::{
-        auth::{active_auths, create_auth, update_auth},
-        cost::{active_costs, create_cost, update_cost},
-    },
+use super::{
+    auth::{active_auths, create_auth, get_auth, update_auth},
+    cost::{active_costs, create_cost, get_cost, update_cost},
 };
+use crate::db;
 use fts_core::{
     models::{
         AuthId, AuthRecord, BidderId, CostId, CostRecord, GroupDisplay, PortfolioDisplay,
@@ -16,10 +13,10 @@ use fts_core::{
         SubmissionFailure, SubmissionRepository,
     },
 };
-use fxhash::FxBuildHasher;
-use indexmap::IndexMap;
 use rusqlite::TransactionBehavior;
 use time::OffsetDateTime;
+
+type Map<K, V> = indexmap::IndexMap<K, V, fxhash::FxBuildHasher>;
 
 impl SubmissionRepository for db::Database {
     async fn get_submission(
@@ -50,20 +47,22 @@ impl SubmissionRepository for db::Database {
         let mut ctx = self.connect(true)?;
         let tx = ctx.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
-        let mut current_auths: IndexMap<AuthId, AuthRecord, FxBuildHasher> =
+        let mut current_auths: Map<AuthId, AuthRecord> =
             active_auths(&tx, Some(bidder_id), timestamp, PortfolioDisplay::Exclude)?
                 .into_iter()
                 .map(|record| (record.auth_id, record))
                 .collect();
 
-        let mut current_costs: IndexMap<CostId, CostRecord, FxBuildHasher> =
+        let mut current_costs: Map<CostId, CostRecord> =
             active_costs(&tx, Some(bidder_id), timestamp, GroupDisplay::Exclude)?
                 .into_iter()
                 .map(|record| (record.cost_id, record))
                 .collect();
 
-        let mut new_auths: IndexMap<AuthId, AuthRecord> =
-            IndexMap::with_capacity(submission.auths.len());
+        let mut new_auths = Map::<AuthId, AuthRecord>::with_capacity_and_hasher(
+            submission.auths.len(),
+            Default::default(),
+        );
 
         let mut new_costs: Vec<CostRecord> = Vec::with_capacity(submission.costs.len());
 

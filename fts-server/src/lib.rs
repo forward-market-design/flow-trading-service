@@ -25,6 +25,7 @@ mod utils;
 pub use utils::CustomJWTClaims;
 use utils::JWTVerifier;
 pub use utils::Now;
+pub use utils::generate_jwt;
 
 type SenderMap<T> =
     Arc<dashmap::DashMap<T, watch::Sender<Result<Event, Infallible>>, FxBuildHasher>>;

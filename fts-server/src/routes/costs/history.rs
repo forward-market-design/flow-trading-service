@@ -1,4 +1,4 @@
-use crate::{AppState, Now, utils::Bidder};
+use crate::{AppState, utils::Bidder};
 use axum::{
     Json,
     extract::{Path, Query, State},
@@ -29,7 +29,6 @@ use tracing::{Level, event};
 /// Query for any matching results
 pub async fn get_history<T: MarketRepository>(
     State(state): State<AppState<T>>,
-    Now(now): Now,
     Bidder(bidder_id): Bidder,
     Path(cost_id): Path<CostId>,
     Query(query): Query<DateTimeRangeQuery>,

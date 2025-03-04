@@ -1,17 +1,25 @@
-# Marketplace
+# FTS Server
 
-## Repositories
+This crate provides a REST API for the core flow trading operations. Building
+the sibling crate `fts-demo` will generate an OpenAPI schema. A running server will host this schema at http://localhost:8080/rapidoc.
 
-This crate defines a number of repository traits, which collectively define
-all the IO operations an implementation needs to support. This allows an
-implementation to easily switch out the database or combine multiple storage
-technologies as needed.
+ We also provide a
+high-level discussion of the endpoints below.
 
-## Server
+## A brief note on the use of JSON and HTTP
 
-This crate leverages [Axum](https://crates.io/crates/axum) to implement an API
-server that is generic over the `MarketRepository` implementation. For
-documentation on the available routes, launch a server and view
-http://localhost:8080/rapidoc (or whatever port you configure the server to run
-on), which consumes the OpenAPI specification available at
-http://localhost:8080/api-docs/openapi.json.
+It is true that JSON is a significantly flawed choice for (de)serialization of
+bid data. It is also true that a RESTful API over HTTP is questionable, at
+best, with respect to building a trading platform. On the other hand, these
+choices allow for virtually any programming environment to easily interface
+with the server, as well as open the door to rich, web-based clients.
+
+Given that this project is primarily intended to *motivate* the use of flow trading, especially in the context of forward markets, these trade-offs are more than reasonable. With that said, the design of flow trading specifically discourages high-frequency execution, so the performance overhead of these trade-offs are also largely irrelevant.
+
+## Authorization
+
+In the interest of simplicity, endpoints that process bid data (or execute administrative actions) expect HTTP requests to contain the `Authorization` header with a JWT bearer token. The `sub:` claim of this token must be the bidder's UUID. To authorize an administrative action, this token must contain the custom claim `admin: true`. It is left to the operator to securely authenticate and generate these tokens.
+
+## API
+
+TODO: auths, costs, submissions, and various admin endpoints.

@@ -1,6 +1,6 @@
 mod config;
 pub mod db;
-mod r#impl;
+mod impls;
 
 pub use config::Config;
 

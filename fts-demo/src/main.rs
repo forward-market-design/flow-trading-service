@@ -6,7 +6,7 @@ use fts_demo::{
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[cfg(feature = "testmode")]
-use marketplace::utils::generate_jwt;
+use fts_server::generate_jwt;
 
 #[tokio::main]
 async fn main() -> Result<(), db::Error> {
