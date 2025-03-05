@@ -1,13 +1,10 @@
 use super::{
-    auth::{active_auths, create_auth, get_auth, update_auth},
+    auth::{PortfolioOptions, active_auths, create_auth, get_auth, update_auth},
     cost::{active_costs, create_cost, get_cost, update_cost},
 };
 use crate::db;
 use fts_core::{
-    models::{
-        AuthId, AuthRecord, BidderId, CostId, CostRecord, GroupDisplay, PortfolioDisplay,
-        SubmissionRecord,
-    },
+    models::{AuthId, AuthRecord, BidderId, CostId, CostRecord, GroupDisplay, SubmissionRecord},
     ports::{
         AuthFailure, CostFailure, SubmissionAuthDto, SubmissionCostDto, SubmissionDto,
         SubmissionFailure, SubmissionRepository,
@@ -48,7 +45,7 @@ impl SubmissionRepository for db::Database {
         let tx = ctx.transaction_with_behavior(TransactionBehavior::Immediate)?;
 
         let mut current_auths: Map<AuthId, AuthRecord> =
-            active_auths(&tx, Some(bidder_id), timestamp, PortfolioDisplay::Exclude)?
+            active_auths(&tx, Some(bidder_id), timestamp, PortfolioOptions::Exclude)?
                 .into_iter()
                 .map(|record| (record.auth_id, record))
                 .collect();
@@ -75,7 +72,7 @@ impl SubmissionRepository for db::Database {
                 .swap_remove(&auth_id)
                 .map(|auth| Ok(auth))
                 .or_else(|| {
-                    get_auth(&tx, auth_id, timestamp, PortfolioDisplay::Exclude).transpose()
+                    get_auth(&tx, auth_id, timestamp, PortfolioOptions::Exclude).transpose()
                 })
                 .transpose()?;
 
@@ -108,11 +105,11 @@ impl SubmissionRepository for db::Database {
                         data,
                         timestamp,
                     )?;
-                    get_auth(&tx, auth_id, timestamp, PortfolioDisplay::Exclude)?.unwrap()
+                    get_auth(&tx, auth_id, timestamp, PortfolioOptions::Exclude)?.unwrap()
                 }
                 SubmissionAuthDto::Update { data, .. } => {
                     update_auth(&tx, auth_id, Some(data), timestamp)?;
-                    get_auth(&tx, auth_id, timestamp, PortfolioDisplay::Exclude)?.unwrap()
+                    get_auth(&tx, auth_id, timestamp, PortfolioOptions::Exclude)?.unwrap()
                 }
             };
 

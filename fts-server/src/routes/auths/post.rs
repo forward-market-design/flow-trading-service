@@ -33,6 +33,7 @@ pub struct PostAuthDto {
         (status = UNPROCESSABLE_ENTITY), // JSON failure, handled by Axum
         (status = INTERNAL_SERVER_ERROR)
     ),
+    params(("portfolio" = Option<String>, Query, description = "implementation-dependent portfolio mode")),
     tags = ["auths"]
 )]
 /// Create a new portfolio with optional inline authorization.
@@ -40,7 +41,7 @@ pub async fn post_auth<T: MarketRepository>(
     State(state): State<AppState<T>>,
     Now(now): Now,
     Bidder(bidder_id): Bidder,
-    Query(params): Query<AuthParams>,
+    Query(params): Query<AuthParams<T::PortfolioOptions>>,
     Json(PostAuthDto {
         auth_id,
         portfolio,

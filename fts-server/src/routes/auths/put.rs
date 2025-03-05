@@ -43,8 +43,8 @@ pub enum PutAuthDto {
         (status = INTERNAL_SERVER_ERROR)
     ),
     params(
-        ("auth_id" = AuthId, description = "Unique identifier of the authorization"),
-        AuthParams
+        ("auth_id" = AuthId, Path, description = "Unique identifier of the authorization"),
+        ("portfolio" = Option<String>, Query, description = "implementation-dependent portfolio mode")
     ),
     tags = ["auths"]
 )]
@@ -54,7 +54,7 @@ pub async fn put_auth<T: MarketRepository>(
     Now(now): Now,
     Bidder(bidder_id): Bidder,
     Path(auth_id): Path<AuthId>,
-    Query(params): Query<AuthParams>,
+    Query(params): Query<AuthParams<T::PortfolioOptions>>,
     Json(input): Json<PutAuthDto>,
 ) -> Result<Json<AuthRecord>, StatusCode> {
     let record = (match input {

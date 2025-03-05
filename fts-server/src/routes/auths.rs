@@ -1,8 +1,7 @@
 use crate::AppState;
 use axum::{Router, routing};
-use fts_core::{models::PortfolioDisplay, ports::MarketRepository};
+use fts_core::ports::MarketRepository;
 use serde::Deserialize;
-use utoipa::IntoParams;
 
 pub mod delete;
 pub mod get;
@@ -16,10 +15,10 @@ pub mod put;
 /// For now, there is only one such parameter, which determines
 /// whether or not to return the associated portfolio with the
 /// response.
-#[derive(Deserialize, IntoParams)]
-pub struct AuthParams {
+#[derive(Deserialize)]
+pub struct AuthParams<T: Default> {
     #[serde(default)]
-    pub portfolio: PortfolioDisplay,
+    pub portfolio: T,
 }
 
 pub fn router<T: MarketRepository>() -> Router<AppState<T>> {

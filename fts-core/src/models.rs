@@ -8,7 +8,7 @@ mod product;
 mod submission;
 
 pub use auction::{AuctionMetaData, AuctionSolveRequest, RawAuctionInput};
-pub use auth::{AuthData, AuthHistoryRecord, AuthId, AuthRecord, Portfolio, PortfolioDisplay};
+pub use auth::{AuthData, AuthHistoryRecord, AuthId, AuthRecord, Portfolio};
 pub use bound::Bound;
 pub use cost::{
     Constant, CostData, CostDto, CostDtoCreate, CostDtoRead, CostDtoUpdate, CostHistoryRecord,

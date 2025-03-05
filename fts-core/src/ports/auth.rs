@@ -1,11 +1,14 @@
-use time::OffsetDateTime;
-
-use crate::models::{
-    AuctionOutcome, AuthData, AuthHistoryRecord, AuthId, AuthRecord, BidderId, DateTimeRangeQuery,
-    DateTimeRangeResponse, PortfolioDisplay, ProductId,
+use crate::{
+    models::{
+        AuctionOutcome, AuthData, AuthHistoryRecord, AuthId, AuthRecord, BidderId,
+        DateTimeRangeQuery, DateTimeRangeResponse, ProductId,
+    },
+    ports::ProductRepository,
 };
-use crate::ports::ProductRepository;
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 use std::{borrow::Borrow, future::Future};
+use time::OffsetDateTime;
 
 #[derive(Debug)]
 pub enum AuthFailure {
@@ -15,6 +18,13 @@ pub enum AuthFailure {
 }
 
 pub trait AuthRepository: ProductRepository {
+    /// Implementations may elect to display (or not) the porfolio in various
+    /// ways. At a minimum, this should be a bool on whether or not to include
+    /// the portfolio in a response; in a forward market application with
+    /// increasingly granular products, this might be an option to display the
+    /// original portfolio or the "effective" portfolio.
+    type PortfolioOptions: Default + Serialize + DeserializeOwned + Send;
+
     /// Create a new authorization associated to the given account.
     fn create<K: Borrow<ProductId>, V: Borrow<f64>, P: Borrow<(K, V)>>(
         &self,
@@ -23,7 +33,7 @@ pub trait AuthRepository: ProductRepository {
         portfolio: impl Iterator<Item = P> + Send,
         data: AuthData,
         timestamp: OffsetDateTime,
-        include_portfolio: PortfolioDisplay,
+        portfolio_options: Self::PortfolioOptions,
     ) -> impl Future<Output = Result<Result<AuthRecord, AuthFailure>, Self::Error>> + Send;
 
     /// Query for an associated authorization matching the version if specified,
@@ -33,7 +43,7 @@ pub trait AuthRepository: ProductRepository {
         bidder_id: BidderId,
         auth_id: AuthId,
         as_of: OffsetDateTime,
-        include_portfolio: PortfolioDisplay,
+        portfolio_options: Self::PortfolioOptions,
     ) -> impl Future<Output = Result<Result<AuthRecord, AuthFailure>, Self::Error>> + Send;
 
     /// Set the data associated to this authorization.
@@ -43,7 +53,7 @@ pub trait AuthRepository: ProductRepository {
         auth_id: AuthId,
         data: AuthData,
         timestamp: OffsetDateTime,
-        include_portfolio: PortfolioDisplay,
+        portfolio_options: Self::PortfolioOptions,
     ) -> impl Future<Output = Result<Result<AuthRecord, AuthFailure>, Self::Error>> + Send;
 
     /// "Delete" the authorization
@@ -52,7 +62,7 @@ pub trait AuthRepository: ProductRepository {
         bidder_id: BidderId,
         auth_id: AuthId,
         timestamp: OffsetDateTime,
-        include_portfolio: PortfolioDisplay,
+        portfolio_options: Self::PortfolioOptions,
     ) -> impl Future<Output = Result<Result<AuthRecord, AuthFailure>, Self::Error>> + Send;
 
     /// Finds all active auths that involve the specified product

@@ -12,20 +12,6 @@ use utoipa::ToSchema;
 
 uuid_wrapper!(AuthId);
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "lowercase")]
-pub enum PortfolioDisplay {
-    Exclude,
-    Include,
-    Expand,
-}
-
-impl Default for PortfolioDisplay {
-    fn default() -> Self {
-        Self::Exclude
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(try_from = "RawAuthorization", into = "RawAuthorization")]
 pub struct AuthData {

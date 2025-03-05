@@ -13,7 +13,7 @@ use axum::{
     routing,
 };
 use fts_core::{
-    models::{AuthId, PortfolioDisplay, ProductId},
+    models::{AuthId, ProductId},
     ports::{AuthFailure, AuthRepository, MarketRepository},
 };
 use std::convert::Infallible;
@@ -66,7 +66,7 @@ async fn auth_stream<T: MarketRepository>(
         bidder_id,
         auth_id,
         now,
-        PortfolioDisplay::Exclude,
+        T::PortfolioOptions::default(),
     )
     .await
     .map_err(|err| {

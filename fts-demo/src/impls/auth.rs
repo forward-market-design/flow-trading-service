@@ -2,16 +2,33 @@ use crate::{DateTime, db};
 use fts_core::{
     models::{
         AuctionOutcome, AuthData, AuthHistoryRecord, AuthId, AuthRecord, BidderId,
-        DateTimeRangeQuery, DateTimeRangeResponse, Outcome, Portfolio, PortfolioDisplay, ProductId,
+        DateTimeRangeQuery, DateTimeRangeResponse, Outcome, Portfolio, ProductId,
     },
     ports::{AuthFailure, AuthRepository},
 };
 use rusqlite::{Connection, OptionalExtension as _, Statement, TransactionBehavior};
+use serde::{Deserialize, Serialize};
 use std::{borrow::Borrow, iter, marker::PhantomData, ops::Deref};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PortfolioOptions {
+    Exclude,
+    Include,
+    Expand,
+}
+
+impl Default for PortfolioOptions {
+    fn default() -> Self {
+        Self::Exclude
+    }
+}
+
 impl AuthRepository for db::Database {
+    type PortfolioOptions = PortfolioOptions;
+
     async fn create<K: Borrow<ProductId>, V: Borrow<f64>, P: Borrow<(K, V)>>(
         &self,
         bidder_id: BidderId,
@@ -19,7 +36,7 @@ impl AuthRepository for db::Database {
         portfolio: impl Iterator<Item = P>,
         data: AuthData,
         timestamp: OffsetDateTime,
-        include_portfolio: PortfolioDisplay,
+        portfolio_options: Self::PortfolioOptions,
     ) -> Result<Result<AuthRecord, AuthFailure>, Self::Error> {
         let mut ctx = self.connect(true)?;
 
@@ -27,7 +44,7 @@ impl AuthRepository for db::Database {
             let tx = ctx.transaction_with_behavior(TransactionBehavior::Immediate)?;
             let result = create_auth(&tx, bidder_id, auth_id, portfolio, data, timestamp)?
                 .map(|id| {
-                    get_auth(&tx, id, timestamp, include_portfolio)
+                    get_auth(&tx, id, timestamp, portfolio_options)
                         .transpose()
                         .unwrap()
                 })
@@ -49,14 +66,14 @@ impl AuthRepository for db::Database {
         bidder_id: BidderId,
         auth_id: AuthId,
         as_of: OffsetDateTime,
-        include_portfolio: PortfolioDisplay,
+        portfolio_options: Self::PortfolioOptions,
     ) -> Result<Result<AuthRecord, AuthFailure>, Self::Error> {
         let ctx = self.connect(false)?;
 
         if let Some(bidder_id_other) = get_bidder(&ctx, auth_id)? {
             if bidder_id_other == bidder_id {
                 Ok(Ok(
-                    get_auth(&ctx, auth_id, as_of, include_portfolio)?.unwrap()
+                    get_auth(&ctx, auth_id, as_of, portfolio_options)?.unwrap()
                 ))
             } else {
                 Ok(Err(AuthFailure::AccessDenied))
@@ -72,7 +89,7 @@ impl AuthRepository for db::Database {
         auth_id: AuthId,
         data: AuthData,
         timestamp: OffsetDateTime,
-        include_portfolio: PortfolioDisplay,
+        portfolio_options: Self::PortfolioOptions,
     ) -> Result<Result<AuthRecord, AuthFailure>, Self::Error> {
         let ctx = self.connect(true)?;
 
@@ -80,7 +97,7 @@ impl AuthRepository for db::Database {
             if bidder_id_other == bidder_id {
                 update_auth(&ctx, auth_id, Some(data), timestamp)?;
                 Ok(Ok(
-                    get_auth(&ctx, auth_id, timestamp, include_portfolio)?.unwrap()
+                    get_auth(&ctx, auth_id, timestamp, portfolio_options)?.unwrap()
                 ))
             } else {
                 Ok(Err(AuthFailure::AccessDenied))
@@ -95,7 +112,7 @@ impl AuthRepository for db::Database {
         bidder_id: BidderId,
         auth_id: AuthId,
         timestamp: OffsetDateTime,
-        include_portfolio: PortfolioDisplay,
+        portfolio_options: Self::PortfolioOptions,
     ) -> Result<Result<AuthRecord, AuthFailure>, Self::Error> {
         let ctx = self.connect(true)?;
 
@@ -106,7 +123,7 @@ impl AuthRepository for db::Database {
                     (*auth_id, DateTime::from(timestamp)),
                 )?;
                 Ok(Ok(
-                    get_auth(&ctx, auth_id, timestamp, include_portfolio)?.unwrap()
+                    get_auth(&ctx, auth_id, timestamp, portfolio_options)?.unwrap()
                 ))
             } else {
                 Ok(Err(AuthFailure::AccessDenied))
@@ -411,7 +428,7 @@ pub fn get_auth(
     ctx: &Connection,
     auth_id: AuthId,
     as_of: OffsetDateTime,
-    portfolio: PortfolioDisplay,
+    portfolio: PortfolioOptions,
 ) -> Result<Option<AuthRecord>, db::Error> {
     // We defer the bidder check until slightly futher down the implementation
 
@@ -454,9 +471,9 @@ pub fn get_auth(
     if let Some((data, version, bidder_id)) = result {
         // Provide the definition if requested
         let portfolio = match portfolio {
-            PortfolioDisplay::Exclude => None,
-            PortfolioDisplay::Include => Some(PortfolioDefinition::simple(ctx)?.execute(auth_id)?),
-            PortfolioDisplay::Expand => Some(PortfolioDefinition::full(ctx)?.execute(auth_id)?),
+            PortfolioOptions::Exclude => None,
+            PortfolioOptions::Include => Some(PortfolioDefinition::simple(ctx)?.execute(auth_id)?),
+            PortfolioOptions::Expand => Some(PortfolioDefinition::full(ctx)?.execute(auth_id)?),
         };
 
         let trade = Some(TradeCalculation::prepare(ctx)?.execute(auth_id, as_of)?);
@@ -603,12 +620,12 @@ pub fn active_auths(
     ctx: &Connection,
     bidder_id: Option<BidderId>,
     as_of: OffsetDateTime,
-    portfolio: PortfolioDisplay,
+    portfolio: PortfolioOptions,
 ) -> Result<Vec<AuthRecord>, db::Error> {
     let mut populator = match portfolio {
-        PortfolioDisplay::Exclude => None,
-        PortfolioDisplay::Include => Some(PortfolioDefinition::simple(ctx)?),
-        PortfolioDisplay::Expand => Some(PortfolioDefinition::full(ctx)?),
+        PortfolioOptions::Exclude => None,
+        PortfolioOptions::Include => Some(PortfolioDefinition::simple(ctx)?),
+        PortfolioOptions::Expand => Some(PortfolioDefinition::full(ctx)?),
     };
 
     let mut trade_calculator = TradeCalculation::prepare(ctx)?;

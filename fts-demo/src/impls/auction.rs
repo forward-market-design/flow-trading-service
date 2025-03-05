@@ -1,10 +1,10 @@
-use super::{auth::active_auths, cost::active_costs};
+use super::{
+    auth::{PortfolioOptions, active_auths},
+    cost::active_costs,
+};
 use crate::{Config, DateTime, db};
 use fts_core::{
-    models::{
-        AuctionMetaData, AuthId, GroupDisplay, Outcome, PortfolioDisplay, ProductId,
-        RawAuctionInput,
-    },
+    models::{AuctionMetaData, AuthId, GroupDisplay, Outcome, ProductId, RawAuctionInput},
     ports::AuctionRepository,
 };
 use rusqlite::{OptionalExtension, TransactionBehavior};
@@ -68,7 +68,7 @@ impl AuctionRepository for db::Database {
         while as_of + auction_duration <= thru {
             let from = DateTime::from(as_of);
             let thru = DateTime::from(as_of + auction_duration);
-            let auths = active_auths(&ctx, None, as_of, PortfolioDisplay::Expand)?;
+            let auths = active_auths(&ctx, None, as_of, PortfolioOptions::Expand)?;
             let costs = active_costs(&ctx, None, as_of, GroupDisplay::Include)?;
             submissions.push((from, thru, auths, costs));
             as_of += auction_duration;
