@@ -74,6 +74,7 @@ impl Constant {
     }
 }
 
+/// The various ways in which a flat demand curve can be invalid
 #[derive(Debug, Error)]
 #[error("(min_rate = {min_rate:?}, max_rate = {max_rate:?}, price = {price:?})")]
 pub struct ValidationError {

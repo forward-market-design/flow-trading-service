@@ -92,6 +92,7 @@ pub trait SubmissionRepository: CostRepository {
         as_of: OffsetDateTime,
     ) -> impl Future<Output = Result<SubmissionRecord, Self::Error>> + Send;
 
+    /// Set the current submission for the bidder, stopping any not-referenced auths or costs
     fn set_submission(
         &self,
         bidder_id: BidderId,

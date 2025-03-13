@@ -76,6 +76,7 @@ impl Into<Vec<Point>> for Curve {
     }
 }
 
+/// The various ways in which a curve can be invalid
 #[derive(Debug, Error)]
 pub enum ValidationError {
     #[error("NaN value encountered")]
@@ -101,6 +102,7 @@ fn validate_point(point: &Point) -> Result<(), ValidationError> {
     }
 }
 
+/// A representation of a point for use in defining piecewise-linear curves
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct Point {
     pub rate: f64,
