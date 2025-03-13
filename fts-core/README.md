@@ -4,7 +4,7 @@ This crate defines a set of data primitives and operations but defers the implem
 
 Broadly speaking, this core defines a notion of a *bidder*, whom may have at most one [*submission*](#submissions). This submission contains any number of [*auths*](#auths) and [*costs*](#costs). Periodically, every active submission is submitted into an [*auction*](#auctions); the submissions are collectively processed into an optimization program which is then solved. The results of this optimization are reported as the traded amounts of each auth and the prices for the underlying [*products*](#products).
 
-# Auths
+## Auths
 
 An *auth*, short for authorization, is two things:
 
@@ -26,7 +26,7 @@ There are no restrictions on the signs or magnitudes of the "weights". Buying 1 
 Unbounded trade (even when bound proportionally as above) is rarely desired. Thus, an auth also allows for specifying minimum and maximum rates of trade and total trade. These minima and maxima are specified with respect to the trade sign convention; coupling the portfolio `P1` to `min_rate = 0` restricts the auth to only the buying of `P1` (and in turn `A`): selling is forbidden. Conversely, setting `max_rate = 0` would restrict the auth to only the selling of `P1`. It is important to note that this is only a statement of what *this* auth is allowed to trade; if `A` is *also* involved in another auth's portfolio, the underlying product may still be bought or sold if that auth allows for it. The only restriction on these constraints is that `min_rate <= 0 <= max_rate`. (If omitted, they default to the appropriately signed infinity.)
 
 We also support minimum and maximum overall trade: as each submission is being prepared for an auction, an implementation will consider the overall total trade that has occurred across all previous auctions and additionally impose any further restriction on minimum and maximum rates such that the minimum and maximum trade amounts are respected. That is, at each auction the following calculation is performed for each auth:
-```
+```text
 min_trade <- min(0, max(min_trade - current_trade, min_rate * duration))
 max_trade <- max(0, min(max_trade - current_trade, max_rate * duration))
 ```
@@ -62,6 +62,8 @@ The output of an auction are the quantities traded of each auth's portfolio (*no
 
 ## Products
 
-Flow trading by itself imposes no restrictions on the products actually being traded. They are simply "things" that are referenced by auth portfolios and constrained to net-zero trade in each auction. With that said, this project was built with forward markets in mind. The sibling crate `fts-demo` necessarily imposes a product structure, which happens to correspond to a forward market. Details are in `../fts-demo/README.md`, but the takeaway is that the requirements of a forward market led to an additional concept in the core implementation.
+Flow trading by itself imposes no restrictions on the products actually being traded. They are simply "things" that are referenced by auth portfolios and constrained to net-zero trade in each auction. With that said, this project was built with forward markets in mind. The sibling crate `fts-demo` necessarily imposes a product structure, which happens to correspond to a forward market. Details are in [fts_demo], but the takeaway is that the requirements of a forward market led to an additional concept in the core implementation.
 
 This concept is that of a "product hierarchy", where an operator can decompose products over time. For example, a product corresponding to energy delivery for the month of June 2030 might, at a later time, be refined into products for each day of June 2030, and at an even later time, each day into its hours. A portfolio defined only in terms of the monthly product needs an ability to implicitly decompose into the child products when an auction is executed in order to properly clear the market. This is useful beyond forward markets: consider trading stocks pre- and post-split. Thus, when retrieving portfolios, `fts-core` allows the bidder to specify whether they want the original portfolio or the expanded portfolio.
+
+[fts_demo]: ../fts-demo/README.md
