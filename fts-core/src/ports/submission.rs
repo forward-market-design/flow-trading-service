@@ -1,6 +1,8 @@
 use super::{AuthFailure, CostFailure};
 use crate::{
-    models::{AuthData, AuthId, BidderId, CostData, CostId, Group, Portfolio, SubmissionRecord},
+    models::{
+        AuthData, AuthId, BidderId, CostData, CostId, Group, Portfolio, ProductId, SubmissionRecord,
+    },
     ports::CostRepository,
 };
 use serde::Deserialize;
@@ -8,20 +10,10 @@ use std::future::Future;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 
-pub trait SubmissionRepository: CostRepository {
-    /// Get the active submission for the bidder
-    fn get_submission(
-        &self,
-        bidder_id: BidderId,
-        as_of: OffsetDateTime,
-    ) -> impl Future<Output = Result<SubmissionRecord, Self::Error>> + Send;
-
-    fn set_submission(
-        &self,
-        bidder_id: BidderId,
-        submission: SubmissionDto,
-        as_of: OffsetDateTime,
-    ) -> impl Future<Output = Result<Result<SubmissionRecord, SubmissionFailure>, Self::Error>> + Send;
+#[derive(Debug)]
+pub enum SubmissionFailure {
+    Auth(AuthFailure),
+    Cost(CostFailure),
 }
 
 #[derive(Deserialize, ToSchema)]
@@ -35,7 +27,7 @@ pub struct SubmissionDto {
 pub enum SubmissionAuthDto {
     Create {
         auth_id: AuthId,
-        #[schema(value_type = std::collections::HashMap<crate::models::ProductId, f64>)]
+        #[schema(value_type = std::collections::HashMap<ProductId, f64>)]
         portfolio: Portfolio,
         data: AuthData,
     },
@@ -63,7 +55,7 @@ impl SubmissionAuthDto {
 pub enum SubmissionCostDto {
     Create {
         cost_id: CostId,
-        #[schema(value_type = std::collections::HashMap<crate::models::AuthId, f64>)]
+        #[schema(value_type = std::collections::HashMap<AuthId, f64>)]
         group: Group,
         data: CostData,
     },
@@ -86,8 +78,18 @@ impl SubmissionCostDto {
     }
 }
 
-#[derive(Debug)]
-pub enum SubmissionFailure {
-    Auth(AuthFailure),
-    Cost(CostFailure),
+pub trait SubmissionRepository: CostRepository {
+    /// Get the active submission for the bidder
+    fn get_submission(
+        &self,
+        bidder_id: BidderId,
+        as_of: OffsetDateTime,
+    ) -> impl Future<Output = Result<SubmissionRecord, Self::Error>> + Send;
+
+    fn set_submission(
+        &self,
+        bidder_id: BidderId,
+        submission: SubmissionDto,
+        as_of: OffsetDateTime,
+    ) -> impl Future<Output = Result<Result<SubmissionRecord, SubmissionFailure>, Self::Error>> + Send;
 }

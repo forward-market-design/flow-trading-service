@@ -1,8 +1,7 @@
 mod constant;
 mod curve;
 
-use crate::models::{AuthId, BidderId};
-use crate::uuid_wrapper;
+use crate::models::{AuthId, BidderId, uuid_wrapper};
 pub use constant::{Constant, RawConstant};
 pub use curve::{Curve, Point};
 use fxhash::FxBuildHasher;
@@ -16,6 +15,8 @@ use utoipa::ToSchema;
 // A simple newtype for a Uuid
 uuid_wrapper!(CostId);
 
+/// Since cost groups are immutable, it may be desired to omit their value in the response from various endpoints.
+/// This type can be passed to the relevant `CostRepository` methods.
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum GroupDisplay {
@@ -29,7 +30,7 @@ impl Default for GroupDisplay {
     }
 }
 
-/// The data representing the "cost"
+/// The utility-specification of the cost
 //
 // TODO: Utoipa doesn't fully support all the Serde annotations,
 // so we injected `untagged` (which Serde will ignore given the presence of
@@ -42,6 +43,7 @@ pub enum CostData {
     Constant(#[schema(inline)] Constant),
 }
 
+/// An error type for the ways in which the provided utility function may be invalid.
 #[derive(Error, Debug)]
 pub enum ValidationError {
     #[error("invalid demand curve: {0}")]
@@ -50,6 +52,7 @@ pub enum ValidationError {
     Constraint(#[from] constant::ValidationError),
 }
 
+/// The "DTO" type for the utility
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 #[serde(untagged)]
 pub enum RawCostData {
@@ -77,6 +80,7 @@ impl From<CostData> for RawCostData {
     }
 }
 
+/// A record of the cost's data at the time it was updated or defined
 #[derive(Serialize, Deserialize, PartialEq, ToSchema, Debug)]
 pub struct CostHistoryRecord {
     pub data: Option<CostData>,
@@ -84,18 +88,29 @@ pub struct CostHistoryRecord {
     pub version: OffsetDateTime,
 }
 
+/// A full description of a cost
 #[derive(Serialize, Deserialize, PartialEq, Debug, ToSchema)]
 pub struct CostRecord {
+    /// The responsible bidder's id
     pub bidder_id: BidderId,
+
+    /// A unique id for the cost
     pub cost_id: CostId,
+
+    /// The group associated to the cost. Because it is not always required, some endpoints may omit its definition.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schema(value_type = Option<std::collections::HashMap<AuthId, f64>>)]
     pub group: Option<Group>,
+
+    /// The utility for the cost
     pub data: Option<CostData>,
+
+    /// The "last-modified-or-created" time as recorded by the system
     #[serde(with = "time::serde::rfc3339")]
     pub version: OffsetDateTime,
 }
 
+/// A group is a sparse collection of authorizations
 pub type Group = IndexMap<AuthId, f64, FxBuildHasher>;
 
 impl CostRecord {
@@ -128,43 +143,6 @@ impl CostRecord {
             ))
         } else {
             None
-        }
-    }
-}
-
-#[derive(Deserialize, ToSchema)]
-pub struct CostDtoCreate {
-    pub cost_id: Option<CostId>,
-    #[schema(value_type = std::collections::HashMap<AuthId, f64>)]
-    pub group: Group,
-    pub data: CostData,
-}
-
-#[derive(Deserialize, ToSchema)]
-pub struct CostDtoRead {
-    pub cost_id: CostId,
-}
-
-#[derive(Deserialize, ToSchema)]
-pub struct CostDtoUpdate {
-    pub cost_id: Option<CostId>,
-    pub data: CostData,
-}
-
-#[derive(Deserialize, ToSchema)]
-#[serde(untagged)]
-pub enum CostDto {
-    Read(CostDtoRead),
-    Update(CostDtoUpdate),
-    Create(CostDtoCreate),
-}
-
-impl CostDto {
-    pub fn cost_id(&self) -> Option<CostId> {
-        match self {
-            Self::Read(CostDtoRead { cost_id }) => Some(*cost_id),
-            Self::Update(CostDtoUpdate { cost_id, .. }) => *cost_id,
-            Self::Create(CostDtoCreate { cost_id, .. }) => *cost_id,
         }
     }
 }
