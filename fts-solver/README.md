@@ -1,4 +1,4 @@
-# Solver
+# FTS Solver
 
 This package defines a few basic types and a solver interface to operate over these types. Presently, the following solvers are provided:
 * `feature = ["clarabel"]` -- Uses the [Clarabel](https://clarabel.org/) interior point solver for the quadratic program
@@ -6,7 +6,7 @@ This package defines a few basic types and a solver interface to operate over th
 
 Additional solvers will be developed as needed. The present implementations are intended as "reference" for future work.
 
-# Primitive Types
+## Primitive Types
 
 There are two externally-defined types `ProductId` and `AuthId`, which allow the application host to provide their own implementations. These are black-boxes as far as the solver is concerned -- they just need to implement `Clone + Eq + Hash + Ord`.
 

@@ -25,9 +25,8 @@ cargo build --release --bin fts-demo
 ./target/release/fts-demo --help
 ```
 
-This
-output is duplicated below:
-```
+This output is duplicated below:
+```bash
 $ fts-demo --help
 
 A simple, reference backend for `fts` implemented with SQLite
@@ -48,6 +47,7 @@ As suggested by this output, a `.env` file may alternatively be provided to spec
 Note that `--trade-rate / TRADE_RATE` is specified as a string that can be parsed by [humantime](https://docs.rs/humantime/latest/humantime/), e.g. `1h` or `30min`. This value provides the units for *auths* and *costs*, e.g. if an auth specifies a `max_rate` of `5` and the server was configured with `--trade-rate 1h`, then this means the authorization allows for trading the associated portfolio at a rate not exceeding 5 units per hour.
 
 For convenience, a compile-time feature (disabled by default) is available, that when enabled, adds a `--test N` flag which will print JWT tokens to stdout for 1 admin user and `N` randomly generated bidders, valid for 1 day, for use in external tooling and testing scenarios. Use with the appropriate care. To enable support, build with the `testmode` feature:
+
 ```bash
 cargo build --release --bin fts-demo --features testmode
 ```

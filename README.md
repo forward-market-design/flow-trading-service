@@ -13,6 +13,7 @@ These 4 crates each contain their own `README.md` which explains the crate's fun
 ## Quick Start
 
 To get started, ensure Rust >= 1.85 is available in your system `PATH`. (See [Rustup](https://rustup.rs/) for an easy way to install Rust.) Then, paste the following into your CLI:
+
 ```bash
 # Clone the repository if necessary
 git clone https://github.com/forward-market-design/flow-trading-service.git
@@ -24,7 +25,7 @@ cargo run --release --bin fts-demo -- --api-secret SECRET --trade-rate 1h
 
 This will download the project dependencies, build the software, and then run the server on port 8080. The OpenAPI specification will be available at http://localhost:8080/rapidoc if the server is successfully running. A Dockerfile is also available to build and run the binary.
 
-Refer to `fts-demo/README.md` for full documentation of the available configuration options and their meaning.
+Refer to [`fts-demo/README.md`](./fts-demo/README.md) for full documentation of the available configuration options and their meaning.
 
 ## Example
 
