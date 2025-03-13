@@ -7,6 +7,10 @@ use crate::models::{
 use crate::ports::AuthRepository;
 use std::{borrow::Borrow, future::Future};
 
+/// CostRepository methods are expected to enforce various restrictions on user access.
+/// In particular, if a client-generated ID conflicts with one already present in the system,
+/// an error must be returned. If a bidder tries to obtain information on a different bidder's
+/// auth, this action must fail.
 #[derive(Debug)]
 pub enum CostFailure {
     AccessDenied,
@@ -15,7 +19,9 @@ pub enum CostFailure {
 }
 
 pub trait CostRepository: AuthRepository {
-    /// Create a new cost associated to the given account.
+    /// Create a new cost associated to the given bidder.
+    ///
+    /// If `cost_id` is None, assigns a system-generated ID.
     fn create<K: Borrow<AuthId>, V: Borrow<f64>, P: Borrow<(K, V)>>(
         &self,
         bidder_id: BidderId,
@@ -26,8 +32,7 @@ pub trait CostRepository: AuthRepository {
         include_group: GroupDisplay,
     ) -> impl Future<Output = Result<Result<CostRecord, CostFailure>, Self::Error>> + Send;
 
-    /// Query for an associated bid matching the version if specified,
-    /// or the most recent bid otherwise.
+    /// Get the record for the requested cost as of the specified time
     fn read(
         &self,
         bidder_id: BidderId,
@@ -36,8 +41,7 @@ pub trait CostRepository: AuthRepository {
         include_group: GroupDisplay,
     ) -> impl Future<Output = Result<Result<CostRecord, CostFailure>, Self::Error>> + Send;
 
-    /// Set the data associated to this cost.
-    /// Ok(true) is a success, Ok(false) if the orderbook could not find the cost
+    /// Set the data associated to this cost
     fn update(
         &self,
         bidder_id: BidderId,
@@ -72,7 +76,7 @@ pub trait CostRepository: AuthRepository {
     //     as_of: &DateTime,
     // ) -> impl Future<Output = Result<Vec<CostRecord>, Self::Error>> + Send;
 
-    /// Retrieve the bid history associated to this cost
+    /// Retrieve the history associated to this cost
     fn get_history(
         &self,
         bidder_id: BidderId,

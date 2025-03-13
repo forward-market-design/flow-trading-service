@@ -10,18 +10,22 @@ use std::future::Future;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 
+/// The various ways in which a submission may fail to process
 #[derive(Debug)]
 pub enum SubmissionFailure {
     Auth(AuthFailure),
     Cost(CostFailure),
 }
 
+/// The submission endpoint embeds a mini-CRUD interface, accordingly we need a type to embed the CRUD operations.
 #[derive(Deserialize, ToSchema)]
 pub struct SubmissionDto {
     pub auths: Vec<SubmissionAuthDto>,
     pub costs: Vec<SubmissionCostDto>,
 }
 
+/// For a new auth, the portfolio must be provided. To update an auth, only the data needs to be provided. To continue an existing auth as-is, only the id is required.
+/// Any auths not present in the submission will be stopped.
 #[derive(Deserialize, ToSchema)]
 #[serde(untagged)]
 pub enum SubmissionAuthDto {
@@ -50,6 +54,8 @@ impl SubmissionAuthDto {
     }
 }
 
+/// For a new cost, the group must be provided. To update a cost, only the data needs to be provided. To continue an existing cost as-is, only the id is required.
+/// Any costs not present in the submission will be stopped.
 #[derive(Deserialize, ToSchema)]
 #[serde(untagged)]
 pub enum SubmissionCostDto {

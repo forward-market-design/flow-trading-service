@@ -10,6 +10,10 @@ use serde::de::DeserializeOwned;
 use std::{borrow::Borrow, future::Future};
 use time::OffsetDateTime;
 
+/// AuthRepository methods are expected to enforce various restrictions on user access.
+/// In particular, if a client-generated ID conflicts with one already present in the system,
+/// an error must be returned. If a bidder tries to obtain information on a different bidder's
+/// auth, this action must fail.
 #[derive(Debug)]
 pub enum AuthFailure {
     AccessDenied,
@@ -25,7 +29,9 @@ pub trait AuthRepository: ProductRepository {
     /// original portfolio or the "effective" portfolio.
     type PortfolioOptions: Default + Serialize + DeserializeOwned + Send;
 
-    /// Create a new authorization associated to the given account.
+    /// Create a new authorization associated to the given bidder.
+    ///
+    /// If `auth_id` is None, assigns a system-generated ID.
     fn create<K: Borrow<ProductId>, V: Borrow<f64>, P: Borrow<(K, V)>>(
         &self,
         bidder_id: BidderId,
@@ -36,8 +42,7 @@ pub trait AuthRepository: ProductRepository {
         portfolio_options: Self::PortfolioOptions,
     ) -> impl Future<Output = Result<Result<AuthRecord, AuthFailure>, Self::Error>> + Send;
 
-    /// Query for an associated authorization matching the version if specified,
-    /// or the most recent authorization otherwise.
+    /// Get the record for the requested auth as of the specified time
     fn read(
         &self,
         bidder_id: BidderId,
@@ -73,7 +78,7 @@ pub trait AuthRepository: ProductRepository {
         as_of: OffsetDateTime,
     ) -> impl Future<Output = Result<Vec<AuthRecord>, Self::Error>> + Send;
 
-    /// Retrieve the authorization history associated to this portfolio
+    /// Retrieve the history associated to the auth
     fn get_history(
         &self,
         bidder_id: BidderId,
@@ -84,7 +89,7 @@ pub trait AuthRepository: ProductRepository {
         Output = Result<Result<DateTimeRangeResponse<AuthHistoryRecord>, AuthFailure>, Self::Error>,
     > + Send;
 
-    /// Retrieve any posted outcomes
+    /// Retrieve any posted outcomes for the auth
     fn get_outcomes(
         &self,
         bidder_id: BidderId,

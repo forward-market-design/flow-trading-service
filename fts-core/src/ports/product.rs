@@ -2,14 +2,17 @@ use crate::models::{
     AuctionOutcome, DateTimeRangeQuery, DateTimeRangeResponse, ProductId, ProductQueryResponse,
     ProductRecord,
 };
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use std::future::Future;
 use time::OffsetDateTime;
 
 pub trait ProductRepository: Clone + Sized + Send + Sync + 'static {
     type Error: std::error::Error + Send + Sync + 'static;
 
+    /// An implementation must provide a type describing the products
     type ProductData: Serialize + DeserializeOwned + Send + Sync + 'static;
+
+    /// An implementation must also provide a query type
     type ProductQuery: Serialize + DeserializeOwned + Send + Sync + 'static;
 
     /// Define new products
@@ -19,7 +22,7 @@ pub trait ProductRepository: Clone + Sized + Send + Sync + 'static {
         timestamp: &OffsetDateTime,
     ) -> impl Future<Output = Result<Vec<ProductId>, Self::Error>> + Send;
 
-    /// View a specific product by their id
+    /// View a specific product by its id
     fn view_product(
         &self,
         product_id: &ProductId,
