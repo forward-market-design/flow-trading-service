@@ -3,6 +3,7 @@ use std::ops::Index;
 use thiserror::Error;
 use utoipa::ToSchema;
 
+/// A representation of a piecewise-linear, weakly monotone decreasing demand curve
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(try_from = "Vec::<Point>", into = "Vec::<Point>")]
 pub struct Curve(Vec<Point>);

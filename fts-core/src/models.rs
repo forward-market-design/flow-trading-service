@@ -19,9 +19,9 @@ pub use outcome::{AuctionOutcome, Outcome};
 pub use product::{ProductQueryResponse, ProductRecord};
 pub use submission::SubmissionRecord;
 
-#[macro_export]
 macro_rules! uuid_wrapper {
     ($struct: ident) => {
+        /// A UUID newtype
         #[derive(
             Debug,
             Hash,
@@ -80,5 +80,6 @@ macro_rules! uuid_wrapper {
     };
 }
 
+pub(crate) use uuid_wrapper;
 uuid_wrapper!(BidderId);
 uuid_wrapper!(ProductId);

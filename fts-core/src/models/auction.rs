@@ -6,16 +6,23 @@ use utoipa::ToSchema;
 
 use super::{AuthId, AuthRecord, BidderId, CostRecord, ProductId};
 
+/// Configuration for scheduling and running a batch auction
 #[derive(Deserialize, ToSchema)]
 pub struct AuctionSolveRequest {
+    /// The starting time of the batch; if omitted, defaults to the last batch's ending time
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub from: Option<OffsetDateTime>,
+
+    /// The ending time of the batch
     #[serde(with = "time::serde::rfc3339")]
     pub thru: OffsetDateTime,
+
+    /// Optionally divide the (from, thru) interval into smaller batches with the provided duration
     #[serde(default, deserialize_with = "optional_humantime")]
     pub by: Option<Duration>,
 }
 
+/// A simple struct for the external identification of an auction
 #[derive(Serialize, ToSchema)]
 pub struct AuctionMetaData {
     #[serde(with = "time::serde::rfc3339")]
@@ -24,12 +31,19 @@ pub struct AuctionMetaData {
     pub thru: OffsetDateTime,
 }
 
+/// A struct containing the raw auth and cost records for the stated auction interval
 pub struct RawAuctionInput<AuctionId> {
+    /// An internal auction id
     pub id: AuctionId,
+    /// The start time for this batch
     pub from: OffsetDateTime,
+    /// The end time for this batch
     pub thru: OffsetDateTime,
+    /// All appropriate auth records for the interval
     pub auths: Vec<AuthRecord>,
+    /// All apporpriate cost records for the interval
     pub costs: Vec<CostRecord>,
+    /// The reference time that all rate-based quantities are defined with respect to
     pub trade_duration: Duration,
 }
 
