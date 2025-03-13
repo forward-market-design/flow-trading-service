@@ -39,7 +39,7 @@ impl ProductRepository for db::Database {
     async fn define_products(
         &self,
         products: impl Iterator<Item = ProductData>,
-        timestamp: &OffsetDateTime,
+        timestamp: OffsetDateTime,
     ) -> Result<Vec<ProductId>, Self::Error> {
         let mut ctx = self.connect(true)?;
         let tx = ctx.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
@@ -76,7 +76,7 @@ impl ProductRepository for db::Database {
 
     async fn query_products(
         &self,
-        query: &Self::ProductQuery,
+        query: Self::ProductQuery,
         limit: usize,
     ) -> Result<
         ProductQueryResponse<ProductRecord<Self::ProductData>, Self::ProductQuery>,
@@ -134,7 +134,7 @@ impl ProductRepository for db::Database {
 
     async fn view_product(
         &self,
-        product_id: &ProductId,
+        product_id: ProductId,
     ) -> Result<Option<ProductRecord<Self::ProductData>>, Self::Error> {
         let ctx = self.connect(false)?;
         let query = ctx
@@ -150,8 +150,8 @@ impl ProductRepository for db::Database {
 
     async fn get_outcomes(
         &self,
-        product_id: &ProductId,
-        query: &DateTimeRangeQuery,
+        product_id: ProductId,
+        query: DateTimeRangeQuery,
         limit: usize,
     ) -> Result<DateTimeRangeResponse<AuctionOutcome<()>>, Self::Error> {
         let ctx = self.connect(false)?;

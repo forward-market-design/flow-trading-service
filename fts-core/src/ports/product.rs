@@ -19,19 +19,19 @@ pub trait ProductRepository: Clone + Sized + Send + Sync + 'static {
     fn define_products(
         &self,
         products: impl Iterator<Item = Self::ProductData> + Send,
-        timestamp: &OffsetDateTime,
+        timestamp: OffsetDateTime,
     ) -> impl Future<Output = Result<Vec<ProductId>, Self::Error>> + Send;
 
     /// View a specific product by its id
     fn view_product(
         &self,
-        product_id: &ProductId,
+        product_id: ProductId,
     ) -> impl Future<Output = Result<Option<ProductRecord<Self::ProductData>>, Self::Error>> + Send;
 
     /// Search for products using a query
     fn query_products(
         &self,
-        query: &Self::ProductQuery,
+        query: Self::ProductQuery,
         limit: usize,
     ) -> impl Future<
         Output = Result<
@@ -43,8 +43,8 @@ pub trait ProductRepository: Clone + Sized + Send + Sync + 'static {
     /// Retrieve any posted results
     fn get_outcomes(
         &self,
-        product_id: &ProductId,
-        query: &DateTimeRangeQuery,
+        product_id: ProductId,
+        query: DateTimeRangeQuery,
         limit: usize,
     ) -> impl Future<Output = Result<DateTimeRangeResponse<AuctionOutcome<()>>, Self::Error>> + Send;
 }
