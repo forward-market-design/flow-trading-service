@@ -35,6 +35,7 @@ macro_rules! uuid_wrapper {
             utoipa::ToSchema,
         )]
         #[serde(transparent)]
+        #[repr(transparent)]
         pub struct $struct(uuid::Uuid);
 
         impl From<uuid::Uuid> for $struct {

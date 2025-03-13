@@ -1,11 +1,11 @@
 use super::spvec;
-use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 
 // A group is a linear combination of portfolios
 spvec!(Group);
 
-#[derive(Clone, PartialEq, Debug, Deserialize, Serialize)]
+/// A basic type for representing a point on a piecewise-linear demand curve
+#[derive(Clone, PartialEq, Debug)]
 pub struct Point {
     pub quantity: f64,
     pub price: f64,
@@ -36,19 +36,21 @@ impl PartialOrd for Point {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+/// A piecewise-linear, weakly monotone curve for representing demand
+#[derive(Debug)]
 pub struct PiecewiseLinearCurve {
     pub points: Vec<Point>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+/// A "flat" curve for representing demand, which may have a finite, half-line, or full-line domain.
+#[derive(Debug)]
 pub struct Constant {
     pub quantity: (f64, f64),
     pub price: f64,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(untagged)]
+/// The currently-supported ways to define utility functions
+#[derive(Debug)]
 pub enum Cost {
     PiecewiseLinearCurve(PiecewiseLinearCurve),
     Constant(Constant),

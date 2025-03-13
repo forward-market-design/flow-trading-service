@@ -18,6 +18,5 @@ This crate defines a `Submission<AuthId, ProductId>` type, which is intended to 
 * Warm-start interface
 * Large-scale tests
 * Enhanced dual reporting
-* Automatic determination of error tolerances based on input?
-* Price and Quantity normalization
+* Automatic determination of error tolerances based on input
 * Bespoke ADMM implementation

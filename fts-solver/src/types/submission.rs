@@ -1,10 +1,9 @@
 use super::{Auth, Constant, Cost, Group, PiecewiseLinearCurve};
 use crate::{Map, Set};
-use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 
 /// A submission is a full expression of an agent's preferences in an auction.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub struct Submission<AuthId: Eq + Hash, ProductId: Eq + Hash> {
     pub(crate) auths: Map<AuthId, Auth<ProductId>>,
     pub(crate) cost_curves: Vec<(Group<AuthId>, PiecewiseLinearCurve)>,

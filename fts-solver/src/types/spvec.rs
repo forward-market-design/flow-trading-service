@@ -4,9 +4,9 @@
 // representation, so we handle that book-keeping here as well.
 macro_rules! spvec {
     ($struct:ident) => {
-        /// A sparse linear combination of things
-        #[derive(Debug, ::serde::Serialize, ::serde::Deserialize)]
-        #[serde(transparent)]
+        /// A sparse collection of things
+        #[derive(Debug)]
+        #[repr(transparent)]
         pub struct $struct<T: Eq + ::std::hash::Hash>(
             ::indexmap::IndexMap<T, f64, ::fxhash::FxBuildHasher>,
         );
