@@ -9,7 +9,7 @@ This crate provides implementations of the data operations defined in `fts-core`
 |`thru`|The time at which the delivery will be complete|
 
 
-It is recommended to pair this binary with a frontend client, such as [this one](https://github.com/forward-market-design/forward-market-demo). The client provides a graphical, administrative interface for familiarizing oneself with the primitives and operations of flow trading and how a forward market might be built upon this foundation.
+It is recommended to pair this binary with a frontend client, such as [this one](https://github.com/forward-market-design/flow-trading-client). The client provides a graphical, administrative interface for familiarizing oneself with the primitives and operations of flow trading and how a forward market might be built upon this foundation.
 
 ## Configuration
 

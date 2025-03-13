@@ -97,9 +97,6 @@ pub enum Error {
         super::routes::costs::delete::delete_cost,
         super::routes::costs::history::get_history,
     ),
-    info(
-        description = include_str!("../API_REFERENCE.md")
-    ),
     external_docs(
         url = "https://forwardmarketdesign.com", description = "📖 Flow Trading Introduction"
     ),

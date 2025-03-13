@@ -33,7 +33,7 @@ pub async fn define_products<T: MarketRepository>(
     Now(now): Now,
     Json(products): Json<Vec<T::ProductData>>,
 ) -> Result<(StatusCode, Json<Vec<ProductId>>), StatusCode> {
-    let ids = T::define_products(&state.market, products.into_iter(), &now).await;
+    let ids = T::define_products(&state.market, products.into_iter(), now).await;
 
     match ids {
         Ok(ids) => Ok((StatusCode::OK, Json(ids))),

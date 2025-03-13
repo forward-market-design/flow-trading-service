@@ -1,7 +1,4 @@
-use crate::{
-    models::{BidderId, Bound, ProductId},
-    uuid_wrapper,
-};
+use crate::models::{BidderId, Bound, ProductId, uuid_wrapper};
 use fxhash::FxBuildHasher;
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
@@ -12,12 +9,17 @@ use utoipa::ToSchema;
 
 uuid_wrapper!(AuthId);
 
+/// The supported constraints for an authorization.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(try_from = "RawAuthorization", into = "RawAuthorization")]
 pub struct AuthData {
+    /// The fastest rate at which the portfolio may sell (non-positive)
     pub min_rate: f64,
+    /// The fastest rate at which the portfolio may buy (non-negative)
     pub max_rate: f64,
+    /// A minimum amount of trade to preserve (always enforced against the authorization's contemporaneous amount of trade)
     pub min_trade: f64,
+    /// A maximum amount of trade to preserve (always enforced against the authorization's contemporaneous amount of trade)
     pub max_trade: f64,
 }
 
@@ -51,6 +53,7 @@ impl AuthData {
     }
 }
 
+/// An enumeration of the ways authorization data may be invalid
 #[derive(Debug, Error)]
 pub enum ValidationError {
     #[error("NaN value encountered")]
@@ -61,6 +64,7 @@ pub enum ValidationError {
     INFEASIBLETRADE,
 }
 
+/// The "DTO" type for AuthData. Omitted values default to the appropriately signed infinity.
 #[derive(Serialize, Deserialize)]
 pub struct RawAuthorization {
     pub min_rate: Bound,
@@ -93,6 +97,7 @@ impl From<AuthData> for RawAuthorization {
     }
 }
 
+/// A record of the authorization's data at the time it was updated or defined
 #[derive(Serialize, Deserialize, PartialEq, ToSchema, Debug)]
 pub struct AuthHistoryRecord {
     pub data: Option<AuthData>,
@@ -100,20 +105,33 @@ pub struct AuthHistoryRecord {
     pub version: OffsetDateTime,
 }
 
+/// A full description of an authorization
 #[derive(Serialize, Deserialize, PartialEq, ToSchema, Debug)]
 pub struct AuthRecord {
+    /// The responsible bidder's id
     pub bidder_id: BidderId,
+
+    /// A unique id for the auth
     pub auth_id: AuthId,
+
+    /// The portfolio associated to the auth. Due to the expected size, this portfolio may be omitted from certain endpoints.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schema(value_type = Option<std::collections::HashMap<ProductId, f64>>)]
     pub portfolio: Option<Portfolio>,
+
+    /// The constraint data for the authorization
     pub data: Option<AuthData>,
+
+    /// The "last-modified-or-created" time as recorded by the system
     #[serde(with = "time::serde::rfc3339")]
     pub version: OffsetDateTime,
+
+    /// The amount of cumulative trade associated to this authorization, as-of the request time
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trade: Option<f64>,
 }
 
+/// A portfolio is a weighted bundle of products
 pub type Portfolio = IndexMap<ProductId, f64, FxBuildHasher>;
 
 // Convert this record into the raw solver object, given a time-scale

@@ -11,17 +11,16 @@ pub use auction::{AuctionMetaData, AuctionSolveRequest, RawAuctionInput};
 pub use auth::{AuthData, AuthHistoryRecord, AuthId, AuthRecord, Portfolio};
 pub use bound::Bound;
 pub use cost::{
-    Constant, CostData, CostDto, CostDtoCreate, CostDtoRead, CostDtoUpdate, CostHistoryRecord,
-    CostId, CostRecord, Curve, Group, GroupDisplay, Point,
+    Constant, CostData, CostHistoryRecord, CostId, CostRecord, Curve, Group, GroupDisplay, Point,
 };
 pub use datetime::{DateTimeRangeQuery, DateTimeRangeResponse};
 pub use outcome::{AuctionOutcome, Outcome};
 pub use product::{ProductQueryResponse, ProductRecord};
 pub use submission::SubmissionRecord;
 
-#[macro_export]
 macro_rules! uuid_wrapper {
     ($struct: ident) => {
+        /// A UUID newtype
         #[derive(
             Debug,
             Hash,
@@ -36,6 +35,7 @@ macro_rules! uuid_wrapper {
             utoipa::ToSchema,
         )]
         #[serde(transparent)]
+        #[repr(transparent)]
         pub struct $struct(uuid::Uuid);
 
         impl From<uuid::Uuid> for $struct {
@@ -80,5 +80,6 @@ macro_rules! uuid_wrapper {
     };
 }
 
+pub(crate) use uuid_wrapper;
 uuid_wrapper!(BidderId);
 uuid_wrapper!(ProductId);

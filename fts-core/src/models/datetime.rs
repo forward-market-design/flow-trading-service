@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
+/// A query type for dealing with datetime ranges
 #[derive(Serialize, Deserialize, Debug, ToSchema, IntoParams)]
 pub struct DateTimeRangeQuery {
     #[serde(
@@ -18,6 +19,7 @@ pub struct DateTimeRangeQuery {
     pub after: Option<OffsetDateTime>,
 }
 
+/// The paginated response to a datetime query
 #[derive(Serialize, Deserialize, Debug, ToSchema)]
 pub struct DateTimeRangeResponse<T> {
     pub results: Vec<T>,

@@ -5,7 +5,6 @@
 //! [fts_demo]: https://docs.rs/fts_demo/latest/fts_demo/index.html
 #![doc = include_str!("../../docs/workspace.md")]
 #![doc = include_str!("../README.md")]
-#![doc = include_str!("../API_REFERENCE.md")]
 use fts_core::{
     models::{AuthId, Outcome, ProductId, RawAuctionInput},
     ports::{AuctionRepository, MarketRepository},

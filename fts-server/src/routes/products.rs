@@ -44,7 +44,7 @@ async fn list_products<T: MarketRepository>(
     State(state): State<AppState<T>>,
     Query(query): Query<T::ProductQuery>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let results = T::query_products(&state.market, &query, 100).await;
+    let results = T::query_products(&state.market, query, 100).await;
     match results {
         Ok(results) => Ok((StatusCode::OK, Json(results))),
         Err(e) => {
@@ -72,7 +72,7 @@ async fn get_product<T: MarketRepository>(
     State(state): State<AppState<T>>,
     Path(product_id): Path<ProductId>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let data = T::view_product(&state.market, &product_id).await;
+    let data = T::view_product(&state.market, product_id).await;
 
     match data {
         Ok(Some(data)) => Ok((StatusCode::OK, Json(data))),
@@ -103,7 +103,7 @@ async fn product_outcomes<T: MarketRepository>(
     Path(product_id): Path<ProductId>,
     Query(query): Query<DateTimeRangeQuery>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    let data = ProductRepository::get_outcomes(&state.market, &product_id, &query, 48).await;
+    let data = ProductRepository::get_outcomes(&state.market, product_id, query, 48).await;
 
     match data {
         Ok(data) => Ok((StatusCode::OK, Json(data))),

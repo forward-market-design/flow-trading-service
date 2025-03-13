@@ -13,11 +13,14 @@ pub use cost::*;
 mod outcome;
 pub use outcome::*;
 
+/// All solvers must adhere to the folllowing interface
 pub trait Solver {
     type Settings;
 
+    /// Create a new instance with the provided settings
     fn new(settings: Self::Settings) -> Self;
 
+    /// Construct and solve the corresponding quadratic program
     fn solve<
         AuthId: Eq + std::hash::Hash + Clone + Ord,
         ProductId: Eq + std::hash::Hash + Clone + Ord,

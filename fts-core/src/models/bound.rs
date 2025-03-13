@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
+/// A newtype wrapper around an optional float, with convenience methods to specified an infinite-fallback
 #[derive(Clone, Debug, Default, Serialize, Deserialize, ToSchema)]
 #[serde(transparent)]
 pub struct Bound(Option<f64>);

@@ -4,6 +4,7 @@ use utoipa::ToSchema;
 
 use crate::models::Bound;
 
+/// A representation of a flat demand curve supporting interval, half-line, and full-line trading domains
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(try_from = "RawConstant", into = "RawConstant")]
 pub struct Constant {
@@ -73,6 +74,7 @@ impl Constant {
     }
 }
 
+/// The various ways in which a flat demand curve can be invalid
 #[derive(Debug, Error)]
 #[error("(min_rate = {min_rate:?}, max_rate = {max_rate:?}, price = {price:?})")]
 pub struct ValidationError {

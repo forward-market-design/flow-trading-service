@@ -10,9 +10,10 @@ pub trait AuctionRepository: SubmissionRepository {
     // "passthru" an id between preparation and reporting steps.
     type AuctionId: Clone + Debug + Send + Sync + 'static;
 
+    /// Create an instance of a solver for use in auction execution
     fn solver() -> impl fts_solver::Solver + Send;
 
-    // Gather all the required submissions for the requested auction period
+    /// Gather all the required submissions for the requested auction period
     fn prepare(
         &self,
         from: Option<OffsetDateTime>,
@@ -21,7 +22,7 @@ pub trait AuctionRepository: SubmissionRepository {
         timestamp: OffsetDateTime,
     ) -> impl Future<Output = Result<Option<Vec<RawAuctionInput<Self::AuctionId>>>, Self::Error>> + Send;
 
-    // Store the outcomes
+    /// Store all the outcomes for the specified auction
     fn report(
         &self,
         id: Self::AuctionId,
