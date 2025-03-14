@@ -4,10 +4,21 @@ use std::fmt::Debug;
 use std::future::Future;
 use time::{Duration, OffsetDateTime};
 
+/// Repository trait for auction-related operations.
+///
+/// This trait extends [`SubmissionRepository`] to provide functionality for managing batch auctions
+/// in the flow trading system. Auctions are periodic market clearing events that process all active
+/// submissions to determine optimal trades and prices.
+///
+/// While auctions themselves are considered implementation details and not directly exposed in the
+/// domain model, this trait provides methods to prepare auction inputs and report auction outcomes.
 pub trait AuctionRepository: SubmissionRepository {
-    // Auctions are not directly exposed in our domain, they are an implementation detail.
-    // However, because there is a background solver thread, implementations might want to
-    // "passthru" an id between preparation and reporting steps.
+    /// The type used to uniquely identify auctions within the repository implementation.
+    /// This allows passing auction references between preparation and reporting steps.
+    ///
+    /// Auctions are not directly exposed in our domain, they are an implementation detail.
+    /// However, because there is a background solver thread, implementations might want to
+    /// "passthru" an id between preparation and reporting steps.
     type AuctionId: Clone + Debug + Send + Sync + 'static;
 
     /// Create an instance of a solver for use in auction execution

@@ -13,11 +13,29 @@ use std::{borrow::Borrow, future::Future};
 /// auth, this action must fail.
 #[derive(Debug)]
 pub enum CostFailure {
+    /// The requester does not have permission to access the resource
     AccessDenied,
+    /// The requested cost does not exist
     DoesNotExist,
+    /// The provided ID conflicts with an existing cost ID
     IdConflict,
 }
 
+/// Repository for managing cost records
+///
+/// In the flow trading system, a cost represents two things:
+/// 1. A definition of a cost *group*, which is a linear combination of auths
+/// 2. A piecewise-linear demand *curve* or constant constraint
+///
+/// Cost groups support expressing substitution preferences between portfolios.
+/// For example, if products A and B are perfect substitutes, a cost group could
+/// include auths for both products with equal weights.
+///
+/// The demand curve represents the bidder's willingness to pay for different
+/// quantities of the group's combined trade.
+///
+/// This trait provides methods for creating, reading, updating, and deleting cost
+/// records, as well as retrieving cost history.
 pub trait CostRepository: AuthRepository {
     /// Create a new cost associated to the given bidder.
     ///

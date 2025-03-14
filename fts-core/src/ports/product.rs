@@ -6,7 +6,17 @@ use serde::{Serialize, de::DeserializeOwned};
 use std::future::Future;
 use time::OffsetDateTime;
 
+/// Repository trait for product-related operations.
+///
+/// This trait provides functionality for managing products in the trading system.
+/// Products are the fundamental tradable entities in the system, which can be
+/// referenced by authorization portfolios and are constrained to net-zero trade
+/// in each auction.
+///
+/// Implementations provide methods for defining new products, querying existing
+/// products, and retrieving auction outcomes for specific products.
 pub trait ProductRepository: Clone + Sized + Send + Sync + 'static {
+    /// The error type returned by this repository's operations
     type Error: std::error::Error + Send + Sync + 'static;
 
     /// An implementation must provide a type describing the products

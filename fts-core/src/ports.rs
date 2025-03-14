@@ -12,5 +12,8 @@ pub use submission::{
     SubmissionAuthDto, SubmissionCostDto, SubmissionDto, SubmissionFailure, SubmissionRepository,
 };
 
-// The "marker" trait that is used every and implies implementation of all the above
+/// A marker trait that combines all repository functionality
+///
+/// This trait serves as a composition point for all repository traits,
+/// allowing consumers to depend on a single trait that provides all repository capabilities.
 pub trait MarketRepository: AuctionRepository {}

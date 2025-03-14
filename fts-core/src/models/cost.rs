@@ -15,12 +15,16 @@ use utoipa::ToSchema;
 // A simple newtype for a Uuid
 uuid_wrapper!(CostId);
 
-/// Since cost groups are immutable, it may be desired to omit their value in the response from various endpoints.
-/// This type can be passed to the relevant `CostRepository` methods.
+/// Controls whether cost group details should be included in API responses
+///
+/// Since cost groups can be large, this enum allows API endpoints to optionally
+/// exclude group details from responses to reduce payload size.
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum GroupDisplay {
+    /// Exclude group details from the response
     Exclude,
+    /// Include group details in the response
     Include,
 }
 
@@ -31,32 +35,45 @@ impl Default for GroupDisplay {
 }
 
 /// The utility-specification of the cost
-//
+///
+/// CostData represents either:
+/// - A piecewise linear demand curve defining willingness to pay at different quantities
+/// - A constant constraint enforcing a specific trade amount at a specific price
+///
+/// This is the core component that defines how a bidder values different trade quantities.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(untagged, try_from = "RawCostData", into = "RawCostData")]
 // TODO: Utoipa doesn't fully support all the Serde annotations,
 // so we injected `untagged` (which Serde will ignore given the presence of
 // of `try_from` and `into`), then inline the actual fields. This appears
 // to correctly generate the OpenAPI schema, but we should revisit.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
-#[serde(untagged, try_from = "RawCostData", into = "RawCostData")]
 pub enum CostData {
+    /// A piecewise linear demand curve defined by points
     Curve(#[schema(inline)] Curve),
+    /// A constant constraint enforcing a specific trade quantity at a price
     Constant(#[schema(inline)] Constant),
 }
 
 /// An error type for the ways in which the provided utility function may be invalid.
 #[derive(Error, Debug)]
 pub enum ValidationError {
+    /// Error when a curve's definition is invalid
     #[error("invalid demand curve: {0}")]
     Curve(#[from] curve::ValidationError),
+    /// Error when a constant constraint's definition is invalid
     #[error("invalid constant curve: {0}")]
     Constraint(#[from] constant::ValidationError),
 }
 
 /// The "DTO" type for the utility
+///
+/// This enum represents the raw data formats accepted in API requests for defining costs.
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 #[serde(untagged)]
 pub enum RawCostData {
+    /// A sequence of points defining a piecewise linear demand curve
     Curve(Vec<Point>),
+    /// A raw constant constraint definition
     Constant(RawConstant),
 }
 
@@ -81,14 +98,24 @@ impl From<CostData> for RawCostData {
 }
 
 /// A record of the cost's data at the time it was updated or defined
+///
+/// This provides historical versioning of cost data, allowing the system
+/// to track changes to cost definitions over time.
 #[derive(Serialize, Deserialize, PartialEq, ToSchema, Debug)]
 pub struct CostHistoryRecord {
+    /// The cost data, or None if the cost was deactivated
     pub data: Option<CostData>,
+    /// The timestamp when this version was created
     #[serde(with = "time::serde::rfc3339")]
     pub version: OffsetDateTime,
 }
 
 /// A full description of a cost
+///
+/// A CostRecord combines all the information needed to define a cost:
+/// - Who owns it (bidder_id)
+/// - Which auths it applies to (group)
+/// - The utility function (data)
 #[derive(Serialize, Deserialize, PartialEq, Debug, ToSchema)]
 pub struct CostRecord {
     /// The responsible bidder's id
@@ -111,9 +138,17 @@ pub struct CostRecord {
 }
 
 /// A group is a sparse collection of authorizations
+///
+/// Groups define which auths a particular cost applies to, with weights determining the
+/// relative contribution of each auth to the group's overall trade. This allows bidders
+/// to express substitution preferences between different portfolios.
 pub type Group = IndexMap<AuthId, f64, FxBuildHasher>;
 
 impl CostRecord {
+    /// Converts this cost record into a solver-compatible format.
+    ///
+    /// This method transforms the cost record into the appropriate solver structures,
+    /// applying the time scale to rate-based constraints as needed.
     pub fn into_solver(self, scale: f64) -> Option<(fts_solver::Group<AuthId>, fts_solver::Cost)> {
         let group = self.group.unwrap_or_default().into_iter().collect();
 
