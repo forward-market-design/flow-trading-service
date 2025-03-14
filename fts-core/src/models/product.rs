@@ -6,9 +6,7 @@ use serde::{Deserialize, Serialize};
 /// Products are the fundamental tradable entities in the system. The core only defines
 /// products by their ID, allowing implementations to attach domain-specific data.
 ///
-/// Product records are immutable once defined. Products can be hierarchical, where
-/// a product can be decomposed into smaller, more granular products (such as monthly
-/// products decomposed into daily products).
+/// Product records are immutable once defined.
 #[derive(Serialize, Deserialize)]
 pub struct ProductRecord<T> {
     /// Unique identifier for the product

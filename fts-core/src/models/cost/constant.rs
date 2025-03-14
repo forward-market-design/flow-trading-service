@@ -6,11 +6,8 @@ use crate::models::Bound;
 
 /// A representation of a flat demand curve supporting interval, half-line, and full-line trading domains
 ///
-/// A constant constraint represents a fixed price for trades within a specified rate range.
-/// This can be used to:
-/// - Enforce exact trade quantities at a specific price
-/// - Create price floors or ceilings
-/// - Express indifference to trade quantity within a range at a specific price
+/// A constant curve represents a fixed price for trades within a specified rate range.
+/// This can be used to express indifference to (potentially unbounded) trade rates at a specific price.
 ///
 /// The sign convention follows flow trading standards:
 /// - min_rate ≤ 0 (non-positive): maximum selling rate
@@ -37,10 +34,10 @@ pub struct Constant {
 /// missing values to default to appropriate infinities.
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct RawConstant {
-    /// The minimum rate bound, defaulting to negative infinity if null
+    /// The minimum rate bound, defaulting to negative infinity if null or missing
     pub min_rate: Bound,
 
-    /// The maximum rate bound, defaulting to positive infinity if null
+    /// The maximum rate bound, defaulting to positive infinity if null or missing
     pub max_rate: Bound,
 
     /// The fixed price for trades within the rate bounds
@@ -74,9 +71,9 @@ impl From<Constant> for RawConstant {
 }
 
 impl Constant {
-    /// Creates a new validated constant constraint
+    /// Creates a new validated constant curve
     ///
-    /// Creates a constant constraint with the specified rates and price,
+    /// Creates a constant curve with the specified rates and price,
     /// ensuring all values satisfy validation requirements:
     /// - min_rate must be non-positive
     /// - max_rate must be non-negative
@@ -189,10 +186,10 @@ fn validate_price(x: f64) -> Option<PriceError> {
 }
 
 impl Constant {
-    /// Converts this constant constraint to the solver's representation
+    /// Converts this constant curve to the solver's representation
     ///
-    /// Applies the given time scale to rate-based constraints to produce
-    /// quantity-based constraints for the solver
+    /// Applies the given time scale to rate-based values to produce
+    /// quantity-based values for the solver
     pub fn as_solver(&self, scale: f64) -> fts_solver::Constant {
         fts_solver::Constant {
             quantity: (self.min_rate * scale, self.max_rate * scale),

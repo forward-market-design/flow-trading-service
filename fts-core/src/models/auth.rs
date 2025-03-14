@@ -15,17 +15,29 @@ uuid_wrapper!(AuthId);
 /// - Rate constraints limit how fast a portfolio can be traded (in units per time)
 /// - Trade constraints limit the total accumulated trade amount over time
 ///
-/// All constraints must allow the possibility of zero trade (min_rate ≤ 0 ≤ max_rate).
+/// The rate constraints must allow the possibility of zero trade (min_rate ≤ 0 ≤ max_rate).
+///
+/// The trade constraints do not have this restriction, but instead, at time of
+/// specification, they *should* allow for the currently traded amount of the auth.
+/// If they do not, the trade constraint is implicitly expanded to include 0 at
+/// each auction, which may not be desired.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(try_from = "RawAuthorization", into = "RawAuthorization")]
 pub struct AuthData {
     /// The fastest rate at which the portfolio may sell (non-positive)
+    #[schema(value_type = Option<f64>)]
     pub min_rate: f64,
+
     /// The fastest rate at which the portfolio may buy (non-negative)
+    #[schema(value_type = Option<f64>)]
     pub max_rate: f64,
+
     /// A minimum amount of trade to preserve (always enforced against the authorization's contemporaneous amount of trade)
+    #[schema(value_type = Option<f64>)]
     pub min_trade: f64,
+
     /// A maximum amount of trade to preserve (always enforced against the authorization's contemporaneous amount of trade)
+    #[schema(value_type = Option<f64>)]
     pub max_trade: f64,
 }
 

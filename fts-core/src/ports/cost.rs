@@ -25,7 +25,7 @@ pub enum CostFailure {
 ///
 /// In the flow trading system, a cost represents two things:
 /// 1. A definition of a cost *group*, which is a linear combination of auths
-/// 2. A piecewise-linear demand *curve* or constant constraint
+/// 2. A piecewise-linear or constant demand *curve*
 ///
 /// Cost groups support expressing substitution preferences between portfolios.
 /// For example, if products A and B are perfect substitutes, a cost group could

@@ -37,10 +37,10 @@ impl Default for GroupDisplay {
 /// The utility-specification of the cost
 ///
 /// CostData represents either:
-/// - A piecewise linear demand curve defining willingness to pay at different quantities
-/// - A constant constraint enforcing a specific trade amount at a specific price
+/// - A non-increasing, piecewise-linear demand curve assigning a cost to each quantity in its domain, or
+/// - A simple, "flat" demand curve assining a constant cost to each quantity in its domain.
 ///
-/// This is the core component that defines how a bidder values different trade quantities.
+/// This is the core component that defines how a bidder values different trade outcomes.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(untagged, try_from = "RawCostData", into = "RawCostData")]
 // TODO: Utoipa doesn't fully support all the Serde annotations,
@@ -60,7 +60,7 @@ pub enum ValidationError {
     /// Error when a curve's definition is invalid
     #[error("invalid demand curve: {0}")]
     Curve(#[from] curve::ValidationError),
-    /// Error when a constant constraint's definition is invalid
+    /// Error when a constant curve's definition is invalid
     #[error("invalid constant curve: {0}")]
     Constraint(#[from] constant::ValidationError),
 }

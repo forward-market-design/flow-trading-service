@@ -39,8 +39,7 @@ impl PartialOrd for Point {
 }
 
 /// A piecewise-linear, weakly monotone curve for representing demand.
-/// Points should be ordered by quantity, and the curve should be non-increasing
-/// (for typical demand curves) or non-decreasing (for typical supply curves).
+/// Points should be ordered ascending by quantity and the prices non-increasing.
 #[derive(Debug)]
 pub struct PiecewiseLinearCurve {
     /// The sequence of points defining the curve segments
