@@ -3,7 +3,11 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 
-/// A submission is an intermediate object of current auths and costs, not a first-class primitive.
+/// A submission represents a bidder's complete set of active authorizations and costs
+/// that are considered for auction processing.
+///
+/// Submissions are not first-class primitives, but intermediate objects and not persisted entities.
+/// They're constructed from the current state of a bidder's auths and costs when needed for an auction.
 #[derive(Deserialize, Serialize, ToSchema)]
 pub struct SubmissionRecord {
     /// A list of "active" auths

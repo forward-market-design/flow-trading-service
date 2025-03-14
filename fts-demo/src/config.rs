@@ -11,10 +11,12 @@ use crate::db;
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(from = "RawConfig", into = "RawConfig")]
 pub struct Config {
+    /// The rate to use for converting rates into batch quantities.
     pub trade_rate: Duration,
 }
 
 impl Config {
+    /// Retrieves the configuration from the database.
     pub fn get(conn: &Connection) -> Result<Option<Self>, db::Error> {
         let response: Option<serde_json::Value> = conn
             .query_row("select data from config where id = 0 limit 1", (), |row| {
@@ -30,6 +32,7 @@ impl Config {
         }
     }
 
+    /// Stores the configuration in the database.
     pub fn set(&self, conn: &Connection) -> Result<(), db::Error> {
         conn.execute("insert into config (id, data) values (0, ?1) on conflict (id) do update set data = excluded.data", (serde_json::to_value(self)?,))?;
         Ok(())

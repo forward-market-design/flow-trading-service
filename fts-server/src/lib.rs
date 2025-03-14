@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 // Note: this overwrites the link in the README to point to the rust docs of the fts-demo crate.
 //! [fts_core]: https://docs.rs/fts_core/latest/fts_core/index.html
 //! [fts_server]: https://docs.rs/fts_server/latest/fts_server/index.html
@@ -34,29 +35,49 @@ use utils::JWTVerifier;
 pub use utils::Now;
 pub use utils::generate_jwt;
 
+/// Type alias for a thread-safe map of senders for SSE events.
+///
+/// Used to maintain channels for server-sent events for real-time updates.
 type SenderMap<T> =
     Arc<dashmap::DashMap<T, watch::Sender<Result<Event, Infallible>>, FxBuildHasher>>;
 
+/// Application state shared across all request handlers.
+///
+/// Contains references to repositories, communication channels, and
+/// authentication services used throughout the application.
 #[derive(Clone)]
 pub struct AppState<T: MarketRepository> {
+    /// JWT verification service
     jwt: JWTVerifier,
+    /// Market repository for data access
     market: T,
+    /// Channel for queueing auction solves
     solve_queue: mpsc::Sender<RawAuctionInput<T::AuctionId>>,
+    /// Channel for receiving activity updates
     activity_receiver: watch::Receiver<Result<Event, Infallible>>,
+    /// Channels for product-specific updates
     product_sender: SenderMap<ProductId>,
+    /// Channels for authorization-specific updates
     auth_sender: SenderMap<AuthId>,
 }
 
+/// Represents an update to be sent via server-sent events.
+///
+/// Contains auction outcome data along with its time range.
 #[derive(Serialize)]
 pub struct Update {
+    /// Start time of the auction period
     #[serde(with = "time::serde::rfc3339")]
     pub from: OffsetDateTime,
+    /// End time of the auction period
     #[serde(with = "time::serde::rfc3339")]
     pub thru: OffsetDateTime,
+    /// Outcome data from the auction
     #[serde(flatten)]
     pub outcome: Outcome<()>,
 }
 
+/// Creates the application state and solver background task.
 pub fn state<T: MarketRepository>(
     api_secret: &str,
     market: T,
@@ -188,6 +209,7 @@ pub fn state<T: MarketRepository>(
     (state, solver)
 }
 
+/// Creates the application router with all routes configured.
 pub fn router<T: MarketRepository>(state: AppState<T>) -> Router {
     // To allow for web app access, we use a permissive CORS policy. Notably,
     // this strips any implicit authorization, making this a pretty decent policy.
@@ -211,8 +233,7 @@ pub fn router<T: MarketRepository>(state: AppState<T>) -> Router {
     app.layer(policy).with_state(state)
 }
 
-// The binary can simply provide the configuration to this function to launch
-// the server
+/// Starts the HTTP server with the configured application.
 pub async fn start<T: MarketRepository>(api_port: u16, api_secret: String, market: T) {
     // Setup the HTTP server
     let listener = tokio::net::TcpListener::bind(SocketAddr::new([0, 0, 0, 0].into(), api_port))
