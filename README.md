@@ -90,7 +90,7 @@ curl -s -X PUT -H "Content-Type: application/json" -H "Authorization: Bearer $JW
 Auctions are explicitly triggered by an administrative action. We run a single auction spanning the next hour:
 ```bash
 curl -s -i -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $JWTADMIN" \
-  --data '{ "by": "1h", "thru": "'"$(date --date="+1 hour" --rfc-3339=seconds)"'" }' \
+  --data '{ "by": "1h", "thru": "'"$(date --date="+1 hour" -Iseconds 2>/dev/null || date -v+1H -Iseconds 2>/dev/null)"'" }' \
   http://localhost:8080/admin/auctions/solve
 ```
 
