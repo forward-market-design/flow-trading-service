@@ -2,9 +2,14 @@
 // to reserve the right to swap out std::collection::HashMap with something
 // more performant. We also don't want entries with a value of 0 in the final
 // representation, so we handle that book-keeping here as well.
+
+/// Macro that creates a sparse vector type with a specific name.
+/// The resulting type efficiently stores non-zero weighted elements,
+/// filters zero values, and maintains a sorted representation.
 macro_rules! spvec {
     ($struct:ident) => {
-        /// A sparse collection of things
+        /// A sparse collection of weighted elements where zero-valued entries are excluded.
+        /// Used for efficiently representing portfolios, groups, and other weighted collections.
         #[derive(Debug)]
         #[repr(transparent)]
         pub struct $struct<T: Eq + ::std::hash::Hash>(
@@ -13,6 +18,7 @@ macro_rules! spvec {
 
         impl<T: Eq + ::std::hash::Hash> $struct<T> {
             /// A consuming iterator for the key-value pairs
+            /// Returns only non-zero weighted pairs.
             pub fn into_iter(self) -> impl Iterator<Item = (T, f64)> {
                 self.0.into_iter().filter_map(|(key, value)| {
                     if value != 0.0 {
@@ -24,6 +30,7 @@ macro_rules! spvec {
             }
 
             /// A by-reference iterator for the key-value pairs
+            /// Returns only non-zero weighted pairs.
             pub fn iter(&self) -> impl Iterator<Item = (&T, &f64)> {
                 self.0.iter().filter_map(|(key, value)| {
                     if *value != 0.0 {
@@ -40,6 +47,7 @@ macro_rules! spvec {
             }
 
             /// Remove keys based on some criteria
+            /// This allows filtering the sparse vector with a custom function.
             pub fn retain<F: Fn(&T, &f64) -> bool>(&mut self, f: F) {
                 self.0.retain(|key, value| f(key, value))
             }
@@ -61,6 +69,7 @@ macro_rules! spvec {
             }
 
             /// Is this an economically valid portfolio?
+            /// Checks that all weights are finite values.
             pub fn validate(&self) -> bool {
                 self.0.values().all(|w| w.is_finite())
             }

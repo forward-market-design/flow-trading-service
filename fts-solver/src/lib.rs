@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 // Note: this overwrites the link in the README to point to the rust docs of the fts-demo crate.
 //! [fts_core]: https://docs.rs/fts_core/latest/fts_core/index.html
 //! [fts_server]: https://docs.rs/fts_server/latest/fts_server/index.html

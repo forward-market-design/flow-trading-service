@@ -5,6 +5,11 @@ use crate::{Map, Set};
 use clarabel::{algebra::*, solver::*};
 use std::hash::Hash;
 
+/// A solver implementation that uses the Clarabel interior point method
+/// for quadratic programming to solve the market clearing problem.
+///
+/// This solver is generally more accurate but can be slower than ADMM-based
+/// solvers for large problems. It's a good choice when high precision is needed.
 pub struct ClarabelSolver(DefaultSettings<f64>);
 
 impl Default for ClarabelSolver {

@@ -6,6 +6,12 @@ use core::f64;
 use osqp::{CscMatrix, Problem, Settings, Status};
 use std::hash::Hash;
 
+/// A solver implementation that uses the OSQP (Operator Splitting Quadratic Program)
+/// solver to find market clearing prices and trades.
+///
+/// OSQP uses the Alternating Direction Method of Multipliers (ADMM) approach,
+/// which can be faster than interior point methods for large-scale problems,
+/// though sometimes with lower precision.
 pub struct OsqpSolver(Settings);
 
 impl Default for OsqpSolver {
