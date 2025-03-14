@@ -8,6 +8,11 @@ use axum_extra::{
     headers::{Authorization, authorization::Bearer},
 };
 
+/// An authenticated administrator identity.
+///
+/// This extractor verifies the JWT token from the request headers
+/// and confirms that the user has administrator privileges.
+/// It's used to authorize administrative operations.
 pub struct Admin;
 
 impl<S> FromRequestParts<S> for Admin

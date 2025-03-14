@@ -10,6 +10,11 @@ use axum_extra::{
 use fts_core::models::BidderId;
 use uuid::Uuid;
 
+/// An authenticated bidder identity.
+///
+/// This extractor verifies the JWT token from the request headers
+/// and extracts the bidder ID. It's used to authenticate and
+/// authorize operations specific to a bidder.
 pub struct Bidder(pub BidderId);
 
 impl<S> FromRequestParts<S> for Bidder
