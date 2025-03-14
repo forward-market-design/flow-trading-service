@@ -6,36 +6,53 @@ use rusqlite::OpenFlags;
 use std::{ops::DerefMut, path::PathBuf};
 use thiserror::Error;
 
-// Database operations generate errors for multiple reasons, this is a unified
-// error type that our functions can return.
+/// Database operations generate errors for multiple reasons, this is a unified
+/// error type that our functions can return.
 #[derive(Debug, Error)]
 pub enum Error {
+    /// Error from the connection pool
     #[error("pool error: {0}")]
     ConnectionPool(#[from] r2d2::Error),
+
+    /// Error in JSON serialization or deserialization
     #[error("deserialization error: {0}")]
     Deserialization(#[from] serde_json::Error),
+
+    /// Error during database migrations
     #[error("migration error: {0}")]
     Migration(#[from] refinery::Error),
+
+    /// Error from SQLite operations
     #[error("sql error: {0}")]
     Sql(#[from] rusqlite::Error),
+
+    /// Failure to insert data
     #[error("insertion failed")]
     InsertionFailure,
+
+    /// Conflicting configuration detected
     #[error("inconsistent configuration")]
     InconsistentConfig,
+
+    /// Generic failure with message
     #[error("failure: {0}")]
     Failure(String),
 }
 
-// This is for the "driver" to specify where to load the data from
+/// Storage configuration for the database.
 pub enum Storage {
+    /// Store data in a file at the specified path
     File(PathBuf),
+
+    /// Store data in memory with the given identifier
     Memory(String),
 }
 
-// Sqlite does not have parallel writes, so we create two separate connection
-// pools. The reader has unlimited connections, while the writer is capped to
-// one. Sqlite has its own mutex shenanigans to make that work out. Modules
-// that interact with the database will clone a "master" ReaderWriter.
+/// Main database connection manager.
+///
+/// Sqlite does not have parallel writes, so we create two separate connection
+/// pools. The reader has unlimited connections, while the writer is capped to
+/// one. Sqlite has its own mutex shenanigans to make that work out.
 #[derive(Clone, Debug)]
 pub struct Database {
     reader: Pool<SqliteConnectionManager>,
@@ -43,6 +60,10 @@ pub struct Database {
 }
 
 impl Database {
+    /// Opens a database connection with the specified configuration.
+    ///
+    /// Creates a new database if one doesn't exist, and applies migrations.
+    /// Validates that the provided configuration matches any existing configuration.
     pub fn open(db: Option<&PathBuf>, config: Option<&Config>) -> Result<Self, Error> {
         let storage = db
             .map(|path| Storage::File(path.clone()))
@@ -70,8 +91,7 @@ impl Database {
         Ok(database)
     }
 
-    // Finally, if anything needs to talk to the database, it needs to obtain
-    // a connection from the pool. Call this function with an appropriate flag.
+    /// Obtains a connection from the pool.
     pub fn connect(&self, write: bool) -> Result<PooledConnection<SqliteConnectionManager>, Error> {
         let conn = if write {
             self.writer.get()
@@ -82,7 +102,7 @@ impl Database {
     }
 }
 
-// This is just a helpful method to construct the connection pools
+/// Constructs the connection pools.
 fn pool(
     storage: &Storage,
     max_size: Option<u32>,
@@ -140,7 +160,7 @@ fn pool(
     Ok(pool)
 }
 
-// This is how you create an instance of ReaderWriter
+/// Creates an instance of Database with read and write connection pools.
 fn open_rw(storage: Storage, migration: Option<Runner>) -> Result<Database, Error> {
     let writer = pool(&storage, Some(1), false, migration)?;
     let reader = pool(&storage, None, true, None)?;
