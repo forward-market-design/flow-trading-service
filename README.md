@@ -12,7 +12,7 @@ These 4 crates each contain their own `README.md` which explains the crate's fun
 
 ## Quick Start
 
-To get started, ensure Rust >= 1.85 is available in your system `PATH`. (See [Rustup](https://rustup.rs/) for an easy way to install Rust.) Then, paste the following into your CLI:
+To get started, ensure both CMake and Rust >= 1.85 are available in your system `PATH`. Refer to [Rustup](https://rustup.rs/) for an easy way to install Rust. Installing CMake can be done via your system's packaging utility, e.g. `brew install cmake` or `apt-get install cmake`. Then, paste the following into your CLI:
 
 ```bash
 # Clone the repository if necessary
@@ -43,7 +43,7 @@ JWTB2=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIyMjIyMjIyMi0yMjIyLTgyMjItO
 JWTADMIN=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJGRkZGRkZGRi1GRkZGLUZGRkYtRkZGRi1GRkZGRkZGRkZGRkYiLCJhZG1pbiI6dHJ1ZX0.CV3aldMRLqaRY2UsKYxFpC-tWI8EbJoXl7YlF4gYcjY
 ```
 
-Next, we need to define some products to trade. `fts-demo` implements a basic product suitable for forward markets, each defined by the triplet `(kind, from, thru)`. `kind` is an arbitrary string that classifies the product, while `from` and `thru` refer to the delivery window of the product. This admin will return the system-generated ids for each product.
+Next, we need to define some products to trade. `fts-demo` implements a basic product suitable for forward markets, each defined by the triplet `(kind, from, thru)`. `kind` is an arbitrary string that classifies the product, while `from` and `thru` refer to the delivery window of the product. This endpoint will return the system-generated ids for each product.
 ```bash
 PRODUCT=$(\
   curl -s -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $JWTADMIN" \
@@ -70,7 +70,7 @@ curl -s -X PUT -H "Content-Type: application/json" -H "Authorization: Bearer $JW
   }' http://localhost:8080/v0/submissions/11111111-1111-8111-8111-111111111111 | jq . 
 ```
 
-The first bidder expressed downward-sloping demand for the product. Suppose the second bidder is a supplier with fixed marginal cost and unlimited supply. Supply is represented by negative reates and demand by positive rates.
+The first bidder expressed downward-sloping demand for the product. Suppose the second bidder is a supplier with fixed marginal cost and unlimited supply. Supply is represented by negative rates and demand by positive rates.
 ```bash
 curl -s -X PUT -H "Content-Type: application/json" -H "Authorization: Bearer $JWTB2" \
    --data '{
