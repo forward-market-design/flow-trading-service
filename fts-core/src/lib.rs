@@ -4,7 +4,7 @@
 //! [fts_server]: https://docs.rs/fts_server/latest/fts_server/index.html
 //! [fts_solver]: https://docs.rs/fts_solver/latest/fts_solver/index.html
 //! [fts_demo]: https://docs.rs/fts_demo/latest/fts_demo/index.html
-#![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../docs/workspace.md"))]
+// #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../docs/workspace.md"))]
 #![doc = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/README.md"))]
 
 /// Core domain models for the flow trading system.
