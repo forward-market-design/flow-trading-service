@@ -9,9 +9,9 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
-fts-core = { path = "../fts-core" }
-fts-server = { path = "../fts-server" }
-fts-solver = { path = "../fts-solver", features = ["clarabel"] }
+fts-core = { path = "../fts-core", version = "0.1.0" }
+fts-server = { path = "../fts-server", version = "0.1.0" }
+fts-solver = { path = "../fts-solver", version = "0.1.0", features = ["clarabel"] }
 
 clap = { workspace = true, features = ["derive", "env"] }
 fxhash = { workspace = true }

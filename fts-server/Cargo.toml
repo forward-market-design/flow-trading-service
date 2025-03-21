@@ -9,8 +9,8 @@ rust-version.workspace = true
 version.workspace = true
 
 [dependencies]
-fts-core = { path = "../fts-core" }
-fts-solver = { path = "../fts-solver" }
+fts-core = { path = "../fts-core", version = "0.1.0" }
+fts-solver = { path = "../fts-solver", version = "0.1.0" }
 
 # Workspace dependencies
 fxhash = { workspace = true }
