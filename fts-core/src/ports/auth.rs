@@ -88,8 +88,7 @@ pub trait AuthRepository: ProductRepository {
         portfolio_options: Self::PortfolioOptions,
     ) -> impl Future<Output = Result<Result<AuthRecord, AuthFailure>, Self::Error>> + Send;
 
-    /// Marks the authorization as deleted. This is should be a logical delete rather than
-    /// a physical removal from the repository.
+    /// Marks the authorization as deleted / inactive. (This is a logical designation, not an actual removal.)
     ///
     /// Returns the deleted authorization record if successful, or an AuthFailure if
     /// the auth does not exist or the bidder lacks delete permission.
