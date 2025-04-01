@@ -1,3 +1,5 @@
+use serde::Serialize;
+
 use crate::Map;
 use std::hash::Hash;
 
@@ -27,7 +29,7 @@ impl<BidderId: Eq + Hash, AuthId: Eq + Hash, ProductId: Eq + Hash> Default
 }
 
 /// Gather all the outcomes pertaining to a submission.
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct SubmissionOutcome<AuthId: Eq + Hash> {
     /// The mapping of auths to their outcomes
     pub auths: Map<AuthId, AuthOutcome>,
@@ -43,7 +45,7 @@ impl<AuthId: Eq + Hash> Default for SubmissionOutcome<AuthId> {
 
 /// Solution data for an individual authorization, containing
 /// the trade quantity and effective price.
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct AuthOutcome {
     /// The effective price for this authorization
     pub price: f64,
@@ -55,7 +57,7 @@ pub struct AuthOutcome {
 
 /// Solution data for an individual product, containing
 /// the market-clearing price and total volume traded.
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct ProductOutcome {
     /// The market-clearing price for this product
     pub price: f64,

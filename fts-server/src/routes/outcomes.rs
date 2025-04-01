@@ -1,5 +1,5 @@
 use crate::{
-    AppState, Now,
+    AppState,
     utils::{ActivityReceiver, Bidder, ProductSender},
 };
 use axum::{
@@ -13,13 +13,12 @@ use axum::{
     routing,
 };
 use fts_core::{
-    models::{AuthId, ProductId},
-    ports::{AuthFailure, AuthRepository, MarketRepository},
+    models::{BidderId, ProductId},
+    ports::MarketRepository,
 };
 use std::convert::Infallible;
 use tokio::sync::watch;
 use tokio_stream::wrappers::WatchStream;
-use tracing::{Level, event};
 
 pub fn router<T: MarketRepository>() -> Router<AppState<T>> {
     Router::new()
@@ -28,7 +27,7 @@ pub fn router<T: MarketRepository>() -> Router<AppState<T>> {
         // Get all data for a certain product
         .route("/products/{product_id}", routing::get(product_stream))
         // View the results associated to a product
-        .route("/auths/{auth_id}", routing::get(auth_stream))
+        .route("/bidders/{bidder_id}", routing::get(bidder_stream))
 }
 
 async fn activity_stream(
@@ -53,39 +52,16 @@ async fn product_stream(
     Sse::new(WatchStream::new(rcv)).keep_alive(KeepAlive::default())
 }
 
-async fn auth_stream<T: MarketRepository>(
+async fn bidder_stream<T: MarketRepository>(
     Bidder(bidder_id): Bidder,
     State(state): State<AppState<T>>,
-    Path(auth_id): Path<AuthId>,
-    Now(now): Now,
+    Path(bidder_id2): Path<BidderId>,
 ) -> Result<Sse<WatchStream<Result<Event, Infallible>>>, StatusCode> {
-    // First, check to see if we can read the auth itself.
-    // We assume that being able to view an auth = able to see results
-    let _ = AuthRepository::read(
-        &state.market,
-        bidder_id,
-        auth_id,
-        now,
-        T::PortfolioOptions::default(),
-    )
-    .await
-    .map_err(|err| {
-        event!(Level::ERROR, error = ?err);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?
-    .map_err(|err| match err {
-        // For some reason the implementation does not consider the bidder to have adequate permissions
-        AuthFailure::AccessDenied => StatusCode::FORBIDDEN,
-        // The auth does not exist
-        AuthFailure::DoesNotExist => StatusCode::NOT_FOUND,
-        // This value should probably never be returned.
-        AuthFailure::IdConflict => {
-            event!(Level::ERROR, error = "auth read returned IdConflict");
-            StatusCode::INTERNAL_SERVER_ERROR
-        }
-    })?;
+    if bidder_id != bidder_id2 {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
 
-    let rcv = match state.auth_sender.entry(auth_id) {
+    let rcv = match state.bidder_sender.entry(bidder_id) {
         dashmap::Entry::Occupied(entry) => entry.get().subscribe(),
         dashmap::Entry::Vacant(entry) => {
             let (snd, rcv) = watch::channel(Ok(Event::default().comment("")));

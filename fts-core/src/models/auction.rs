@@ -60,8 +60,11 @@ pub struct RawAuctionInput<AuctionId> {
     pub trade_duration: Duration,
 }
 
-impl<T> Into<Vec<fts_solver::Submission<AuthId, ProductId>>> for RawAuctionInput<T> {
-    fn into(self) -> Vec<fts_solver::Submission<AuthId, ProductId>> {
+impl<T> RawAuctionInput<T> {
+    /// Convert the auction data to a format the solver understands
+    pub fn into_solver(
+        self,
+    ) -> IndexMap<BidderId, fts_solver::Submission<AuthId, ProductId>, FxBuildHasher> {
         // Convert the auction into a format the solver understands
         // First, we aggregate the auths by the bidder
         let mut auths_by_bidder = IndexMap::<BidderId, Vec<AuthRecord>, FxBuildHasher>::default();
@@ -86,8 +89,7 @@ impl<T> Into<Vec<fts_solver::Submission<AuthId, ProductId>>> for RawAuctionInput
         let scale = (self.thru - self.from) / self.trade_duration;
 
         // Now we produce a list of submissions
-
-        costs_by_bidder
+        let submissions_by_bidder = costs_by_bidder
             .into_iter()
             .filter_map(|(bidder_id, costs)| {
                 // If the bidder has no auths, then the costs are no-op.
@@ -102,12 +104,14 @@ impl<T> Into<Vec<fts_solver::Submission<AuthId, ProductId>>> for RawAuctionInput
                         .filter_map(|record| record.into_solver(scale));
 
                     // Having done all that, we now have a submission
-                    fts_solver::Submission::new(auths, costs)
+                    Some((bidder_id, fts_solver::Submission::new(auths, costs)))
                 } else {
                     None
                 }
             })
-            .collect()
+            .collect();
+
+        submissions_by_bidder
     }
 }
 

@@ -81,8 +81,8 @@ pub fn bid_data() -> Map<usize, Submission<usize, usize>> {
     };
 
     let mut data = Map::default();
-    data.insert(0, buyer.unwrap());
-    data.insert(1, seller.unwrap());
+    data.insert(0, buyer);
+    data.insert(1, seller);
 
     data
 }

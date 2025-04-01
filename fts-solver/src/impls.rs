@@ -38,11 +38,11 @@ where
     let mut ncosts = 0;
 
     for (bidder, submission) in auction.into_iter() {
-        for (auth_id, auth_data) in submission.auths.iter() {
+        for (auth_id, auth_data) in submission.auths_active.iter() {
             auths.insert(auth_id.clone(), bidder.clone());
             products.extend(auth_data.portfolio.keys());
         }
-        ncosts += submission.cost_curves.len() + submission.cost_constants.len();
+        ncosts += submission.costs_curve.len() + submission.costs_constant.len();
     }
 
     // Provide a canonical ordering to the product ids
