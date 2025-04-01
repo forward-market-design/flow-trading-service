@@ -30,6 +30,7 @@ mod openapi;
 mod routes;
 mod utils;
 
+pub use openapi::MarketplaceApi;
 pub use utils::CustomJWTClaims;
 use utils::JWTVerifier;
 pub use utils::Now;

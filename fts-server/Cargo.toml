@@ -20,7 +20,7 @@ thiserror = { workspace = true }
 time = { workspace = true, features = ["formatting", "parsing", "serde"] }
 tokio = { workspace = true, features = ["full"] }
 tracing = { workspace = true }
-utoipa = { workspace = true, features = ["axum_extras"] }
+utoipa = { workspace = true, features = ["axum_extras", "yaml"] }
 uuid = { workspace = true, features = ["v4"] }
 
 # Unique dependencies
