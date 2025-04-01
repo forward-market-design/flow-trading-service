@@ -1,7 +1,7 @@
+use crate::Map;
 use crate::{
     AuctionOutcome, Auth, AuthOutcome, Constant, Point, ProductOutcome, Solver, Submission,
 };
-use crate::{Map, Set};
 use core::f64;
 use osqp::{CscMatrix, Problem, Settings, Status};
 use std::hash::Hash;
@@ -27,52 +27,29 @@ impl Solver for OsqpSolver {
         Self(settings)
     }
 
-    fn solve<AuthId: Eq + Hash + Clone + Ord, ProductId: Eq + Hash + Clone + Ord>(
+    fn solve<
+        T,
+        BidderId: Eq + Hash + Clone + Ord,
+        AuthId: Eq + Hash + Clone + Ord,
+        ProductId: Eq + Hash + Clone + Ord,
+    >(
         &self,
-        auction: &[Submission<AuthId, ProductId>],
-    ) -> AuctionOutcome<AuthId, ProductId> {
-        if auction.is_empty() {
-            return AuctionOutcome {
-                auths: Default::default(),
-                products: Default::default(),
-            };
+        auction: &T,
+        // TODO: warm-starts with the prices
+    ) -> AuctionOutcome<BidderId, AuthId, ProductId>
+    where
+        for<'t> &'t T: IntoIterator<Item = (&'t BidderId, &'t Submission<AuthId, ProductId>)>,
+    {
+        let (auths, products, ncosts) = super::prepare(auction);
+
+        if products.len() == 0 {
+            return AuctionOutcome::default();
         }
-
-        // In order to setup the the optimization program, we need to define
-        // up front the full space of products, as well as assign a canonical
-        // enumerative index to each of them.
-        let products = {
-            // Gather the set of products from every authorized portfolio
-            let mut products = auction
-                .iter()
-                .flat_map(|submission| {
-                    submission
-                        .auths
-                        .values()
-                        .flat_map(|auth| auth.portfolio.keys())
-                        .map(|id| id.clone())
-                })
-                .collect::<Set<ProductId>>();
-
-            // Provide a canonical ordering to the product ids
-            products.sort_unstable();
-
-            // Build the index lookup
-            products
-                .into_iter()
-                .enumerate()
-                .map(|(a, b)| (b, a))
-                .collect::<Map<ProductId, usize>>()
-        };
 
         // The trade and bid constraints are all (something) = 0, we need to
         // know how many of these there are in order to handle the box
         // constraints for each decision variable
-        let nzero = products.len()
-            + auction
-                .iter()
-                .map(|submission| submission.cost_curves.len() + submission.cost_constants.len())
-                .sum::<usize>();
+        let nzero = products.len() + ncosts;
 
         // Our quadratic term is diagonal, so we build the matrix by defining its diagonal
         let mut p = Vec::new();
@@ -95,7 +72,7 @@ impl Solver for OsqpSolver {
         let mut group_offset = products.len();
 
         // We begin by setting up the portfolio variables
-        for submission in auction.iter() {
+        for (_, submission) in auction.into_iter() {
             for (
                 auth_id,
                 Auth {
@@ -147,7 +124,7 @@ impl Solver for OsqpSolver {
 
         // Now we setup the segment variables
         group_offset = products.len();
-        for submission in auction.iter() {
+        for (_, submission) in auction.into_iter() {
             for (_, curve) in submission.cost_curves.iter() {
                 for pair in curve.points.windows(2) {
                     // Extract the coordinates
@@ -264,7 +241,7 @@ impl Solver for OsqpSolver {
             // We get the raw optimization output
             // TODO: make a determination on whether the price should actually be None
 
-            let mut volume: Map<ProductId, f64> =
+            let mut trade: Map<ProductId, f64> =
                 products.iter().map(|(id, _)| (id.clone(), 0.0)).collect();
 
             let prices: Map<ProductId, f64> = products
@@ -274,13 +251,13 @@ impl Solver for OsqpSolver {
                 .collect();
 
             let auth_outcomes: Map<AuthId, AuthOutcome> = auction
-                .iter()
-                .flat_map(|submission| submission.auths.iter())
+                .into_iter()
+                .flat_map(|(_, submission)| submission.auths.iter())
                 .zip(solution.x())
                 .map(|((id, auth), x)| {
                     let mut price = 0.0;
                     for (product_id, weight) in auth.portfolio.iter() {
-                        volume[product_id] += (weight * x).abs();
+                        trade[product_id] += (weight * x).abs();
                         price += weight * prices[product_id];
                     }
                     (id.clone(), AuthOutcome { price, trade: *x })
@@ -297,16 +274,30 @@ impl Solver for OsqpSolver {
             // solve that necessarily distinguishes between zero and non-zero dual variables from
             // the first solve, which is also asking for a world of trouble.
             AuctionOutcome {
-                auths: auth_outcomes,
+                outcomes: auth_outcomes.into_iter().fold(
+                    Map::default(),
+                    |mut outcomes, (auth_id, auth_outcome)| {
+                        // ASSERTION: the auths map will contain a record for every auth
+                        let bidder_id = auths.get(&auth_id).unwrap().clone();
+                        outcomes
+                            .entry(bidder_id)
+                            .or_default()
+                            .auths
+                            .insert(auth_id, auth_outcome);
+                        outcomes
+                    },
+                ),
                 products: prices
                     .into_iter()
-                    .zip(volume)
-                    .map(|((product_id, price), (_, volume))| {
+                    .zip(trade)
+                    // ASSERTION: the product_id from either pair is necessarily the same, due to insertion order
+                    // guarantees of IndexMap.
+                    .map(|((product_id, price), (_, trade))| {
                         (
                             product_id,
                             ProductOutcome {
                                 price,
-                                volume: volume / 2.0,
+                                trade: trade / 2.0,
                             },
                         )
                     })

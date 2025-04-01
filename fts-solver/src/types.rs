@@ -1,3 +1,5 @@
+use std::hash::Hash;
+
 mod submission;
 pub use submission::*;
 
@@ -35,11 +37,15 @@ pub trait Solver {
     /// # Returns
     /// * `AuctionOutcome` - Contains the clearing prices and trades for each product and authorization
     fn solve<
-        AuthId: Eq + std::hash::Hash + Clone + Ord,
-        ProductId: Eq + std::hash::Hash + Clone + Ord,
+        T,
+        BidderId: Eq + Hash + Clone + Ord,
+        AuthId: Eq + Hash + Clone + Ord,
+        ProductId: Eq + Hash + Clone + Ord,
     >(
         &self,
-        auction: &[Submission<AuthId, ProductId>],
+        auction: &T,
         // TODO: warm-starts with the prices
-    ) -> AuctionOutcome<AuthId, ProductId>;
+    ) -> AuctionOutcome<BidderId, AuthId, ProductId>
+    where
+        for<'t> &'t T: IntoIterator<Item = (&'t BidderId, &'t Submission<AuthId, ProductId>)>;
 }
