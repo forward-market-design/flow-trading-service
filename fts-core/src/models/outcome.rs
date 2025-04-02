@@ -15,6 +15,7 @@ use utoipa::ToSchema;
 #[derive(Serialize, Deserialize, Debug, ToSchema)]
 pub struct Outcome<T> {
     /// The clearing price determined by the auction solver
+    #[serde(with = "safe_f64")]
     pub price: f64,
     /// The trade amount (positive for buying, negative for selling)
     pub trade: f64,
@@ -40,4 +41,20 @@ pub struct AuctionOutcome<T> {
     /// The actual outcome (price and trade) from the auction
     #[serde(flatten)]
     pub outcome: Outcome<T>,
+}
+
+mod safe_f64 {
+    use serde::{Deserialize as _, Deserializer, Serializer};
+
+    pub fn serialize<S: Serializer>(value: &f64, serializer: S) -> Result<S::Ok, S::Error> {
+        if value.is_finite() {
+            serializer.serialize_some(value)
+        } else {
+            serializer.serialize_none()
+        }
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<f64, D::Error> {
+        Ok(Option::<f64>::deserialize(deserializer)?.unwrap_or(f64::NAN))
+    }
 }

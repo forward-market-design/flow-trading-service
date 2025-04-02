@@ -1,10 +1,10 @@
 use crate::{
     AppState,
-    utils::{ActivityReceiver, Bidder, ProductSender},
+    utils::{ActivityReceiver, Bidder, BidderSender, ProductSender},
 };
 use axum::{
     Router,
-    extract::{Path, State},
+    extract::Path,
     http::StatusCode,
     response::{
         Sse,
@@ -17,7 +17,6 @@ use fts_core::{
     ports::MarketRepository,
 };
 use std::convert::Infallible;
-use tokio::sync::watch;
 use tokio_stream::wrappers::WatchStream;
 
 pub fn router<T: MarketRepository>() -> Router<AppState<T>> {
@@ -38,37 +37,20 @@ async fn activity_stream(
 
 async fn product_stream(
     Path(product_id): Path<ProductId>,
-    ProductSender(sender): ProductSender,
+    stream: ProductSender,
 ) -> Sse<WatchStream<Result<Event, Infallible>>> {
-    let rcv = match sender.entry(product_id) {
-        dashmap::Entry::Occupied(entry) => entry.get().subscribe(),
-        dashmap::Entry::Vacant(entry) => {
-            let (snd, rcv) = watch::channel(Ok(Event::default().comment("")));
-            entry.insert(snd);
-            rcv
-        }
-    };
-
-    Sse::new(WatchStream::new(rcv)).keep_alive(KeepAlive::default())
+    Sse::new(WatchStream::new(stream.get_receiver(product_id))).keep_alive(KeepAlive::default())
 }
 
-async fn bidder_stream<T: MarketRepository>(
+async fn bidder_stream(
     Bidder(bidder_id): Bidder,
-    State(state): State<AppState<T>>,
     Path(bidder_id2): Path<BidderId>,
+    stream: BidderSender,
 ) -> Result<Sse<WatchStream<Result<Event, Infallible>>>, StatusCode> {
-    if bidder_id != bidder_id2 {
-        return Err(StatusCode::UNAUTHORIZED);
+    if bidder_id == bidder_id2 {
+        Ok(Sse::new(WatchStream::new(stream.get_receiver(bidder_id)))
+            .keep_alive(KeepAlive::default()))
+    } else {
+        Err(StatusCode::UNAUTHORIZED)
     }
-
-    let rcv = match state.bidder_sender.entry(bidder_id) {
-        dashmap::Entry::Occupied(entry) => entry.get().subscribe(),
-        dashmap::Entry::Vacant(entry) => {
-            let (snd, rcv) = watch::channel(Ok(Event::default().comment("")));
-            entry.insert(snd);
-            rcv
-        }
-    };
-
-    Ok(Sse::new(WatchStream::new(rcv)).keep_alive(KeepAlive::default()))
 }
