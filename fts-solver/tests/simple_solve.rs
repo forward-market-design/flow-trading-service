@@ -91,20 +91,20 @@ pub fn bid_data() -> Map<usize, Submission<usize, usize>> {
 #[rstest]
 fn should_success(solver: impl fts_solver::Solver, bid_data: Map<usize, Submission<usize, usize>>) {
     let AuctionOutcome {
-        mut outcomes,
+        mut bidders,
         products,
     } = solver.solve(&bid_data);
 
-    assert_eq!(outcomes.len(), 2);
+    assert_eq!(bidders.len(), 2);
     assert_eq!(products.len(), 1);
 
-    let buyer = outcomes
+    let buyer = bidders
         .swap_remove(&0)
         .unwrap()
         .auths
         .swap_remove(&0)
         .unwrap();
-    let seller = outcomes
+    let seller = bidders
         .swap_remove(&1)
         .unwrap()
         .auths

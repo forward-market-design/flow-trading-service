@@ -275,11 +275,11 @@ impl Solver for OsqpSolver {
             // the first solve, which is also asking for a world of trouble.
 
             // Roll up the decision variable solutions to the bidder level
-            let mut outcomes = Map::<BidderId, SubmissionOutcome<AuthId>>::default();
+            let mut bidders = Map::<BidderId, SubmissionOutcome<AuthId>>::default();
             for (auth_id, auth_outcome) in auth_outcomes {
                 // ASSERTION: the auths map will contain a record for every auth
                 let bidder_id = auths.get(&auth_id).unwrap().clone();
-                outcomes
+                bidders
                     .entry(bidder_id)
                     .or_default()
                     .auths
@@ -291,7 +291,7 @@ impl Solver for OsqpSolver {
             // guaranteed to have been traded.
             for (bidder_id, submission) in auction {
                 for (auth_id, portfolio) in submission.auths_inactive.iter() {
-                    outcomes.entry(bidder_id.clone()).or_default().auths.insert(
+                    bidders.entry(bidder_id.clone()).or_default().auths.insert(
                         auth_id.clone(),
                         AuthOutcome {
                             price: portfolio.iter().fold(0.0, |sum, (product_id, weight)| {
@@ -321,7 +321,7 @@ impl Solver for OsqpSolver {
                 })
                 .collect();
 
-            AuctionOutcome { outcomes, products }
+            AuctionOutcome { bidders, products }
         } else {
             panic!("inaccurate solve");
         }

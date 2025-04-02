@@ -1,6 +1,5 @@
-use std::hash::Hash;
-
 use crate::{Map, Set, Submission};
+use std::hash::Hash;
 
 // #[cfg(feature = "admm")]
 // pub mod admm;

@@ -8,7 +8,7 @@ use std::hash::Hash;
 #[derive(Debug)]
 pub struct AuctionOutcome<BidderId: Eq + Hash, AuthId: Eq + Hash, ProductId: Eq + Hash> {
     /// Outcomes for each submission
-    pub outcomes: Map<BidderId, SubmissionOutcome<AuthId>>,
+    pub bidders: Map<BidderId, SubmissionOutcome<AuthId>>,
     /// Outcomes for each product, keyed by their ID
     pub products: Map<ProductId, ProductOutcome>,
     // TODO: consider a collection for the cost curves, so that we can report
@@ -22,7 +22,7 @@ impl<BidderId: Eq + Hash, AuthId: Eq + Hash, ProductId: Eq + Hash> Default
 {
     fn default() -> Self {
         Self {
-            outcomes: Default::default(),
+            bidders: Default::default(),
             products: Default::default(),
         }
     }
