@@ -1,7 +1,7 @@
 use crate::{
     AuctionOutcome, Auth, AuthOutcome, Constant, Point, ProductOutcome, Solver, Submission,
 };
-use crate::{Map, Set};
+use crate::{Map, SubmissionOutcome};
 use clarabel::{algebra::*, solver::*};
 use std::hash::Hash;
 
@@ -27,52 +27,29 @@ impl Solver for ClarabelSolver {
         Self(settings)
     }
 
-    fn solve<AuthId: Eq + Hash + Clone + Ord, ProductId: Eq + Hash + Clone + Ord>(
+    fn solve<
+        T,
+        BidderId: Eq + Hash + Clone + Ord,
+        AuthId: Eq + Hash + Clone + Ord,
+        ProductId: Eq + Hash + Clone + Ord,
+    >(
         &self,
-        auction: &[Submission<AuthId, ProductId>],
-    ) -> AuctionOutcome<AuthId, ProductId> {
-        if auction.is_empty() {
-            return AuctionOutcome {
-                auths: Default::default(),
-                products: Default::default(),
-            };
+        auction: &T,
+        // TODO: warm-starts with the prices
+    ) -> AuctionOutcome<BidderId, AuthId, ProductId>
+    where
+        for<'t> &'t T: IntoIterator<Item = (&'t BidderId, &'t Submission<AuthId, ProductId>)>,
+    {
+        let (auths, products, ncosts) = super::prepare(auction);
+
+        if products.len() == 0 {
+            return AuctionOutcome::default();
         }
-
-        // In order to setup the the optimization program, we need to define
-        // up front the full space of products, as well as assign a canonical
-        // enumerative index to each of them.
-        let products = {
-            // Gather the set of products from every authorized portfolio
-            let mut products = auction
-                .iter()
-                .flat_map(|submission| {
-                    submission
-                        .auths
-                        .values()
-                        .flat_map(|auth| auth.portfolio.keys())
-                        .map(|id| id.clone())
-                })
-                .collect::<Set<ProductId>>();
-
-            // Provide a canonical ordering to the product ids
-            products.sort_unstable();
-
-            // Build the index lookup
-            products
-                .into_iter()
-                .enumerate()
-                .map(|(a, b)| (b, a))
-                .collect::<Map<ProductId, usize>>()
-        };
 
         // The trade and bid constraints are all (something) = 0, we need to
         // know how many of these there are in order to handle the box
         // constraints for each decision variable
-        let nzero = products.len()
-            + auction
-                .iter()
-                .map(|submission| submission.cost_curves.len() + submission.cost_constants.len())
-                .sum::<usize>();
+        let nzero = products.len() + ncosts;
 
         // Our quadratic term is diagonal, so we build the matrix by defining its diagonal
         let mut p = Vec::new();
@@ -94,7 +71,7 @@ impl Solver for ClarabelSolver {
         let mut group_offset = products.len();
 
         // We begin by setting up the portfolio variables
-        for submission in auction.iter() {
+        for (_, submission) in auction.into_iter() {
             for (
                 auth_id,
                 Auth {
@@ -102,7 +79,7 @@ impl Solver for ClarabelSolver {
                     max_trade,
                     portfolio,
                 },
-            ) in submission.auths.iter()
+            ) in submission.auths_active.iter()
             {
                 // portfolio variables contribute nothing to the objective
                 p.push(0.0);
@@ -122,10 +99,10 @@ impl Solver for ClarabelSolver {
                 // However, we expect the number of groups to be fairly small, so simply
                 // searching every group for every portfolio in the submission is not so bad.
                 for group in submission
-                    .cost_curves
+                    .costs_curve
                     .iter()
                     .map(|(group, _)| group)
-                    .chain(submission.cost_constants.iter().map(|(group, _)| group))
+                    .chain(submission.costs_constant.iter().map(|(group, _)| group))
                 {
                     if let Some(x) = group.get(auth_id) {
                         a_nzval.push(x);
@@ -153,8 +130,8 @@ impl Solver for ClarabelSolver {
 
         // Now we setup the segment variables
         group_offset = products.len();
-        for submission in auction.iter() {
-            for (_, curve) in submission.cost_curves.iter() {
+        for (_, submission) in auction.into_iter() {
+            for (_, curve) in submission.costs_curve.iter() {
                 for pair in curve.points.windows(2) {
                     // Extract the coordinates
                     let Point {
@@ -212,7 +189,7 @@ impl Solver for ClarabelSolver {
                     quantity: (min, max),
                     price,
                 },
-            ) in submission.cost_constants.iter()
+            ) in submission.costs_constant.iter()
             {
                 // Constant segments contribute nothing to the quadratic objective, but otherwise
                 // act a lot like a curve.
@@ -281,7 +258,7 @@ impl Solver for ClarabelSolver {
         // We get the raw optimization output
         // TODO: make a determination on whether the price should actually be None
 
-        let mut volume: Map<ProductId, f64> =
+        let mut trade: Map<ProductId, f64> =
             products.iter().map(|(id, _)| (id.clone(), 0.0)).collect();
 
         let prices: Map<ProductId, f64> = products
@@ -291,8 +268,8 @@ impl Solver for ClarabelSolver {
             .collect();
 
         let auth_outcomes: Map<AuthId, AuthOutcome> = auction
-            .iter()
-            .flat_map(|submission| submission.auths.iter())
+            .into_iter()
+            .flat_map(|(_, submission)| submission.auths_active.iter())
             .zip(solver.solution.x.iter())
             .map(|((id, auth), x)| {
                 let mut price = 0.0;
@@ -300,7 +277,7 @@ impl Solver for ClarabelSolver {
                     // TODO: we're adding floats, which has a possibility of precision loss.
                     // This probably shouldn't matter, but if we learn that it does we can easily
                     // use a Kahan-style summation here instead.
-                    volume[product_id] += (weight * x).abs();
+                    trade[product_id] += (weight * x).abs();
                     price += weight * prices[product_id];
                 }
                 (id.clone(), AuthOutcome { price, trade: *x })
@@ -319,21 +296,54 @@ impl Solver for ClarabelSolver {
         // whatever the solver returns as the price without further analysis, though we should
         // consider constructing an auxiliary optimization program to specifically force
         // a particular price when is a freedom.
-        AuctionOutcome {
-            auths: auth_outcomes,
-            products: prices
-                .into_iter()
-                .zip(volume)
-                .map(|((product_id, price), (_, volume))| {
-                    (
-                        product_id,
-                        ProductOutcome {
-                            price,
-                            volume: volume / 2.0,
-                        },
-                    )
-                })
-                .collect(),
+
+        // Roll up the decision variable solutions to the bidder level
+        let mut bidders = Map::<BidderId, SubmissionOutcome<AuthId>>::default();
+        for (auth_id, auth_outcome) in auth_outcomes {
+            // ASSERTION: the auths map will contain a record for every auth
+            let bidder_id = auths.get(&auth_id).unwrap().clone();
+            bidders
+                .entry(bidder_id)
+                .or_default()
+                .auths
+                .insert(auth_id, auth_outcome);
         }
+
+        // Patch the results to also include the inactive auths. Note that there is a possibility
+        // that such portfolio prices might not exist, since the underlying product(s) are not
+        // guaranteed to have been traded.
+        for (bidder_id, submission) in auction {
+            for (auth_id, portfolio) in submission.auths_inactive.iter() {
+                bidders.entry(bidder_id.clone()).or_default().auths.insert(
+                    auth_id.clone(),
+                    AuthOutcome {
+                        price: portfolio.iter().fold(0.0, |sum, (product_id, weight)| {
+                            sum + weight
+                                * prices.get(product_id).map(Clone::clone).unwrap_or(f64::NAN)
+                        }),
+                        trade: 0.0,
+                    },
+                );
+            }
+        }
+
+        // Generate per-product outcomes related to trade volume and price
+        let products = prices
+            .into_iter()
+            .zip(trade)
+            // ASSERTION: the product_id from either pair is necessarily the same, due to insertion order
+            // guarantees of IndexMap.
+            .map(|((product_id, price), (_, trade))| {
+                (
+                    product_id,
+                    ProductOutcome {
+                        price,
+                        trade: trade / 2.0,
+                    },
+                )
+            })
+            .collect();
+
+        AuctionOutcome { bidders, products }
     }
 }

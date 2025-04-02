@@ -7,7 +7,7 @@
 #![doc = include_str!("../docs/workspace.md")]
 #![doc = include_str!("../README.md")]
 use fts_core::{
-    models::{AuthId, Outcome, ProductId, RawAuctionInput},
+    models::{BidderId, Outcome, ProductId, RawAuctionInput},
     ports::{AuctionRepository, MarketRepository},
 };
 
@@ -57,15 +57,15 @@ pub struct AppState<T: MarketRepository> {
     activity_receiver: watch::Receiver<Result<Event, Infallible>>,
     /// Channels for product-specific updates
     product_sender: SenderMap<ProductId>,
-    /// Channels for authorization-specific updates
-    auth_sender: SenderMap<AuthId>,
+    /// Channels for bidder-specific updates
+    bidder_sender: SenderMap<BidderId>,
 }
 
 /// Represents an update to be sent via server-sent events.
 ///
 /// Contains auction outcome data along with its time range.
 #[derive(Serialize)]
-pub struct Update {
+pub struct Update<T> {
     /// Start time of the auction period
     #[serde(with = "time::serde::rfc3339")]
     pub from: OffsetDateTime,
@@ -74,7 +74,7 @@ pub struct Update {
     pub thru: OffsetDateTime,
     /// Outcome data from the auction
     #[serde(flatten)]
-    pub outcome: Outcome<()>,
+    pub outcome: T,
 }
 
 /// Creates the application state and solver background task.
@@ -89,47 +89,49 @@ pub fn state<T: MarketRepository>(
     let (activity_sender, activity_receiver) = watch::channel(Ok(Event::default().comment("")));
 
     let product_sender: SenderMap<ProductId> = Default::default();
-    let auth_sender: SenderMap<AuthId> = Default::default();
+    let bidder_sender: SenderMap<BidderId> = Default::default();
 
     let solver = {
         let market = market.clone();
         let activity_sender = activity_sender.clone();
         let product_sender = product_sender.clone();
-        let auth_sender = auth_sender.clone();
+        let bidder_sender = bidder_sender.clone();
         tokio::spawn(async move {
             let solver = T::solver();
             while let Some(auction) = solve_receiver.recv().await {
                 let id = auction.id.clone();
 
                 // Convert the auction into a format the solver understands
-                let submissions: Vec<fts_solver::Submission<_, _>> = auction.into();
+                let submissions = auction.into_solver();
 
                 // TODO: this is where warm-starting would be used
-                let fts_solver::AuctionOutcome { auths, products } = solver.solve(&submissions);
+                let fts_solver::AuctionOutcome { bidders, products } = solver.solve(&submissions);
 
                 // TODO: update the API to scope the auth_id the bidder_id
-                let auth_outcomes = auths
-                    .iter()
-                    .map(|(auth_id, outcome)| {
-                        (
-                            auth_id.clone(),
-                            Outcome {
-                                price: outcome.price,
-                                trade: outcome.trade,
-                                data: None,
-                            },
-                        )
+                let auth_outcomes = bidders
+                    .values()
+                    .flat_map(|outcome| {
+                        outcome.auths.iter().map(|(auth_id, auth_outcome)| {
+                            (
+                                auth_id.clone(),
+                                Outcome {
+                                    price: auth_outcome.price,
+                                    trade: auth_outcome.trade,
+                                    data: None,
+                                },
+                            )
+                        })
                     })
                     .collect::<Vec<_>>();
 
                 let product_outcomes = products
                     .iter()
-                    .map(|(id, outcome)| {
+                    .map(|(product_id, product_outcome)| {
                         (
-                            id.clone(),
+                            product_id.clone(),
                             Outcome {
-                                price: outcome.price,
-                                trade: outcome.volume,
+                                price: product_outcome.price,
+                                trade: product_outcome.trade,
                                 data: None,
                             },
                         )
@@ -158,16 +160,12 @@ pub fn state<T: MarketRepository>(
 
                     // We also individually broadcast the results to any listeners.
                     // TODO: think about how to cleanup the dashmap over time
-                    for (product_id, product_outcome) in products {
+                    for (product_id, outcome) in products {
                         if let Some(channel) = product_sender.get(&product_id) {
                             let update = Update {
                                 from: metadata.from,
                                 thru: metadata.thru,
-                                outcome: Outcome {
-                                    price: product_outcome.price,
-                                    trade: product_outcome.volume,
-                                    data: None,
-                                },
+                                outcome,
                             };
                             let _ = channel.send_replace(Ok(Event::default()
                                 .event("outcome")
@@ -175,16 +173,12 @@ pub fn state<T: MarketRepository>(
                         };
                     }
 
-                    for (auth_id, auth_outcome) in auths {
-                        if let Some(channel) = auth_sender.get(&auth_id) {
+                    for (bidder_id, outcome) in bidders {
+                        if let Some(channel) = bidder_sender.get(&bidder_id) {
                             let update = Update {
                                 from: metadata.from,
                                 thru: metadata.thru,
-                                outcome: Outcome {
-                                    price: auth_outcome.price,
-                                    trade: auth_outcome.trade,
-                                    data: None,
-                                },
+                                outcome,
                             };
                             let _ = channel.send_replace(Ok(Event::default()
                                 .event("outcome")
@@ -203,7 +197,7 @@ pub fn state<T: MarketRepository>(
         solve_queue: solve_sender,
         activity_receiver,
         product_sender,
-        auth_sender,
+        bidder_sender,
     };
 
     (state, solver)

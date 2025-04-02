@@ -191,18 +191,14 @@ impl AuthRecord {
                 .into_iter()
                 .collect::<fts_solver::Portfolio<_>>();
 
-            if portfolio.len() == 0 {
-                None
-            } else {
-                Some((
-                    self.auth_id,
-                    fts_solver::Auth {
-                        min_trade,
-                        max_trade,
-                        portfolio,
-                    },
-                ))
-            }
+            Some((
+                self.auth_id,
+                fts_solver::Auth {
+                    min_trade,
+                    max_trade,
+                    portfolio,
+                },
+            ))
         } else {
             None
         }

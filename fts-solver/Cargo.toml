@@ -15,6 +15,7 @@ osqp = { version = "0.6", optional = true }
 
 fxhash = { workspace = true }
 indexmap = { workspace = true, features = ["std"] }
+serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 

@@ -960,6 +960,7 @@ dependencies = [
  "osqp",
  "rstest",
  "rstest_reuse",
+ "serde",
  "thiserror 2.0.12",
  "tracing",
 ]

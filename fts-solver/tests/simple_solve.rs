@@ -10,8 +10,10 @@ use fts_solver::{
 mod all_solvers;
 use all_solvers::all_solvers;
 
+type Map<K, V> = indexmap::IndexMap<K, V, fxhash::FxBuildHasher>;
+
 #[fixture]
-pub fn bid_data() -> Vec<Submission<usize, usize>> {
+pub fn bid_data() -> Map<usize, Submission<usize, usize>> {
     // Create a submission for a buyer, where we use usize for the id types
     let buyer = {
         // Create a portfolio with a single product (id=0) with weight 1.0
@@ -78,24 +80,44 @@ pub fn bid_data() -> Vec<Submission<usize, usize>> {
         Submission::new(auth, vec![(group, Cost::PiecewiseLinearCurve(curve))])
     };
 
-    vec![buyer.unwrap(), seller.unwrap()]
+    let mut data = Map::default();
+    data.insert(0, buyer);
+    data.insert(1, seller);
+
+    data
 }
 
 #[apply(all_solvers)]
 #[rstest]
-fn should_success(solver: impl fts_solver::Solver, bid_data: Vec<Submission<usize, usize>>) {
-    let AuctionOutcome { auths, products } = solver.solve(&bid_data);
+fn should_success(solver: impl fts_solver::Solver, bid_data: Map<usize, Submission<usize, usize>>) {
+    let AuctionOutcome {
+        mut bidders,
+        products,
+    } = solver.solve(&bid_data);
 
-    assert_eq!(auths.len(), 2);
+    assert_eq!(bidders.len(), 2);
     assert_eq!(products.len(), 1);
+
+    let buyer = bidders
+        .swap_remove(&0)
+        .unwrap()
+        .auths
+        .swap_remove(&0)
+        .unwrap();
+    let seller = bidders
+        .swap_remove(&1)
+        .unwrap()
+        .auths
+        .swap_remove(&1)
+        .unwrap();
 
     // Check product price and portfolio price, against known good
     assert_eq!((products[0].price * 1000.0).round(), 7500.0);
-    assert_eq!((auths[0].price * 1000.0).round(), 7500.0);
-    assert_eq!((auths[1].price * 1000.0).round(), 7500.0);
+    assert_eq!((buyer.price * 1000.0).round(), 7500.0);
+    assert_eq!((seller.price * 1000.0).round(), 7500.0);
 
     // Check trades
-    assert_eq!((products[0].volume * 1000.0).round(), 500.0);
-    assert_eq!((auths[0].trade * 1000.0).round(), 500.0);
-    assert_eq!((auths[1].trade * 1000.0).round(), -500.0);
+    assert_eq!((products[0].trade * 1000.0).round(), 500.0);
+    assert_eq!((buyer.trade * 1000.0).round(), 500.0);
+    assert_eq!((seller.trade * 1000.0).round(), -500.0);
 }
