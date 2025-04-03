@@ -27,7 +27,7 @@ uuid = { workspace = true, features = ["v4"] }
 axum = { version = "0.8", features = ["json", "macros", "query"] }
 axum-extra = { version = "0.10", features = ["query", "typed-header"] }
 dashmap = { version = "6.1", features = ["inline"] }
-jwt-simple = { version = "0.12" }
+jwt-simple = { version = "0.12", default-features=false, features=["pure-rust"] }
 tokio-stream = { version = "0.1", features = ["sync"] }
 tower-http = { version = "0.6", features = ["cors"] }
 utoipa-rapidoc = { version = "6.0", features = ["axum"] }
