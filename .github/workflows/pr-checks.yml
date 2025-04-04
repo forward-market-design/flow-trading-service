@@ -1,0 +1,35 @@
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  tests-and-validate:
+    runs-on: ubuntu-latest
+    name: Tests and Validations
+    steps:
+      - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+      - name: Build
+        run: cargo build --release
+      - name: Run tests
+        run: cargo test --release
+      - name: Generate OpenAPI Spec
+        run: cargo run --bin generate-openapi --release > openapi.yaml
+      # https://github.com/swagger-api/apidom is the modern way of validating OpenAPI specs
+      # https://github.com/swaggerexpert/apidom-validate is a simple way of doing so via GitHub Action.
+      # However, it builds every time, so it's not ideal;
+      # we can either optimize this with caching or do it directly as a nodejs script.
+      - uses: swaggerexpert/apidom-validate@v1
+        with:
+          definition-file: 'openapi.yaml'
