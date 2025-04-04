@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0](https://github.com/forward-market-design/flow-trading-service/compare/fts-server-v0.1.2...fts-server-v0.2.0) - 2025-04-04
+
+### Added
+
+- binary for displaying the openapi spec, github action to validate
+- *(api)* replace per-auth outcome stream with per-submission outcome stream
+
+### Fixed
+
+- linting errors of openapi schema
+- streamline docker build
+
+### Other
+
+- *(deps)* bump axum-test from 17.2.0 to 17.3.0
+
 ## [0.1.2](https://github.com/forward-market-design/flow-trading-service/compare/fts-server-v0.1.1...fts-server-v0.1.2) - 2025-03-21
 
 ### Other
