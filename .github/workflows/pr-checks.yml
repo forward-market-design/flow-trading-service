@@ -1,0 +1,19 @@
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  tests-and-validate:
+    runs-on: ubuntu-latest
+    name: Tests and Validations
+    steps:
+      - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Run tests
+        run: cargo test --release
+      - name: Generate OpenAPI Spec
+        run: cargo run --bin generate-openapi --release > target/openapi.yaml
+      - uses: swaggerexpert/apidom-validate@v1
+        with:
+          definition-file: 'target/openapi.yaml'

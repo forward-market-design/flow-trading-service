@@ -6,7 +6,9 @@ use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{IntoParams, Modify, OpenApi, ToSchema};
 use utoipa_rapidoc::RapiDoc;
 
-use fts_core::models::{AuthHistoryRecord, CostHistoryRecord, DateTimeRangeQuery, ProductId};
+use fts_core::models::{
+    AuthHistoryRecord, CostHistoryRecord, DateTimeRangeQuery, GroupDisplay, ProductId,
+};
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 /// The product definition is generic, so this serves just as an example.
@@ -97,14 +99,18 @@ pub enum Error {
         super::routes::costs::delete::delete_cost,
         super::routes::costs::history::get_history,
     ),
+    components(schemas(
+        GroupDisplay // This is not being pulled in automatically, adding it manually
+    )),
     external_docs(
-        url = "https://forwardmarketdesign.com", description = "📖 Flow Trading Introduction"
+        url = "https://flowtrading.forwardmarketdesign.com", description = "📖 Flow Trading Introduction"
     ),
     modifiers(&SecurityAddon),
     security(
         ("jwt" = []),
     )
 )]
+/// The OpenAPI spec for the Flow Trading System
 pub struct MarketplaceApi;
 
 struct SecurityAddon;
