@@ -13,6 +13,7 @@ use tracing::{Level, event};
 #[utoipa::path(
     get,
     path = "/v0/costs/{cost_id}/history",
+    operation_id = "get_cost_history", // needs to be unique, so we're distinguishing here
     responses(
         (status = OK, body = crate::openapi::ExampleCostHistoryResponse),
         (status = UNAUTHORIZED), // no jwt token, handled by extractor

@@ -51,7 +51,7 @@ pub struct ExampleOutcome {
     pub price: f64,
     pub trade: f64,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[schema(example = "Additional data; Defined by domain, not necessarily a string.")]
+    #[schema(examples("Additional data; Defined by domain, not necessarily a string."))]
     pub data: Option<String>,
 }
 
@@ -100,7 +100,7 @@ pub enum Error {
         super::routes::costs::history::get_history,
     ),
     components(schemas(
-        GroupDisplay // This is not being pulled in automatically, adding it manually
+        GroupDisplay, // This is not being pulled in automatically, adding it manually
     )),
     external_docs(
         url = "https://flowtrading.forwardmarketdesign.com", description = "📖 Flow Trading Introduction"

@@ -36,7 +36,7 @@ pub fn router<T: MarketRepository>() -> Router<AppState<T>> {
         (status = INTERNAL_SERVER_ERROR)
     ),
     params(
-        ProductQuery
+        ("example_query" = ProductQuery, Query)
     ),
     tags = ["products"]
 )]
