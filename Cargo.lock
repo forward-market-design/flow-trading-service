@@ -1575,18 +1575,18 @@ checksum = "945462a4b81e43c4e3ba96bd7b49d834c6f61198356aa858733bc4acf3cbe62e"
 
 [[package]]
 name = "osqp"
-version = "0.6.3"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7645d5031372432141d9ca73456c7762993cfc5eed46fb76810f7d356dabb99"
+checksum = "e6c547bb52aba49255f09a659fc085e3a8172bbea993b182e686ff83c833068f"
 dependencies = [
  "osqp-sys",
 ]
 
 [[package]]
 name = "osqp-sys"
-version = "0.6.3"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dad4b3e5fcfe866b3f6f966d79e7bf21e2fd9b04980ae15eaf3afac8fb59931f"
+checksum = "607fdbb33cae02d9fd87f58bdeb15338f74869ae004b4c4d03dab4f4acb31d94"
 dependencies = [
  "cc",
  "cmake",
