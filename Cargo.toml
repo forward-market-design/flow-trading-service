@@ -13,7 +13,7 @@ rust-version = "1.85"
 clap = "4.5"
 fxhash = "0.2"
 humantime = "2.2"
-indexmap = "2.8"
+indexmap = "2.9"
 rstest = { version = "0.25", default-features = false }
 rstest_reuse = "0.7"
 serde = "1.0"
