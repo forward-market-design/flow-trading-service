@@ -27,8 +27,20 @@ RUN cargo build --release --target ${RUST_TARGET} --bin fts-demo
 
 FROM alpine AS runtime
 ARG RUST_TARGET
-RUN addgroup -S myuser && adduser -S myuser -G myuser
+RUN addgroup -S ftsuser && adduser -S ftsuser -G ftsuser
+
+# Open source project metadata
+LABEL org.opencontainers.image.source="https://github.com/forward-market-design/flow-trading-service"
+LABEL org.opencontainers.image.description="Flow Trading Service Demo"
+LABEL org.opencontainers.image.licenses="MIT"
+
 # Remove the unnecessary step since we're using the full target path
 COPY --from=builder /app/target/${RUST_TARGET}/release/fts-demo /usr/local/bin/
-USER myuser
+USER ftsuser
+
+# Container listens on port 8080
+EXPOSE 8080
+
+# TODO: Add healthcheck?
+
 ENTRYPOINT ["/usr/local/bin/fts-demo"]

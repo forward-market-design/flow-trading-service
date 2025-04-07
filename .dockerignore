@@ -3,3 +3,4 @@
 /.github
 *.session.sql
 Dockerfile
+fly.toml
