@@ -16,7 +16,7 @@ pub struct OsqpSolver(Settings);
 
 impl Default for OsqpSolver {
     fn default() -> Self {
-        Self(Settings::default().verbose(false).polish(true))
+        Self(Settings::default().verbose(false).polishing(true))
     }
 }
 
