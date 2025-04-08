@@ -10,7 +10,7 @@ use fts_core::{
 };
 use tracing::{Level, event};
 
-type GetOutcomesBody = DateTimeRangeResponse<AuctionOutcome<()>>;
+type GetOutcomesBody = DateTimeRangeResponse<AuctionOutcome>;
 #[utoipa::path(
     get,
     path = "/v0/auths/{auth_id}/outcomes",
@@ -33,7 +33,7 @@ pub async fn get_outcomes<T: MarketRepository>(
     Bidder(bidder_id): Bidder,
     Path(auth_id): Path<AuthId>,
     Query(query): Query<DateTimeRangeQuery>,
-) -> Result<Json<DateTimeRangeResponse<AuctionOutcome<()>>>, StatusCode> {
+) -> Result<Json<DateTimeRangeResponse<AuctionOutcome>>, StatusCode> {
     let result = AuthRepository::get_outcomes(&state.market, bidder_id, auth_id, query, 100)
         .await
         .map_err(|err| {

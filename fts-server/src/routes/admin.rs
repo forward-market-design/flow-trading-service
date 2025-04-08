@@ -18,15 +18,13 @@ pub fn router<T: MarketRepository>(state: AppState<T>) -> Router<AppState<T>> {
         ))
 }
 
-type DefineProductsBody = Vec<ProductData<String>>;
-
 /// Define new products for the marketplace.
 ///
 /// This endpoint defines new products based on the provided data and returns the newly created ids.
 #[utoipa::path(
     post,
     path = "/admin/products",
-    request_body = DefineProductsBody,
+    request_body = Vec<ProductData>,
     responses(
         (status = OK, body = Vec<ProductId>),
         (status = INTERNAL_SERVER_ERROR)

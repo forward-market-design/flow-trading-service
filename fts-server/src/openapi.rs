@@ -4,7 +4,7 @@ use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 use utoipa_rapidoc::RapiDoc;
 
-use fts_core::models::GroupDisplay;
+use fts_core::models::{AuctionOutcome, GroupDisplay};
 
 #[derive(Debug, Error)]
 #[allow(dead_code)]
@@ -39,6 +39,7 @@ pub enum Error {
     ),
     components(schemas(
         GroupDisplay, // This is not being pulled in automatically, adding it manually
+        AuctionOutcome,
     )),
     external_docs(
         url = "https://flowtrading.forwardmarketdesign.com", description = "📖 Flow Trading Introduction"

@@ -33,9 +33,9 @@ pub struct ProductQueryResponse<T, U> {
 
 /// A description of a product in a forward market
 #[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
-pub struct ProductData<T> {
+pub struct ProductData {
     /// A tag describing the type of product (e.g. "FORWARD" or "OPTION")
-    pub kind: T,
+    pub kind: String,
     /// The starting time of the delivery interval for the product
     #[serde(with = "time::serde::rfc3339")]
     pub from: OffsetDateTime,
@@ -46,11 +46,11 @@ pub struct ProductData<T> {
 
 /// A query for searching for known products
 #[derive(Debug, Serialize, Deserialize, IntoParams, ToSchema)]
-pub struct ProductQuery<T: ToSchema> {
+pub struct ProductQuery {
     /// An optional filter to restrict the kind of product by
     #[serde(default)]
     #[param(inline)]
-    pub kind: Option<T>,
+    pub kind: Option<String>,
     /// An optional filter to select products with delivery windows on or before this value
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub before: Option<OffsetDateTime>,

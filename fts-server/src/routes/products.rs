@@ -29,11 +29,11 @@ pub fn router<T: MarketRepository>() -> Router<AppState<T>> {
     get,
     path = "/v0/products",
     responses(
-        (status = OK, body = ProductQueryResponse<ProductRecord<String>, ProductQuery<String>>),
+        (status = OK, body = ProductQueryResponse<ProductRecord<ProductData>, ProductQuery>),
         (status = INTERNAL_SERVER_ERROR)
     ),
     params(
-        ("example_query" = ProductQuery<String>, Query)
+        ProductQuery
     ),
     tags = ["products"]
 )]
@@ -55,7 +55,7 @@ async fn list_products<T: MarketRepository>(
     get,
     path = "/v0/products/{product_id}",
     responses(
-        (status = OK, body = ProductRecord<ProductData<String>>),
+        (status = OK, body = ProductRecord<ProductData>),
         (status = NOT_FOUND),
         (status = INTERNAL_SERVER_ERROR)
     ),
@@ -81,7 +81,7 @@ async fn get_product<T: MarketRepository>(
     }
 }
 
-type ProductOutcomeBody = DateTimeRangeResponse<AuctionOutcome<()>>;
+type ProductOutcomeBody = DateTimeRangeResponse<AuctionOutcome>;
 
 #[utoipa::path(
     get,

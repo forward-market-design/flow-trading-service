@@ -140,9 +140,6 @@ pub trait AuthRepository: ProductRepository {
         query: DateTimeRangeQuery,
         limit: usize,
     ) -> impl Future<
-        Output = Result<
-            Result<DateTimeRangeResponse<AuctionOutcome<()>>, AuthFailure>,
-            Self::Error,
-        >,
+        Output = Result<Result<DateTimeRangeResponse<AuctionOutcome>, AuthFailure>, Self::Error>,
     > + Send;
 }

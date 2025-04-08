@@ -13,8 +13,8 @@ use uuid::Uuid;
 
 impl ProductRepository for db::Database {
     type Error = db::Error;
-    type ProductData = ProductData<String>;
-    type ProductQuery = ProductQuery<String>;
+    type ProductData = ProductData;
+    type ProductQuery = ProductQuery;
 
     async fn define_products(
         &self,
@@ -133,7 +133,7 @@ impl ProductRepository for db::Database {
         product_id: ProductId,
         query: DateTimeRangeQuery,
         limit: usize,
-    ) -> Result<DateTimeRangeResponse<AuctionOutcome<()>>, Self::Error> {
+    ) -> Result<DateTimeRangeResponse<AuctionOutcome>, Self::Error> {
         let ctx = self.connect(false)?;
         let mut stmt = ctx.prepare(
             r#"
@@ -168,7 +168,7 @@ impl ProductRepository for db::Database {
                     query.after.map(DateTime::from),
                     limit + 1,
                 ),
-                |row| -> Result<AuctionOutcome<()>, db::Error> {
+                |row| -> Result<AuctionOutcome, db::Error> {
                     Ok(AuctionOutcome {
                         from: row.get::<usize, DateTime>(0)?.into(),
                         thru: row.get::<usize, DateTime>(1)?.into(),
@@ -198,12 +198,11 @@ impl ProductRepository for db::Database {
     }
 }
 
-fn product_from_row(row: &rusqlite::Row) -> rusqlite::Result<ProductRecord<ProductData<String>>> {
-    let kind: String = row.get("kind")?;
+fn product_from_row(row: &rusqlite::Row) -> rusqlite::Result<ProductRecord<ProductData>> {
     Ok(ProductRecord {
         id: row.get::<&str, Uuid>("id")?.into(),
         data: ProductData {
-            kind: kind.into(),
+            kind: row.get("kind")?,
             from: row.get::<&str, DateTime>("from")?.into(),
             thru: row.get::<&str, DateTime>("thru")?.into(),
         },

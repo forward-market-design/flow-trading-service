@@ -31,7 +31,7 @@ pub struct Outcome<T> {
 /// of the auction that produced it, allowing for tracking outcomes across
 /// multiple consecutive auctions.
 #[derive(Serialize, Deserialize, Debug, ToSchema)]
-pub struct AuctionOutcome<T> {
+pub struct AuctionOutcome<T = ()> {
     /// The starting time of the auction interval
     #[serde(with = "time::serde::rfc3339")]
     pub from: OffsetDateTime,
