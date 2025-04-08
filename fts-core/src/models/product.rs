@@ -46,15 +46,14 @@ pub struct ProductData {
 
 /// A query for searching for known products
 #[derive(Debug, Serialize, Deserialize, IntoParams, ToSchema)]
+#[into_params(parameter_in = Query)]
 pub struct ProductQuery {
     /// An optional filter to restrict the kind of product by
-    #[serde(default)]
-    #[param(inline)]
     pub kind: Option<String>,
     /// An optional filter to select products with delivery windows on or before this value
-    #[serde(default, with = "time::serde::rfc3339::option")]
+    #[serde(with = "time::serde::rfc3339::option")]
     pub before: Option<OffsetDateTime>,
     /// An optional filter to select products with delivery windows on or after this value
-    #[serde(default, with = "time::serde::rfc3339::option")]
+    #[serde(with = "time::serde::rfc3339::option")]
     pub after: Option<OffsetDateTime>,
 }
