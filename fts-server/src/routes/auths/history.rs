@@ -15,7 +15,7 @@ use tracing::{Level, event};
     path = "/v0/auths/{auth_id}/history",
     operation_id = "get_auth_history", // needs to be unique, so we're distinguishing here
     responses(
-        (status = OK, body = crate::openapi::ExampleAuthHistoryResponse),
+        (status = OK, body = DateTimeRangeResponse<AuthHistoryRecord>),
         (status = UNAUTHORIZED), // no jwt token, handled by extractor
         (status = FORBIDDEN), // not allowed to see auth
         (status = NOT_FOUND), // no auth by that id

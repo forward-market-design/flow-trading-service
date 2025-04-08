@@ -15,7 +15,7 @@ pub use cost::{
 };
 pub use datetime::{DateTimeRangeQuery, DateTimeRangeResponse};
 pub use outcome::{AuctionOutcome, Outcome};
-pub use product::{ProductQueryResponse, ProductRecord};
+pub use product::{ProductData, ProductQuery, ProductQueryResponse, ProductRecord};
 pub use submission::SubmissionRecord;
 
 macro_rules! uuid_wrapper {

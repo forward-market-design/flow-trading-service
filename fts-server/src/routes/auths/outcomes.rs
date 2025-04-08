@@ -1,4 +1,4 @@
-use crate::{AppState, openapi::ExampleAuctionOutcomeResponse, utils::Bidder};
+use crate::{AppState, utils::Bidder};
 use axum::{
     Json,
     extract::{Path, Query, State},
@@ -10,11 +10,12 @@ use fts_core::{
 };
 use tracing::{Level, event};
 
+type GetOutcomesBody = DateTimeRangeResponse<AuctionOutcome<()>>;
 #[utoipa::path(
     get,
     path = "/v0/auths/{auth_id}/outcomes",
     responses(
-        (status = OK, body = Vec<ExampleAuctionOutcomeResponse>),
+        (status = OK, body = GetOutcomesBody),
         (status = UNAUTHORIZED), // no jwt token, handled by extractor
         (status = FORBIDDEN), // not allowed to see auth
         (status = NOT_FOUND), // no auth by that id

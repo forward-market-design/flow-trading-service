@@ -1,44 +1,24 @@
 use crate::{DateTime, db};
 use fts_core::{
     models::{
-        AuctionOutcome, DateTimeRangeQuery, DateTimeRangeResponse, Outcome, ProductId,
-        ProductQueryResponse, ProductRecord,
+        AuctionOutcome, DateTimeRangeQuery, DateTimeRangeResponse, Outcome, ProductData, ProductId,
+        ProductQuery, ProductQueryResponse, ProductRecord,
     },
     ports::ProductRepository,
 };
 use rusqlite::OptionalExtension as _;
-use serde::{Deserialize, Serialize};
 use std::ops::Deref;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct ProductData {
-    pub kind: String,
-    #[serde(with = "time::serde::rfc3339")]
-    pub from: OffsetDateTime,
-    #[serde(with = "time::serde::rfc3339")]
-    pub thru: OffsetDateTime,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ProductQuery {
-    #[serde(default)]
-    pub kind: Option<String>,
-    #[serde(default, with = "time::serde::rfc3339::option")]
-    pub before: Option<OffsetDateTime>,
-    #[serde(default, with = "time::serde::rfc3339::option")]
-    pub after: Option<OffsetDateTime>,
-}
-
 impl ProductRepository for db::Database {
     type Error = db::Error;
-    type ProductData = ProductData;
-    type ProductQuery = ProductQuery;
+    type ProductData = ProductData<String>;
+    type ProductQuery = ProductQuery<String>;
 
     async fn define_products(
         &self,
-        products: impl Iterator<Item = ProductData>,
+        products: impl Iterator<Item = Self::ProductData>,
         timestamp: OffsetDateTime,
     ) -> Result<Vec<ProductId>, Self::Error> {
         let mut ctx = self.connect(true)?;
@@ -218,11 +198,12 @@ impl ProductRepository for db::Database {
     }
 }
 
-fn product_from_row(row: &rusqlite::Row) -> rusqlite::Result<ProductRecord<ProductData>> {
+fn product_from_row(row: &rusqlite::Row) -> rusqlite::Result<ProductRecord<ProductData<String>>> {
+    let kind: String = row.get("kind")?;
     Ok(ProductRecord {
         id: row.get::<&str, Uuid>("id")?.into(),
         data: ProductData {
-            kind: row.get("kind")?,
+            kind: kind.into(),
             from: row.get::<&str, DateTime>("from")?.into(),
             thru: row.get::<&str, DateTime>("thru")?.into(),
         },

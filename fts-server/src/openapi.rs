@@ -1,72 +1,10 @@
 use axum::Router;
-use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use time::OffsetDateTime;
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
-use utoipa::{IntoParams, Modify, OpenApi, ToSchema};
+use utoipa::{Modify, OpenApi};
 use utoipa_rapidoc::RapiDoc;
 
-use fts_core::models::{
-    AuthHistoryRecord, CostHistoryRecord, DateTimeRangeQuery, GroupDisplay, ProductId,
-};
-
-#[derive(Debug, PartialEq, Serialize, Deserialize, ToSchema)]
-/// The product definition is generic, so this serves just as an example.
-pub struct ProductData {
-    pub example_attribute: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema, IntoParams)]
-/// As the product definition is generic, the query to retrieve these products is also generic.
-pub struct ProductQuery {
-    pub example_query: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct ExampleAuthHistoryResponse {
-    results: Vec<AuthHistoryRecord>,
-    more: Option<DateTimeRangeQuery>,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct ExampleCostHistoryResponse {
-    results: Vec<CostHistoryRecord>,
-    more: Option<DateTimeRangeQuery>,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct ExampleProductRecord {
-    pub id: ProductId,
-    pub data: ProductData,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct ExampleProductQueryResponse {
-    results: Vec<ExampleProductRecord>,
-    more: Option<ProductQuery>,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct ExampleOutcome {
-    pub price: f64,
-    pub trade: f64,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[schema(examples("Additional data; Defined by domain, not necessarily a string."))]
-    pub data: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct ExampleAuctionOutcome {
-    pub from: OffsetDateTime,
-    pub thru: OffsetDateTime,
-    pub outcome: ExampleOutcome,
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-pub struct ExampleAuctionOutcomeResponse {
-    results: Vec<ExampleAuctionOutcome>,
-    more: Option<DateTimeRangeQuery>,
-}
+use fts_core::models::GroupDisplay;
 
 #[derive(Debug, Error)]
 #[allow(dead_code)]

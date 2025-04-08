@@ -1,8 +1,11 @@
 pub mod solve;
 
-use crate::{AppState, Now, openapi::ProductData, utils::Admin};
+use crate::{AppState, Now, utils::Admin};
 use axum::{Json, Router, extract::State, http::StatusCode, middleware, routing};
-use fts_core::{models::ProductId, ports::MarketRepository};
+use fts_core::{
+    models::{ProductData, ProductId},
+    ports::MarketRepository,
+};
 use solve::solve_auctions;
 use tracing::{Level, event};
 
@@ -15,13 +18,15 @@ pub fn router<T: MarketRepository>(state: AppState<T>) -> Router<AppState<T>> {
         ))
 }
 
+type DefineProductsBody = Vec<ProductData<String>>;
+
 /// Define new products for the marketplace.
 ///
 /// This endpoint defines new products based on the provided data and returns the newly created ids.
 #[utoipa::path(
     post,
     path = "/admin/products",
-    request_body = Vec<ProductData>,
+    request_body = DefineProductsBody,
     responses(
         (status = OK, body = Vec<ProductId>),
         (status = INTERNAL_SERVER_ERROR)
