@@ -1,8 +1,6 @@
 use super::{AuthFailure, CostFailure};
 use crate::{
-    models::{
-        AuthData, AuthId, BidderId, CostData, CostId, Group, Portfolio, ProductId, SubmissionRecord,
-    },
+    models::{AuthData, AuthId, BidderId, CostData, CostId, Group, Portfolio, SubmissionRecord},
     ports::CostRepository,
 };
 use serde::Deserialize;
@@ -38,7 +36,6 @@ pub enum SubmissionAuthDto {
         /// The unique identifier for the authorization
         auth_id: AuthId,
         /// The portfolio associated with this authorization
-        #[schema(value_type = std::collections::HashMap<ProductId, f64>)]
         portfolio: Portfolio,
         /// The authorization data
         data: AuthData,
@@ -78,7 +75,6 @@ pub enum SubmissionCostDto {
         /// The unique identifier for the cost
         cost_id: CostId,
         /// The group associated with this cost
-        #[schema(value_type = std::collections::HashMap<AuthId, f64>)]
         group: Group,
         /// The cost data
         data: CostData,

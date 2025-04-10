@@ -83,3 +83,36 @@ macro_rules! uuid_wrapper {
 pub(crate) use uuid_wrapper;
 uuid_wrapper!(BidderId);
 uuid_wrapper!(ProductId);
+
+macro_rules! map_wrapper {
+    ($struct:ident, $key:ty, $value:ty) => {
+        /// A hashmap with deterministic ordering
+        #[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
+        #[serde(transparent)]
+        #[schema(value_type = std::collections::HashMap<$key, $value>)]
+        pub struct $struct(pub indexmap::IndexMap<$key, $value, fxhash::FxBuildHasher>);
+
+        impl std::ops::Deref for $struct {
+            type Target = indexmap::IndexMap<$key, $value, fxhash::FxBuildHasher>;
+
+            fn deref(&self) -> &Self::Target {
+                &self.0
+            }
+        }
+
+        impl $struct {
+            /// Forward the into_iter() implementation from the newtype
+            pub fn into_iter(self) -> impl Iterator<Item = ($key, $value)> {
+                self.0.into_iter()
+            }
+        }
+
+        impl FromIterator<($key, $value)> for $struct {
+            fn from_iter<I: IntoIterator<Item = ($key, $value)>>(iter: I) -> Self {
+                Self(indexmap::IndexMap::from_iter(iter))
+            }
+        }
+    };
+}
+
+pub(crate) use map_wrapper;

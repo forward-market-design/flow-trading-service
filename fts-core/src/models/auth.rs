@@ -1,6 +1,4 @@
-use crate::models::{BidderId, Bound, ProductId, uuid_wrapper};
-use fxhash::FxBuildHasher;
-use indexmap::IndexMap;
+use crate::models::{BidderId, Bound, ProductId, map_wrapper, uuid_wrapper};
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 use thiserror::Error;
@@ -152,7 +150,6 @@ pub struct AuthRecord {
 
     /// The portfolio associated to the auth. Due to the expected size, this portfolio may be omitted from certain endpoints.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    #[schema(value_type = Option<std::collections::HashMap<ProductId, f64>>)]
     pub portfolio: Option<Portfolio>,
 
     /// The constraint data for the authorization
@@ -167,12 +164,7 @@ pub struct AuthRecord {
     pub trade: Option<f64>,
 }
 
-/// A portfolio is a weighted bundle of products
-///
-/// Portfolios define what combination of products an auth trades, with weights determining
-/// the relative proportions. Positive weights indicate buying the product, negative weights
-/// indicate selling.
-pub type Portfolio = IndexMap<ProductId, f64, FxBuildHasher>;
+map_wrapper!(Portfolio, ProductId, f64);
 
 impl AuthRecord {
     /// Converts this auth record into a solver-compatible format.

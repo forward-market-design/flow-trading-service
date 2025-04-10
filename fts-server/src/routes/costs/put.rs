@@ -16,14 +16,8 @@ use utoipa::ToSchema;
 #[derive(Deserialize, ToSchema)]
 #[serde(untagged)]
 pub enum PutCostDto {
-    Create {
-        #[schema(value_type = std::collections::HashMap<fts_core::models::AuthId, f64>)]
-        group: Group,
-        data: CostData,
-    },
-    Update {
-        data: CostData,
-    },
+    Create { group: Group, data: CostData },
+    Update { data: CostData },
     Delete,
 }
 
