@@ -1,7 +1,7 @@
 use crate::{
     AuctionOutcome, Auth, AuthOutcome, Constant, Point, ProductOutcome, Solver, Submission,
 };
-use crate::{Map, SubmissionOutcome};
+use crate::{HashMap, SubmissionOutcome};
 use core::f64;
 use osqp::{CscMatrix, Problem, Settings, Status};
 use std::hash::Hash;
@@ -241,16 +241,16 @@ impl Solver for OsqpSolver {
             // We get the raw optimization output
             // TODO: make a determination on whether the price should actually be None
 
-            let mut trade: Map<ProductId, f64> =
+            let mut trade: HashMap<ProductId, f64> =
                 products.iter().map(|(id, _)| (id.clone(), 0.0)).collect();
 
-            let prices: Map<ProductId, f64> = products
+            let prices: HashMap<ProductId, f64> = products
                 .into_iter()
                 .zip(solution.y())
                 .map(|((p, _), x)| (p, *x))
                 .collect();
 
-            let auth_outcomes: Map<AuthId, AuthOutcome> = auction
+            let auth_outcomes: HashMap<AuthId, AuthOutcome> = auction
                 .into_iter()
                 .flat_map(|(_, submission)| submission.auths_active.iter())
                 .zip(solution.x())
@@ -275,7 +275,7 @@ impl Solver for OsqpSolver {
             // the first solve, which is also asking for a world of trouble.
 
             // Roll up the decision variable solutions to the bidder level
-            let mut bidders = Map::<BidderId, SubmissionOutcome<AuthId>>::default();
+            let mut bidders = HashMap::<BidderId, SubmissionOutcome<AuthId>>::default();
             for (auth_id, auth_outcome) in auth_outcomes {
                 // ASSERTION: the auths map will contain a record for every auth
                 let bidder_id = auths.get(&auth_id).unwrap().clone();

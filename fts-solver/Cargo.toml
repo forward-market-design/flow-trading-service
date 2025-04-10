@@ -12,10 +12,12 @@ version = "0.2.0"
 # black-box solvers we can pull in
 clarabel = { version = "0.10", optional = true }
 osqp = { version = "1.0", optional = true }
+# provide the option for (de)serialization of the raw solver types
+serde = { workspace = true, features = ["derive"], optional = true }
 
+# core crates used by the library
 fxhash = { workspace = true }
-indexmap = { workspace = true, features = ["std", "serde"] }
-serde = { workspace = true, features = ["derive"] }
+indexmap = { workspace = true, features = ["std"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 
@@ -23,9 +25,12 @@ tracing = { workspace = true }
 approx = "0.5"
 rstest = { workspace = true }
 rstest_reuse = { workspace = true }
-fts-solver = { path = ".", features = ["clarabel", "osqp"] }
+
+# enable all the features for testing purposes
+fts-solver = { path = ".", features = ["clarabel", "osqp", "serde"] }
 
 [features]
 default = ["clarabel"]
 clarabel = ["dep:clarabel"]
 osqp = ["dep:osqp"]
+serde = ["dep:serde", "indexmap/serde"]

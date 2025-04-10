@@ -12,6 +12,9 @@ pub use auth::*;
 mod cost;
 pub use cost::*;
 
+mod demand;
+pub use demand::*;
+
 mod outcome;
 pub use outcome::*;
 

@@ -15,28 +15,28 @@ pub struct Point {
 
 // A partial ordering for points in the context of a weakly monotone piecewise linear curve
 
-impl PartialOrd for Point {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        match self.quantity.partial_cmp(&other.quantity) {
-            Some(Ordering::Less) => {
-                if self.price >= other.price {
-                    Some(Ordering::Less)
-                } else {
-                    None
-                }
-            }
-            Some(Ordering::Equal) => other.price.partial_cmp(&self.price),
-            Some(Ordering::Greater) => {
-                if self.price <= other.price {
-                    Some(Ordering::Greater)
-                } else {
-                    None
-                }
-            }
-            None => None,
-        }
-    }
-}
+// impl PartialOrd for Point {
+//     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+//         match self.quantity.partial_cmp(&other.quantity) {
+//             Some(Ordering::Less) => {
+//                 if self.price >= other.price {
+//                     Some(Ordering::Less)
+//                 } else {
+//                     None
+//                 }
+//             }
+//             Some(Ordering::Equal) => other.price.partial_cmp(&self.price),
+//             Some(Ordering::Greater) => {
+//                 if self.price <= other.price {
+//                     Some(Ordering::Greater)
+//                 } else {
+//                     None
+//                 }
+//             }
+//             None => None,
+//         }
+//     }
+// }
 
 /// A piecewise-linear, weakly monotone curve for representing demand.
 /// Points should be ordered ascending by quantity and the prices non-increasing.

@@ -1,4 +1,4 @@
-use crate::{Map, Set, Submission};
+use crate::{HashMap, HashSet, Submission};
 use std::hash::Hash;
 
 // #[cfg(feature = "admm")]
@@ -22,7 +22,7 @@ pub(crate) fn prepare<
     ProductId: Eq + Hash + Clone + Ord,
 >(
     auction: &T,
-) -> (Map<AuthId, BidderId>, Map<ProductId, usize>, usize)
+) -> (HashMap<AuthId, BidderId>, HashMap<ProductId, usize>, usize)
 where
     for<'t> &'t T: IntoIterator<Item = (&'t BidderId, &'t Submission<AuthId, ProductId>)>,
 {
@@ -32,8 +32,8 @@ where
     // construct a reverse map of auth id to bidder id, for reporting the
     // solution.
 
-    let mut auths = Map::default();
-    let mut products = Set::default();
+    let mut auths = HashMap::default();
+    let mut products = HashSet::default();
     let mut ncosts = 0;
 
     for (bidder, submission) in auction.into_iter() {

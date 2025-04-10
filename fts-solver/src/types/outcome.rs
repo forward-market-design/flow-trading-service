@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::Map;
+use crate::HashMap;
 use std::hash::Hash;
 
 /// Solution data for an entire auction, containing the outcome for
@@ -8,9 +8,9 @@ use std::hash::Hash;
 #[derive(Debug)]
 pub struct AuctionOutcome<BidderId: Eq + Hash, AuthId: Eq + Hash, ProductId: Eq + Hash> {
     /// Outcomes for each submission
-    pub bidders: Map<BidderId, SubmissionOutcome<AuthId>>,
+    pub bidders: HashMap<BidderId, SubmissionOutcome<AuthId>>,
     /// Outcomes for each product, keyed by their ID
-    pub products: Map<ProductId, ProductOutcome>,
+    pub products: HashMap<ProductId, ProductOutcome>,
     // TODO: consider a collection for the cost curves, so that we can report
     // dual information for their linear constraints
     // TODO: this struct is also a good home for market-wide summaries, such as
@@ -32,7 +32,7 @@ impl<BidderId: Eq + Hash, AuthId: Eq + Hash, ProductId: Eq + Hash> Default
 #[derive(Debug, Serialize)]
 pub struct SubmissionOutcome<AuthId: Eq + Hash> {
     /// The mapping of auths to their outcomes
-    pub auths: Map<AuthId, AuthOutcome>,
+    pub auths: HashMap<AuthId, AuthOutcome>,
 }
 
 impl<AuthId: Eq + Hash> Default for SubmissionOutcome<AuthId> {

@@ -1,11 +1,11 @@
 use super::{Auth, Constant, Cost, Group, PiecewiseLinearCurve, Portfolio};
-use crate::{Map, Set};
+use crate::{HashMap, HashSet};
 use std::hash::Hash;
 
 /// A submission is a full expression of an agent's preferences in an auction.
 #[derive(Debug)]
 pub struct Submission<AuthId: Eq + Hash, ProductId: Eq + Hash> {
-    pub(crate) auths_active: Map<AuthId, Auth<ProductId>>,
+    pub(crate) auths_active: HashMap<AuthId, Auth<ProductId>>,
     pub(crate) auths_inactive: Vec<(AuthId, Portfolio<ProductId>)>,
     pub(crate) costs_curve: Vec<(Group<AuthId>, PiecewiseLinearCurve)>,
     pub(crate) costs_constant: Vec<(Group<AuthId>, Constant)>,
@@ -29,7 +29,7 @@ impl<AuthId: Eq + Hash + Clone, ProductId: Eq + Hash + Clone> Submission<AuthId,
         let mut constants = Vec::new();
 
         // This will allow us to track if auths are referenced by costs or not
-        let mut in_use = Set::<AuthId>::default();
+        let mut in_use = HashSet::<AuthId>::default();
 
         // Partition the costs by type, as well as record which auths are referenced.
         for (group, cost) in costs.into_iter() {
@@ -50,7 +50,7 @@ impl<AuthId: Eq + Hash + Clone, ProductId: Eq + Hash + Clone> Submission<AuthId,
 
         // Step 2: Partition the auths into those that can have nonzero trade and those that are necessarily zero.
         // This allows us to omit defunct terms from the optimization but still keep track of them.
-        let mut active = Map::default();
+        let mut active = HashMap::default();
         let mut inactive = Vec::new();
 
         for (auth_id, auth_data) in auths {
