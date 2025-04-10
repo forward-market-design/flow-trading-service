@@ -17,7 +17,6 @@ use utoipa::ToSchema;
 #[serde(untagged)]
 pub enum PutAuthDto {
     Create {
-        #[schema(value_type = std::collections::HashMap<fts_core::models::ProductId, f64>)]
         portfolio: Portfolio,
         data: AuthData,
     },

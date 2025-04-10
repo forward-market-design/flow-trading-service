@@ -1,10 +1,4 @@
-use crate::{
-    AppState,
-    openapi::{
-        ExampleAuctionOutcomeResponse, ExampleProductQueryResponse, ExampleProductRecord,
-        ProductQuery,
-    },
-};
+use crate::AppState;
 use axum::{
     Json, Router,
     extract::{Path, Query, State},
@@ -13,7 +7,10 @@ use axum::{
     routing,
 };
 use fts_core::{
-    models::{DateTimeRangeQuery, ProductId},
+    models::{
+        AuctionOutcome, DateTimeRangeQuery, DateTimeRangeResponse, ProductData, ProductId,
+        ProductQuery, ProductQueryResponse, ProductRecord,
+    },
     ports::{MarketRepository, ProductRepository},
 };
 use tracing::{Level, event};
@@ -32,11 +29,11 @@ pub fn router<T: MarketRepository>() -> Router<AppState<T>> {
     get,
     path = "/v0/products",
     responses(
-        (status = OK, body = ExampleProductQueryResponse),
+        (status = OK, body = ProductQueryResponse<ProductRecord<ProductData>, ProductQuery>),
         (status = INTERNAL_SERVER_ERROR)
     ),
     params(
-        ("example_query" = ProductQuery, Query)
+        ProductQuery
     ),
     tags = ["products"]
 )]
@@ -58,7 +55,7 @@ async fn list_products<T: MarketRepository>(
     get,
     path = "/v0/products/{product_id}",
     responses(
-        (status = OK, body = ExampleProductRecord),
+        (status = OK, body = ProductRecord<ProductData>),
         (status = NOT_FOUND),
         (status = INTERNAL_SERVER_ERROR)
     ),
@@ -84,11 +81,13 @@ async fn get_product<T: MarketRepository>(
     }
 }
 
+type ProductOutcomeBody = DateTimeRangeResponse<AuctionOutcome>;
+
 #[utoipa::path(
     get,
     path = "/v0/products/{product_id}/outcomes",
     responses(
-        (status = OK, body = ExampleAuctionOutcomeResponse),
+        (status = OK, body = ProductOutcomeBody),
         (status = INTERNAL_SERVER_ERROR)
     ),
     params(

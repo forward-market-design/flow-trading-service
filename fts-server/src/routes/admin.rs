@@ -1,8 +1,11 @@
 pub mod solve;
 
-use crate::{AppState, Now, openapi::ProductData, utils::Admin};
+use crate::{AppState, Now, utils::Admin};
 use axum::{Json, Router, extract::State, http::StatusCode, middleware, routing};
-use fts_core::{models::ProductId, ports::MarketRepository};
+use fts_core::{
+    models::{ProductData, ProductId},
+    ports::MarketRepository,
+};
 use solve::solve_auctions;
 use tracing::{Level, event};
 

@@ -1,11 +1,9 @@
 mod constant;
 mod curve;
 
-use crate::models::{AuthId, BidderId, uuid_wrapper};
+use crate::models::{AuthId, BidderId, map_wrapper, uuid_wrapper};
 pub use constant::{Constant, RawConstant};
 pub use curve::{Curve, Point};
-use fxhash::FxBuildHasher;
-use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 use thiserror::Error;
@@ -137,12 +135,7 @@ pub struct CostRecord {
     pub version: OffsetDateTime,
 }
 
-/// A group is a sparse collection of authorizations
-///
-/// Groups define which auths a particular cost applies to, with weights determining the
-/// relative contribution of each auth to the group's overall trade. This allows bidders
-/// to express substitution preferences between different portfolios.
-pub type Group = IndexMap<AuthId, f64, FxBuildHasher>;
+map_wrapper!(Group, AuthId, f64);
 
 impl CostRecord {
     /// Converts this cost record into a solver-compatible format.

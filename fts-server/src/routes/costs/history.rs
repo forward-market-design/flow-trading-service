@@ -15,7 +15,7 @@ use tracing::{Level, event};
     path = "/v0/costs/{cost_id}/history",
     operation_id = "get_cost_history", // needs to be unique, so we're distinguishing here
     responses(
-        (status = OK, body = crate::openapi::ExampleCostHistoryResponse),
+        (status = OK, body = DateTimeRangeResponse<CostHistoryRecord>),
         (status = UNAUTHORIZED), // no jwt token, handled by extractor
         (status = FORBIDDEN), // not allowed to see cost
         (status = NOT_FOUND), // no cost by that id

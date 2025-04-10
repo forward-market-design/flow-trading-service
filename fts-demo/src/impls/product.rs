@@ -1,35 +1,15 @@
 use crate::{DateTime, db};
 use fts_core::{
     models::{
-        AuctionOutcome, DateTimeRangeQuery, DateTimeRangeResponse, Outcome, ProductId,
-        ProductQueryResponse, ProductRecord,
+        AuctionOutcome, DateTimeRangeQuery, DateTimeRangeResponse, Outcome, ProductData, ProductId,
+        ProductQuery, ProductQueryResponse, ProductRecord,
     },
     ports::ProductRepository,
 };
 use rusqlite::OptionalExtension as _;
-use serde::{Deserialize, Serialize};
 use std::ops::Deref;
 use time::OffsetDateTime;
 use uuid::Uuid;
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct ProductData {
-    pub kind: String,
-    #[serde(with = "time::serde::rfc3339")]
-    pub from: OffsetDateTime,
-    #[serde(with = "time::serde::rfc3339")]
-    pub thru: OffsetDateTime,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ProductQuery {
-    #[serde(default)]
-    pub kind: Option<String>,
-    #[serde(default, with = "time::serde::rfc3339::option")]
-    pub before: Option<OffsetDateTime>,
-    #[serde(default, with = "time::serde::rfc3339::option")]
-    pub after: Option<OffsetDateTime>,
-}
 
 impl ProductRepository for db::Database {
     type Error = db::Error;
@@ -38,7 +18,7 @@ impl ProductRepository for db::Database {
 
     async fn define_products(
         &self,
-        products: impl Iterator<Item = ProductData>,
+        products: impl Iterator<Item = Self::ProductData>,
         timestamp: OffsetDateTime,
     ) -> Result<Vec<ProductId>, Self::Error> {
         let mut ctx = self.connect(true)?;
@@ -153,7 +133,7 @@ impl ProductRepository for db::Database {
         product_id: ProductId,
         query: DateTimeRangeQuery,
         limit: usize,
-    ) -> Result<DateTimeRangeResponse<AuctionOutcome<()>>, Self::Error> {
+    ) -> Result<DateTimeRangeResponse<AuctionOutcome>, Self::Error> {
         let ctx = self.connect(false)?;
         let mut stmt = ctx.prepare(
             r#"
@@ -188,7 +168,7 @@ impl ProductRepository for db::Database {
                     query.after.map(DateTime::from),
                     limit + 1,
                 ),
-                |row| -> Result<AuctionOutcome<()>, db::Error> {
+                |row| -> Result<AuctionOutcome, db::Error> {
                     Ok(AuctionOutcome {
                         from: row.get::<usize, DateTime>(0)?.into(),
                         thru: row.get::<usize, DateTime>(1)?.into(),

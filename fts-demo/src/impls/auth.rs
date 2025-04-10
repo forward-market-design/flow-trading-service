@@ -214,7 +214,7 @@ impl AuthRepository for db::Database {
         auth_id: AuthId,
         query: DateTimeRangeQuery,
         limit: usize,
-    ) -> Result<Result<DateTimeRangeResponse<AuctionOutcome<()>>, AuthFailure>, Self::Error> {
+    ) -> Result<Result<DateTimeRangeResponse<AuctionOutcome>, AuthFailure>, Self::Error> {
         let ctx = self.connect(false)?;
 
         match get_bidder(&ctx, auth_id)? {
@@ -265,7 +265,7 @@ impl AuthRepository for db::Database {
                     query.after.map(DateTime::from),
                     limit + 1,
                 ),
-                |row| -> Result<AuctionOutcome<()>, db::Error> {
+                |row| -> Result<AuctionOutcome, db::Error> {
                     Ok(AuctionOutcome {
                         from: row.get::<usize, DateTime>(0)?.into(),
                         thru: row.get::<usize, DateTime>(1)?.into(),

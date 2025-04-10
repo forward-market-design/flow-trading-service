@@ -235,7 +235,7 @@ async fn roundtrip(#[case] backend: impl Future<Output = (impl MarketRepository,
             .get(&format!("/v0/auths/{}/outcomes", fruit_id))
             .authorization_bearer(&account_tokens[0].1)
             .await
-            .json::<DateTimeRangeResponse<AuctionOutcome<()>>>();
+            .json::<DateTimeRangeResponse<AuctionOutcome>>();
 
         assert_eq!(response.results.len(), 1);
         assert_eq!((response.results[0].outcome.trade * 100.0).round(), -500.0);
@@ -246,7 +246,7 @@ async fn roundtrip(#[case] backend: impl Future<Output = (impl MarketRepository,
             .get(&format!("/v0/auths/{}/outcomes", veggie_id))
             .authorization_bearer(&account_tokens[1].1)
             .await
-            .json::<DateTimeRangeResponse<AuctionOutcome<()>>>();
+            .json::<DateTimeRangeResponse<AuctionOutcome>>();
 
         assert_eq!(response.results.len(), 1);
         assert_eq!((response.results[0].outcome.trade * 100.0).round(), -500.0);
@@ -257,7 +257,7 @@ async fn roundtrip(#[case] backend: impl Future<Output = (impl MarketRepository,
             .get(&format!("/v0/auths/{}/outcomes", produce_id))
             .authorization_bearer(&account_tokens[2].1)
             .await
-            .json::<DateTimeRangeResponse<AuctionOutcome<()>>>();
+            .json::<DateTimeRangeResponse<AuctionOutcome>>();
 
         assert_eq!(response.results.len(), 1);
         assert_eq!((response.results[0].outcome.trade * 100.0).round(), 500.0);
@@ -270,7 +270,7 @@ async fn roundtrip(#[case] backend: impl Future<Output = (impl MarketRepository,
         let response = server
             .get(&format!("/v0/products/{}/outcomes", product))
             .await
-            .json::<DateTimeRangeResponse<AuctionOutcome<()>>>();
+            .json::<DateTimeRangeResponse<AuctionOutcome>>();
 
         assert_eq!(response.results.len(), 1);
 

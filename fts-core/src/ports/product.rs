@@ -56,5 +56,5 @@ pub trait ProductRepository: Clone + Sized + Send + Sync + 'static {
         product_id: ProductId,
         query: DateTimeRangeQuery,
         limit: usize,
-    ) -> impl Future<Output = Result<DateTimeRangeResponse<AuctionOutcome<()>>, Self::Error>> + Send;
+    ) -> impl Future<Output = Result<DateTimeRangeResponse<AuctionOutcome>, Self::Error>> + Send;
 }
