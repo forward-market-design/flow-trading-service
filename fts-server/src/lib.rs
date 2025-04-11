@@ -10,6 +10,7 @@ use fts_core::{
     ports::{AuctionRepository, MarketRepository},
 };
 
+use axum::Json;
 use axum::Router;
 use axum::http::header;
 use axum::response::sse::Event;
@@ -75,6 +76,19 @@ pub struct Update<T> {
     /// Outcome data from the auction
     #[serde(flatten)]
     pub outcome: T,
+}
+
+/// Response for the health check endpoint
+#[derive(Serialize)]
+struct HealthResponse {
+    status: String,
+}
+
+/// Simple health check endpoint
+async fn health_check() -> Json<HealthResponse> {
+    Json(HealthResponse {
+        status: "ok".to_string(),
+    })
 }
 
 /// Creates the application state and solver background task.
@@ -214,6 +228,7 @@ pub fn router<T: MarketRepository>(state: AppState<T>) -> Router {
 
     // Wire it together
     let app = Router::new()
+        .route("/health", axum::routing::get(health_check))
         .nest("/v0/auths", routes::auths::router())
         .nest("/v0/costs", routes::costs::router())
         // Bidder-specific routes for their submission
