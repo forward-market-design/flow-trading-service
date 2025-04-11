@@ -23,6 +23,6 @@ jobs:
     steps:
       - name: POST via curl
         run: |
-          curl -X POST "$WEBHOOK_URL"
+          curl -X POST --fail "$WEBHOOK_URL"
         env:
-          WEBHOOK_URL: ${{ vars.CLOUDFLARE_PAGES_WEBHOOK }}
+          WEBHOOK_URL: ${{ secrets.CLOUDFLARE_PAGES_WEBHOOK }}
