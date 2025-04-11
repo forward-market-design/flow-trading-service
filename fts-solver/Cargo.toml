@@ -14,7 +14,7 @@ clarabel = { version = "0.10", optional = true }
 osqp = { version = "1.0", optional = true }
 
 fxhash = { workspace = true }
-indexmap = { workspace = true, features = ["std"] }
+indexmap = { workspace = true, features = ["std", "serde"] }
 serde = { workspace = true, features = ["derive"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }
