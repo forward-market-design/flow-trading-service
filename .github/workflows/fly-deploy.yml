@@ -1,21 +1,50 @@
-# See https://fly.io/docs/app-guides/continuous-deployment-with-github-actions/
-
 name: Fly Deploy
 on:
-  push:
-    tags:
-      - "fts-demo-v[0-9]+.[0-9]+.[0-9]+"
+  # We need to use the release trigger, and filter for the tag later on.
+  # push.tag is not triggered when a release is created, although a tag is created alongside it.
+  release:
+    types: [published]
+  # We also want to allow manual deployment via the GitHub UI.
+  workflow_dispatch:
+
 jobs:
+  check-tag:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+    outputs:
+      is_demo: ${{ steps.extract.outputs.IS_DEMO }}
+    steps:
+      - name: Check tag format
+        id: extract
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          if [[ $TAG =~ ^fts-demo-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "IS_DEMO=true" >> $GITHUB_OUTPUT
+          else
+            echo "IS_DEMO=false" >> $GITHUB_OUTPUT
+            echo "::notice::Not a demo tag, skipping."
+          fi
+
   deploy:
+    needs: check-tag
+    # This abomination is needed to allow both manual and automatic deployment:
+    # https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/evaluate-expressions-in-workflows-and-actions#always
+    if: |
+      always() && (
+        github.event_name == 'workflow_dispatch' ||
+        (needs.check-tag.result == 'success' && needs.check-tag.outputs.is_demo == 'true')
+      )
     name: Deploy app
     runs-on: ubuntu-latest
     concurrency: deploy-group # optional: ensure only one action runs at a time
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only
+      - name: Deploy to Fly.io
+        run: flyctl deploy --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
   build-docs:
     name: Rebuild docs website
     runs-on: ubuntu-latest
