@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3](https://github.com/forward-market-design/flow-trading-service/compare/fts-demo-v0.1.2...fts-demo-v0.1.3) - 2025-04-11
+
+### Fixed
+
+- ensure all schemas are exported
+- rearrange product types
+
+### Other
+
+- update READMEs with workspace & crate information
+
 ## [0.1.2](https://github.com/forward-market-design/flow-trading-service/compare/fts-demo-v0.1.1...fts-demo-v0.1.2) - 2025-03-21
 
 ### Other

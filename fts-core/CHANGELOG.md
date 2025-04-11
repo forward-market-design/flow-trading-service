@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3](https://github.com/forward-market-design/flow-trading-service/compare/fts-core-v0.1.2...fts-core-v0.1.3) - 2025-04-11
+
+### Added
+
+- *(api)* replace per-auth outcome stream with per-submission outcome stream
+
+### Fixed
+
+- promote portfolio and group to proper newtype
+- specify param location in query
+- ensure all schemas are exported
+- rearrange product types
+
+### Other
+
+- update READMEs with workspace & crate information
+
 ## [0.1.2](https://github.com/forward-market-design/flow-trading-service/compare/fts-core-v0.1.1...fts-core-v0.1.2) - 2025-03-21
 
 ### Other
