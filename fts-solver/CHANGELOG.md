@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0](https://github.com/forward-market-design/flow-trading-service/compare/fts-solver-v0.1.2...fts-solver-v0.2.0) - 2025-04-11
+
+### Added
+
+- *(api)* replace per-auth outcome stream with per-submission outcome stream
+
+### Fixed
+
+- update osqp call to new api
+
+### Other
+
+- Merge pull request #38 from forward-market-design/dependabot/cargo/osqp-1.0.0
+- *(deps)* bump osqp from 0.6.3 to 1.0.0
+
 ## [0.1.2](https://github.com/forward-market-design/flow-trading-service/compare/fts-solver-v0.1.1...fts-solver-v0.1.2) - 2025-03-21
 
 ### Other
