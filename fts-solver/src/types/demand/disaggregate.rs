@@ -5,30 +5,30 @@ use super::{Point, Segment};
 /// constructing the optimization program.
 pub fn disaggregate<T: Iterator<Item = Point>>(
     points: T,
-    domain: (f64, f64),
+    min: f64,
+    max: f64,
 ) -> Option<impl Iterator<Item = Result<Segment, Segment>>> {
-    if domain.1 < domain.0 {
+    if !(min <= 0.0 && 0.0 <= max) {
         return None;
     }
 
     let mut points = points.peekable();
 
     if let Some(point) = points.peek() {
-        let anchor = Some(if point.quantity >= domain.0 {
-            // Will never panic because points.peek().is_some()
-            points.next().unwrap()
+        let anchor = if point.quantity < min {
+            points.next()
         } else {
-            Point {
-                quantity: domain.0,
+            Some(Point {
+                quantity: min,
                 price: point.price,
-            }
-        });
+            })
+        };
 
         Some(
             Disaggregation {
                 points,
                 anchor,
-                domain,
+                domain: (min, max),
             }
             // We remove any demand segments which do not contribute, but we preserve
             // any invalid segments in order to surface the error to the caller.
@@ -60,17 +60,26 @@ impl<T: Iterator<Item = Point>> Iterator for Disaggregation<T> {
     // Iterate over the translated segments of a demand curve
     fn next(&mut self) -> Option<Self::Item> {
         // Are we anchored?
-        if let Some(prev) = self.anchor.take() {
+        while let Some(prev) = self.anchor.take() {
             // If so, contemplate the next point.
-            if let Some(next) = self.points.next() {
+            if self.domain.1 <= prev.quantity {
+                // early exit condition
+                return None;
+            } else if let Some(next) = self.points.next() {
                 // If there is a point, try to generate a segment.
                 self.anchor = Some(next.clone());
-                Segment::new(prev, next)
+
+                let segment = Segment::new(prev, next)
                     .map(|(demand, translate)| {
                         demand.clip(self.domain.0 - translate, self.domain.1 - translate)
                     })
                     .map_err(|(demand, _)| demand)
-                    .transpose()
+                    .transpose();
+                if segment.is_some() {
+                    return segment;
+                } else {
+                    continue;
+                }
             } else {
                 // If there are no more points, we are done iterating.
                 // However, we might need to extrapolate one additional point.
@@ -78,15 +87,154 @@ impl<T: Iterator<Item = Point>> Iterator for Disaggregation<T> {
                     quantity: self.domain.1,
                     price: prev.price,
                 };
-                Segment::new(prev, next)
+
+                return Segment::new(prev, next)
                     .map(|(demand, translate)| {
                         demand.clip(self.domain.0 - translate, self.domain.1 - translate)
                     })
                     .map_err(|(demand, _)| demand)
-                    .transpose()
+                    .transpose();
             }
-        } else {
-            None
         }
+
+        None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn data() -> impl Iterator<Item = Point> {
+        vec![
+            Point {
+                quantity: -2.0,
+                price: 4.0,
+            },
+            Point {
+                quantity: -1.0,
+                price: 3.0,
+            },
+            Point {
+                quantity: 1.0,
+                price: 1.0,
+            },
+            Point {
+                quantity: 2.0,
+                price: 0.0,
+            },
+        ]
+        .into_iter()
+    }
+
+    #[test]
+    fn extrapolate_bad() {
+        assert!(disaggregate(data(), -10.0, -5.0).is_none());
+        assert!(disaggregate(data(), 5.0, 10.0).is_none());
+    }
+
+    #[test]
+    fn extrapolate_demand() {
+        let segments = disaggregate(data(), 0.0, 5.0)
+            .unwrap()
+            .map(|res| res.unwrap())
+            .collect::<Vec<_>>();
+
+        let answer = vec![
+            Segment {
+                q0: 0.0,
+                q1: 1.0,
+                p0: 2.0,
+                p1: 1.0,
+            },
+            Segment {
+                q0: 0.0,
+                q1: 1.0,
+                p0: 1.0,
+                p1: 0.0,
+            },
+            Segment {
+                q0: 0.0,
+                q1: 3.0,
+                p0: 0.0,
+                p1: 0.0,
+            },
+        ];
+
+        assert_eq!(segments, answer);
+    }
+
+    #[test]
+    fn extrapolate_supply() {
+        let segments = disaggregate(data(), -5.0, 0.0)
+            .unwrap()
+            .map(|res| res.unwrap())
+            .collect::<Vec<_>>();
+
+        let answer = vec![
+            Segment {
+                q0: -3.0,
+                q1: 0.0,
+                p0: 4.0,
+                p1: 4.0,
+            },
+            Segment {
+                q0: -1.0,
+                q1: 0.0,
+                p0: 4.0,
+                p1: 3.0,
+            },
+            Segment {
+                q0: -1.0,
+                q1: 0.0,
+                p0: 3.0,
+                p1: 2.0,
+            },
+        ];
+
+        assert_eq!(segments, answer);
+    }
+
+    #[test]
+    fn extrapolate_arbitrage() {
+        let segments = disaggregate(data(), -5.0, 5.0)
+            .unwrap()
+            .map(|res| res.unwrap())
+            .collect::<Vec<_>>();
+
+        let answer = vec![
+            Segment {
+                q0: -3.0,
+                q1: 0.0,
+                p0: 4.0,
+                p1: 4.0,
+            },
+            Segment {
+                q0: -1.0,
+                q1: 0.0,
+                p0: 4.0,
+                p1: 3.0,
+            },
+            Segment {
+                q0: -1.0,
+                q1: 1.0,
+                p0: 3.0,
+                p1: 1.0,
+            },
+            Segment {
+                q0: 0.0,
+                q1: 1.0,
+                p0: 1.0,
+                p1: 0.0,
+            },
+            Segment {
+                q0: 0.0,
+                q1: 3.0,
+                p0: 0.0,
+                p1: 0.0,
+            },
+        ];
+
+        assert_eq!(segments, answer);
     }
 }

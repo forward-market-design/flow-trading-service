@@ -3,6 +3,7 @@ use super::Point;
 /// A single line segment satisfying q0 ≤ 0 ≤ q1 and p1 ≤ p0
 #[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct Segment {
     /// The supply associated to this segment (q0 ≤ 0)
     pub q0: f64,
@@ -74,13 +75,13 @@ impl Segment {
     pub unsafe fn clip_unchecked(self, qmin: f64, qmax: f64) -> Self {
         let (m, b) = self.slope_intercept();
 
-        let (q0, p0) = if self.q0 >= qmin {
+        let (q0, p0) = if m.is_infinite() || self.q0 >= qmin {
             (self.q0, self.p0)
         } else {
             (qmin, m * qmin + b)
         };
 
-        let (q1, p1) = if self.q1 <= qmax {
+        let (q1, p1) = if m.is_infinite() || self.q1 <= qmax {
             (self.q1, self.p1)
         } else {
             (qmax, m * qmax + b)
@@ -202,5 +203,160 @@ mod tests {
         assert!(Segment::new(a, b).is_err());
     }
 
-    // TODO: test slope_intercept() and clip()
+    #[test]
+    fn finite_slope() {
+        let a = Point {
+            quantity: -1.0,
+            price: 4.0,
+        };
+        let b = Point {
+            quantity: 1.0,
+            price: 0.0,
+        };
+
+        let (m, b) = Segment::new(a, b)
+            .expect("valid interval")
+            .0
+            .slope_intercept();
+
+        assert_eq!(m, -2.0);
+        assert_eq!(b, 2.0);
+    }
+
+    #[test]
+    fn infinite_slope() {
+        let a = Point {
+            quantity: -0.0,
+            price: 4.0,
+        };
+        let b = Point {
+            quantity: 0.0,
+            price: 0.0,
+        };
+
+        let (m, b) = Segment::new(a, b)
+            .expect("valid interval")
+            .0
+            .slope_intercept();
+
+        assert_eq!(m, f64::NEG_INFINITY);
+        assert_eq!(b, 2.0);
+    }
+
+    #[test]
+    fn zero_slope_neg() {
+        let a = Point {
+            quantity: f64::NEG_INFINITY,
+            price: 4.0,
+        };
+        let b = Point {
+            quantity: 1.0,
+            price: 0.0,
+        };
+
+        let (m, b) = Segment::new(a, b)
+            .expect("valid interval")
+            .0
+            .slope_intercept();
+
+        assert_eq!(m, 0.0);
+        assert_eq!(b, 2.0);
+    }
+
+    #[test]
+    fn zero_slope_pos() {
+        let a = Point {
+            quantity: -1.0,
+            price: 4.0,
+        };
+        let b = Point {
+            quantity: f64::INFINITY,
+            price: 0.0,
+        };
+
+        let (m, b) = Segment::new(a, b)
+            .expect("valid interval")
+            .0
+            .slope_intercept();
+
+        assert_eq!(m, 0.0);
+        assert_eq!(b, 2.0);
+    }
+
+    // Some simple data for the clip() tests
+    fn finite_data() -> Segment {
+        let a = Point {
+            quantity: -1.0,
+            price: 4.0,
+        };
+        let b = Point {
+            quantity: 1.0,
+            price: 0.0,
+        };
+
+        Segment::new(a, b).unwrap().0
+    }
+
+    #[test]
+    fn clip_0() {
+        let Segment { q0, q1, p0, p1 } = finite_data().clip(-5.0, 5.0).unwrap();
+        assert_eq!(q0, -1.0);
+        assert_eq!(q1, 1.0);
+        assert_eq!(p0, 4.0);
+        assert_eq!(p1, 0.0);
+    }
+
+    #[test]
+    fn demand_clip_1() {
+        let Segment { q0, q1, p0, p1 } = finite_data().clip(-5.0, 1.0).unwrap();
+        assert_eq!(q0, -1.0);
+        assert_eq!(q1, 1.0);
+        assert_eq!(p0, 4.0);
+        assert_eq!(p1, 0.0);
+    }
+
+    #[test]
+    fn demand_clip_2() {
+        let Segment { q0, q1, p0, p1 } = finite_data().clip(-5.0, 0.5).unwrap();
+        assert_eq!(q0, -1.0);
+        assert_eq!(q1, 0.5);
+        assert_eq!(p0, 4.0);
+        assert_eq!(p1, 1.0);
+    }
+
+    #[test]
+    fn demand_clip_3() {
+        let Segment { q0, q1, p0, p1 } = finite_data().clip(-5.0, 0.0).unwrap();
+        assert_eq!(q0, -1.0);
+        assert_eq!(q1, 0.0);
+        assert_eq!(p0, 4.0);
+        assert_eq!(p1, 2.0);
+    }
+
+    #[test]
+    fn supply_clip_1() {
+        let Segment { q0, q1, p0, p1 } = finite_data().clip(-1.0, 5.0).unwrap();
+        assert_eq!(q0, -1.0);
+        assert_eq!(q1, 1.0);
+        assert_eq!(p0, 4.0);
+        assert_eq!(p1, 0.0);
+    }
+
+    #[test]
+    fn supply_clip_2() {
+        let Segment { q0, q1, p0, p1 } = finite_data().clip(-0.5, 5.0).unwrap();
+        assert_eq!(q0, -0.5);
+        assert_eq!(q1, 1.0);
+        assert_eq!(p0, 3.0);
+        assert_eq!(p1, 0.0);
+    }
+
+    #[test]
+    fn supply_clip_3() {
+        let Segment { q0, q1, p0, p1 } = finite_data().clip(0.0, 5.0).unwrap();
+        assert_eq!(q0, 0.0);
+        assert_eq!(q1, 1.0);
+        assert_eq!(p0, 2.0);
+        assert_eq!(p1, 0.0);
+    }
 }
