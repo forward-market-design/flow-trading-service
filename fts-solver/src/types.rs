@@ -3,6 +3,9 @@ use std::hash::Hash;
 mod submission;
 pub use submission::*;
 
+mod submission2;
+pub use submission2::*;
+
 mod spvec;
 pub(crate) use spvec::spvec;
 

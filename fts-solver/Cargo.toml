@@ -16,6 +16,8 @@ osqp = { version = "1.0", optional = true }
 serde = { workspace = true, features = ["derive"], optional = true }
 
 # core crates used by the library
+rustc-hash = "2.1.1"
+
 fxhash = { workspace = true }
 indexmap = { workspace = true, features = ["std"] }
 thiserror = { workspace = true }

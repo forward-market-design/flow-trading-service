@@ -1,4 +1,5 @@
 use super::{Point, Segment};
+use std::iter::Peekable;
 
 /// If a demand curve is an aggregation of individual demand segments, then we
 /// can disaggregate a demand curve into these segments. This is useful for
@@ -46,7 +47,7 @@ pub fn disaggregate<T: Iterator<Item = Point>>(
 #[derive(Debug)]
 struct Disaggregation<T: Iterator<Item = Point>> {
     /// The raw, underlying iterator of points
-    points: T,
+    points: Peekable<T>,
     /// An anchoring point, representing the "left" point of a sliding window of points
     anchor: Option<Point>,
     // A clipping domain. Since we validate domain.0 <= domain.1 in the caller, and the constructor is private, we can rely on this invariant
@@ -65,8 +66,23 @@ impl<T: Iterator<Item = Point>> Iterator for Disaggregation<T> {
             if self.domain.1 <= prev.quantity {
                 // early exit condition
                 return None;
-            } else if let Some(next) = self.points.next() {
+            } else if let Some(mut next) = self.points.next() {
                 // If there is a point, try to generate a segment.
+                loop {
+                    // We remove any interior, collinear points to simplify the curve
+                    if let Some(extra) = self.points.peek() {
+                        if next.is_collinear(&prev, extra) {
+                            // Safe, since self.points.peek().is_some()
+                            next = self.points.next().unwrap();
+                            continue;
+                        } else {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                }
+
                 self.anchor = Some(next.clone());
 
                 let segment = Segment::new(prev, next)
@@ -128,6 +144,24 @@ mod tests {
     }
 
     #[test]
+    fn collinear_reduction() {
+        let segments = disaggregate(data(), -2.0, 2.0)
+            .unwrap()
+            .map(|res| res.unwrap())
+            .collect::<Vec<_>>();
+
+        assert_eq!(
+            segments,
+            vec![Segment {
+                q0: -2.0,
+                q1: 2.0,
+                p0: 4.0,
+                p1: 0.0,
+            }]
+        )
+    }
+
+    #[test]
     fn extrapolate_bad() {
         assert!(disaggregate(data(), -10.0, -5.0).is_none());
         assert!(disaggregate(data(), 5.0, 10.0).is_none());
@@ -143,14 +177,8 @@ mod tests {
         let answer = vec![
             Segment {
                 q0: 0.0,
-                q1: 1.0,
+                q1: 2.0,
                 p0: 2.0,
-                p1: 1.0,
-            },
-            Segment {
-                q0: 0.0,
-                q1: 1.0,
-                p0: 1.0,
                 p1: 0.0,
             },
             Segment {
@@ -179,15 +207,9 @@ mod tests {
                 p1: 4.0,
             },
             Segment {
-                q0: -1.0,
+                q0: -2.0,
                 q1: 0.0,
                 p0: 4.0,
-                p1: 3.0,
-            },
-            Segment {
-                q0: -1.0,
-                q1: 0.0,
-                p0: 3.0,
                 p1: 2.0,
             },
         ];
@@ -210,21 +232,9 @@ mod tests {
                 p1: 4.0,
             },
             Segment {
-                q0: -1.0,
-                q1: 0.0,
+                q0: -2.0,
+                q1: 2.0,
                 p0: 4.0,
-                p1: 3.0,
-            },
-            Segment {
-                q0: -1.0,
-                q1: 1.0,
-                p0: 3.0,
-                p1: 1.0,
-            },
-            Segment {
-                q0: 0.0,
-                q1: 1.0,
-                p0: 1.0,
                 p1: 0.0,
             },
             Segment {

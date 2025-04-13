@@ -21,5 +21,5 @@ pub use types::*;
 // Accordingly, we swap out the stdlib collections for those provided by `indexmap`.
 // Since we're swapping out these types already, we can benefit from a hash function
 // that is optimized for small collections.
-pub(crate) type HashMap<K, V> = indexmap::IndexMap<K, V, fxhash::FxBuildHasher>;
-pub(crate) type HashSet<T> = indexmap::IndexSet<T, fxhash::FxBuildHasher>;
+pub(crate) type HashMap<K, V> = indexmap::IndexMap<K, V, rustc_hash::FxBuildHasher>;
+pub(crate) type HashSet<T> = indexmap::IndexSet<T, rustc_hash::FxBuildHasher>;

@@ -10,6 +10,26 @@ pub struct Point {
     pub price: f64,
 }
 
+impl Point {
+    // Is this point collinear with the other two?
+    pub fn is_collinear(&self, lhs: &Self, rhs: &Self) -> bool {
+        let &Point {
+            quantity: x0,
+            price: y0,
+        } = lhs;
+        let &Point {
+            quantity: x1,
+            price: y1,
+        } = self;
+        let &Point {
+            quantity: x2,
+            price: y2,
+        } = rhs;
+
+        (x2 - x0) * (y1 - y0) == (x1 - x0) * (y2 - y0)
+    }
+}
+
 // We define a partial ordering for point so that demand curve validation is:
 // All consecutive pairs of points satisfy pt0.partial_cmp(&pt1).is_le()
 impl PartialOrd for Point {
