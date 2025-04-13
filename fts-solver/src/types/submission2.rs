@@ -5,8 +5,15 @@ use thiserror::Error;
 
 /// The fundamental input to a `Solver` implementation, containing an
 /// independent collection of portfolios and demand curves.
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Submission2<PortfolioId: Clone + Hash + Eq, ProductId: Hash + Eq + Ord> {
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(bound = "
+        PortfolioId: Clone + Hash + Eq + serde::Serialize + serde::de::DeserializeOwned,
+        ProductId: Hash + Eq + Ord + serde::Serialize + serde::de::DeserializeOwned
+    ")
+)]
+pub struct Submission2<PortfolioId, ProductId> {
     /// The portfolios that are defined by the submission.
     pub portfolios: HashMap<PortfolioId, HashMap<ProductId, f64>>,
 
