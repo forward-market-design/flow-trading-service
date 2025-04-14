@@ -1,4 +1,4 @@
-use crate::{HashMap, HashSet, Submission};
+use crate::{HashSet, Submission};
 use std::hash::Hash;
 
 // #[cfg(feature = "admm")]
@@ -18,41 +18,35 @@ pub mod osqp;
 pub(crate) fn prepare<
     T,
     BidderId: Eq + Hash + Clone + Ord,
-    AuthId: Eq + Hash + Clone + Ord,
+    PortfolioId: Eq + Hash + Clone + Ord,
     ProductId: Eq + Hash + Clone + Ord,
 >(
     auction: &T,
-) -> (HashMap<AuthId, BidderId>, HashMap<ProductId, usize>, usize)
+) -> (HashSet<ProductId>, usize)
 where
-    for<'t> &'t T: IntoIterator<Item = (&'t BidderId, &'t Submission<AuthId, ProductId>)>,
+    for<'t> &'t T: IntoIterator<Item = (&'t BidderId, &'t Submission<PortfolioId, ProductId>)>,
 {
     // In order to setup the the optimization program, we need to define
     // up front the full space of products, as well as assign a canonical
-    // enumerative index to each of them. While we're doing this, we also
-    // construct a reverse map of auth id to bidder id, for reporting the
-    // solution.
+    // enumerative index to each of them. Due to the structure of the matrix
+    // we also need to know the total number of costs.
 
-    let mut auths = HashMap::default();
     let mut products = HashSet::default();
     let mut ncosts = 0;
 
-    for (bidder, submission) in auction.into_iter() {
-        for (auth_id, auth_data) in submission.auths_active.iter() {
-            auths.insert(auth_id.clone(), bidder.clone());
-            products.extend(auth_data.portfolio.keys());
-        }
-        ncosts += submission.costs_curve.len() + submission.costs_constant.len();
+    for (_, submission) in auction.into_iter() {
+        products.extend(
+            submission
+                .portfolios
+                .values()
+                .flat_map(|portfolio| portfolio.keys().map(Clone::clone)),
+        );
+
+        ncosts += submission.demand_curves.len();
     }
 
     // Provide a canonical ordering to the product ids
     products.sort_unstable();
 
-    // Build the index lookup
-    let products = products
-        .into_iter()
-        .enumerate()
-        .map(|(a, b)| (b.clone(), a))
-        .collect();
-
-    (auths, products, ncosts)
+    (products, ncosts)
 }

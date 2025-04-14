@@ -11,7 +11,7 @@ pub struct Point {
 }
 
 impl Point {
-    // Is this point collinear with the other two?
+    /// Is this point collinear with the other two?
     pub fn is_collinear(&self, lhs: &Self, rhs: &Self) -> bool {
         let &Point {
             quantity: x0,

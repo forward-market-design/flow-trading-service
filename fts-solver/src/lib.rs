@@ -5,6 +5,7 @@
 //! [fts_solver]: https://docs.rs/fts_solver/latest/fts_solver/index.html
 //! [fts_demo]: https://docs.rs/fts_demo/latest/fts_demo/index.html
 #![doc = include_str!("../README.md")]
+
 /**
  * The various solver implementations.
  */
