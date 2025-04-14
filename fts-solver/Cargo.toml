@@ -9,8 +9,8 @@ rust-version.workspace = true
 version = "0.2.0"
 
 [[bin]]
-name = "solver"
-path = "src/bin/solver.rs"
+name = "ftsolve"
+path = "src/bin/ftsolve.rs"
 required-features = ["cli"]
 
 [dependencies]
