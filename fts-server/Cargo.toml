@@ -10,7 +10,7 @@ version = "0.2.0"
 
 [dependencies]
 fts-core = { path = "../fts-core", version = "0.1.3" }
-fts-solver = { path = "../fts-solver", version = "0.2.0" }
+fts-solver = { path = "../fts-solver", version = "0.2.0", features = ["clarabel", "serde"]  }
 
 # Workspace dependencies
 fxhash = { workspace = true }
