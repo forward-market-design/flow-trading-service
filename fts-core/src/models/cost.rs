@@ -142,33 +142,32 @@ impl CostRecord {
     ///
     /// This method transforms the cost record into the appropriate solver structures,
     /// applying the time scale to rate-based constraints as needed.
-    pub fn into_solver(self, scale: f64) -> Option<(fts_solver::Group<AuthId>, fts_solver::Cost)> {
-        let group = self.group.unwrap_or_default().into_iter().collect();
-
+    pub fn into_solver(
+        self,
+        scale: f64,
+    ) -> Option<
+        fts_solver::DemandCurve<
+            AuthId,
+            indexmap::map::IntoIter<AuthId, f64>,
+            std::vec::IntoIter<fts_solver::Point>,
+        >,
+    > {
         if let Some(data) = self.data {
-            Some((
+            let group = self.group.unwrap_or_default().into_iter();
+            let points = match data {
+                CostData::Curve(curve) => curve.as_solver(scale),
+                CostData::Constant(constant) => constant.as_solver(scale),
+            };
+            let domain = (
+                points.first().map(|pt| pt.quantity).unwrap_or_default(),
+                points.last().map(|pt| pt.quantity).unwrap_or_default(),
+            );
+
+            Some(fts_solver::DemandCurve {
+                domain,
                 group,
-                match data {
-                    CostData::Curve(curve) => {
-                        let curve = curve.as_solver(scale);
-                        if curve.points.len() == 1 {
-                            // We can convert a pathological curve into a constraint
-                            let point = curve.points.first().unwrap();
-                            // assert_eq!(point.quantity, 0.0);
-                            let constant = fts_solver::Constant {
-                                quantity: (point.quantity, point.quantity),
-                                price: point.price,
-                            };
-                            fts_solver::Cost::Constant(constant)
-                        } else {
-                            fts_solver::Cost::PiecewiseLinearCurve(curve)
-                        }
-                    }
-                    CostData::Constant(constant) => {
-                        fts_solver::Cost::Constant(constant.as_solver(scale))
-                    }
-                },
-            ))
+                points: points.into_iter(),
+            })
         } else {
             None
         }

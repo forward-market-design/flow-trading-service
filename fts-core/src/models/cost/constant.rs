@@ -190,10 +190,16 @@ impl Constant {
     ///
     /// Applies the given time scale to rate-based values to produce
     /// quantity-based values for the solver
-    pub fn as_solver(&self, scale: f64) -> fts_solver::Constant {
-        fts_solver::Constant {
-            quantity: (self.min_rate * scale, self.max_rate * scale),
-            price: self.price,
-        }
+    pub fn as_solver(&self, scale: f64) -> Vec<fts_solver::Point> {
+        vec![
+            fts_solver::Point {
+                quantity: self.min_rate * scale,
+                price: self.price,
+            },
+            fts_solver::Point {
+                quantity: self.max_rate * scale,
+                price: self.price,
+            },
+        ]
     }
 }

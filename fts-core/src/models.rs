@@ -102,7 +102,7 @@ macro_rules! map_wrapper {
 
         impl $struct {
             /// Forward the into_iter() implementation from the newtype
-            pub fn into_iter(self) -> impl Iterator<Item = ($key, $value)> {
+            pub fn into_iter(self) -> indexmap::map::IntoIter<$key, $value> {
                 self.0.into_iter()
             }
         }

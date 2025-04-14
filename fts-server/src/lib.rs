@@ -119,13 +119,16 @@ pub fn state<T: MarketRepository>(
                 let submissions = auction.into_solver();
 
                 // TODO: this is where warm-starting would be used
-                let fts_solver::AuctionOutcome { bidders, products } = solver.solve(&submissions);
+                let fts_solver::AuctionOutcome {
+                    submissions,
+                    products,
+                } = solver.solve(&submissions);
 
                 // TODO: update the API to scope the auth_id the bidder_id
-                let auth_outcomes = bidders
+                let auth_outcomes = submissions
                     .values()
                     .flat_map(|outcome| {
-                        outcome.auths.iter().map(|(auth_id, auth_outcome)| {
+                        outcome.iter().map(|(auth_id, auth_outcome)| {
                             (
                                 auth_id.clone(),
                                 Outcome {
@@ -187,7 +190,7 @@ pub fn state<T: MarketRepository>(
                         };
                     }
 
-                    for (bidder_id, outcome) in bidders {
+                    for (bidder_id, outcome) in submissions {
                         if let Some(channel) = bidder_sender.get(&bidder_id) {
                             let update = Update {
                                 from: metadata.from,
