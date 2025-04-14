@@ -145,15 +145,9 @@ impl CostRecord {
     pub fn into_solver(
         self,
         scale: f64,
-    ) -> Option<
-        fts_solver::DemandCurve<
-            AuthId,
-            indexmap::map::IntoIter<AuthId, f64>,
-            std::vec::IntoIter<fts_solver::Point>,
-        >,
-    > {
+    ) -> Option<fts_solver::DemandCurve<AuthId, Group, Vec<fts_solver::Point>>> {
         if let Some(data) = self.data {
-            let group = self.group.unwrap_or_default().into_iter();
+            let group = self.group.unwrap_or_default();
             let points = match data {
                 CostData::Curve(curve) => curve.as_solver(scale),
                 CostData::Constant(constant) => constant.as_solver(scale),
@@ -166,7 +160,7 @@ impl CostRecord {
             Some(fts_solver::DemandCurve {
                 domain,
                 group,
-                points: points.into_iter(),
+                points,
             })
         } else {
             None

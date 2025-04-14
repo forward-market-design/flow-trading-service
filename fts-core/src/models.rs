@@ -100,9 +100,11 @@ macro_rules! map_wrapper {
             }
         }
 
-        impl $struct {
+        impl IntoIterator for $struct {
+            type Item = ($key, $value);
+            type IntoIter = indexmap::map::IntoIter<$key, $value>;
             /// Forward the into_iter() implementation from the newtype
-            pub fn into_iter(self) -> indexmap::map::IntoIter<$key, $value> {
+            fn into_iter(self) -> Self::IntoIter {
                 self.0.into_iter()
             }
         }

@@ -58,16 +58,14 @@ impl RawAuction {
                     Ok((
                         bidder_id,
                         Submission::new(
-                            portfolios
-                                .into_iter()
-                                .map(|(id, portfolio)| (id, portfolio.into_iter())),
+                            portfolios,
                             demand_curves.into_iter().map(|curve| {
                                 let domain = curve.domain();
                                 let RawDemandCurve { group, points } = curve;
                                 DemandCurve {
                                     domain,
-                                    group: group.into_iter(),
-                                    points: points.into_iter(),
+                                    group,
+                                    points,
                                 }
                             }),
                         )?,

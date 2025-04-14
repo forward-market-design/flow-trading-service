@@ -9,7 +9,7 @@ pub use disaggregate::disaggregate;
 
 /// A demand curve represents utility via a piecewise linear function
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct DemandCurve<Idx, A: Iterator<Item = (Idx, f64)>, B: Iterator<Item = Point>> {
+pub struct DemandCurve<Idx, A: IntoIterator<Item = (Idx, f64)>, B: IntoIterator<Item = Point>> {
     /// Constrains the otherwise-infinite domain of the function to q ∈ 𝒟
     pub domain: (f64, f64),
     /// The sparse vector that combines in an inner product with the portfolio variables

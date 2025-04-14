@@ -178,12 +178,8 @@ impl AuthRecord {
         self,
         scale: f64,
     ) -> Option<(
-        impl ExactSizeIterator<Item = (ProductId, f64)>,
-        fts_solver::DemandCurve<
-            AuthId,
-            indexmap::map::IntoIter<AuthId, f64>,
-            std::vec::IntoIter<fts_solver::Point>,
-        >,
+        Portfolio,
+        fts_solver::DemandCurve<AuthId, Group, Vec<fts_solver::Point>>,
     )> {
         let trade = self.trade.unwrap_or_default();
         if let Some(data) = self.data {
@@ -191,17 +187,14 @@ impl AuthRecord {
             let max_trade = (data.max_trade - trade).min(data.max_rate * scale).max(0.0);
 
             Some((
-                self.portfolio.unwrap_or_default().into_iter(),
+                self.portfolio.unwrap_or_default(),
                 fts_solver::DemandCurve {
                     domain: (min_trade, max_trade),
-                    group: std::iter::once((self.auth_id, 1.0))
-                        .collect::<Group>()
-                        .into_iter(),
+                    group: std::iter::once((self.auth_id, 1.0)).collect(),
                     points: vec![fts_solver::Point {
                         quantity: 0.0,
                         price: 0.0,
-                    }]
-                    .into_iter(),
+                    }],
                 },
             ))
         } else {

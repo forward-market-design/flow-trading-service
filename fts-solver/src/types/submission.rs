@@ -26,17 +26,20 @@ impl<PortfolioId: Clone + Hash + Eq, ProductId: Hash + Eq + Ord>
 {
     /// Construct a canonicalized submission from the inputs
     pub fn new<T, U, V>(
-        portfolios: impl Iterator<Item = (PortfolioId, T)>,
-        curves: impl Iterator<Item = DemandCurve<PortfolioId, U, V>>,
+        portfolios: impl IntoIterator<Item = (PortfolioId, T)>,
+        curves: impl IntoIterator<Item = DemandCurve<PortfolioId, U, V>>,
     ) -> Result<Submission<PortfolioId, ProductId>, SubmissionError>
     where
-        T: ExactSizeIterator<Item = (ProductId, f64)>,
-        U: Iterator<Item = (PortfolioId, f64)>,
-        V: Iterator<Item = Point>,
+        T: IntoIterator<Item = (ProductId, f64)>,
+        T::IntoIter: ExactSizeIterator,
+        U: IntoIterator<Item = (PortfolioId, f64)>,
+        V: IntoIterator<Item = Point>,
     {
         // Step 1: Canonicalize the portfolios
         let portfolios = portfolios
+            .into_iter()
             .map(|(id, weights)| {
+                let weights = weights.into_iter();
                 let mut portfolio = HashMap::<ProductId, f64>::with_capacity_and_hasher(
                     weights.len(),
                     Default::default(),
@@ -68,6 +71,7 @@ impl<PortfolioId: Clone + Hash + Eq, ProductId: Hash + Eq + Ord>
 
         // Step 2: Canonicalize the demand curves
         let mut curves = curves
+            .into_iter()
             .filter_map(
                 |DemandCurve {
                      domain: (min, max),
@@ -110,7 +114,7 @@ impl<PortfolioId: Clone + Hash + Eq, ProductId: Hash + Eq + Ord>
                     };
 
                     // Decompose the curve into its constituent segments
-                    let segments = disaggregate(points, min, max)
+                    let segments = disaggregate(points.into_iter(), min, max)
                         .map(|iter| iter.collect::<Result<Vec<_>, _>>());
 
                     match segments {

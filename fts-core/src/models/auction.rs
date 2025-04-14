@@ -115,8 +115,7 @@ impl<T> RawAuctionInput<T> {
                     // Having done all that, we now have a submission
                     Some((
                         bidder_id,
-                        fts_solver::Submission::new(portfolios.into_iter(), curves.into_iter())
-                            .ok()?,
+                        fts_solver::Submission::new(portfolios, curves).ok()?,
                     ))
                 } else {
                     None
