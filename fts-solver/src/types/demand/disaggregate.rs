@@ -79,6 +79,15 @@ impl<T: Iterator<Item = Point>> Iterator for Disaggregation<T> {
                             break;
                         }
                     } else {
+                        if self.domain.1 > next.quantity {
+                            let extra = Point {
+                                quantity: self.domain.1,
+                                price: next.price,
+                            };
+                            if next.is_collinear(&prev, &extra) {
+                                next = extra;
+                            }
+                        }
                         break;
                     }
                 }
@@ -244,6 +253,30 @@ mod tests {
                 p1: 0.0,
             },
         ];
+
+        assert_eq!(segments, answer);
+    }
+
+    #[test]
+    fn extrapolate_simple() {
+        let segments = disaggregate(
+            std::iter::once(Point {
+                quantity: 0.0,
+                price: 5.0,
+            }),
+            -5.0,
+            5.0,
+        )
+        .unwrap()
+        .map(|res| res.unwrap())
+        .collect::<Vec<_>>();
+
+        let answer = vec![Segment {
+            q0: -5.0,
+            q1: 5.0,
+            p0: 5.0,
+            p1: 5.0,
+        }];
 
         assert_eq!(segments, answer);
     }
