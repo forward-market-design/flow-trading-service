@@ -1,0 +1,22 @@
+{
+    "submissions": {
+        "buyer": {
+            "X": {
+                "price": 7.5,
+                "trade": 0.5
+            }
+        },
+        "seller": {
+            "X": {
+                "price": 7.5,
+                "trade": -0.5
+            }
+        }
+    },
+    "products": {
+        "A": {
+            "price": 7.5,
+            "trade": 0.5
+        }
+    }
+}

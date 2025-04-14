@@ -851,16 +851,18 @@ dependencies = [
 name = "fts-solver"
 version = "0.2.0"
 dependencies = [
+ "anyhow",
  "approx",
+ "clap",
  "clarabel",
  "fts-solver",
- "fxhash",
  "indexmap",
  "osqp",
  "rstest",
  "rstest_reuse",
  "rustc-hash",
  "serde",
+ "serde_json",
  "thiserror 2.0.12",
  "tracing",
 ]

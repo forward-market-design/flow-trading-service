@@ -18,6 +18,10 @@ pub use impls::*;
 mod types;
 pub use types::*;
 
+#[cfg(feature = "cli")]
+/// Utilies for a CLI interface to the solver
+pub mod cli;
+
 // For reproducibility, we need explicitly ordered semantics in our collections.
 // Accordingly, we swap out the stdlib collections for those provided by `indexmap`.
 // Since we're swapping out these types already, we can benefit from a hash function
