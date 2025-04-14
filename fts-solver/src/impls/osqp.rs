@@ -87,14 +87,15 @@ impl Solver for OsqpSolver {
                 // in matrix terms, the representation is transposed in the wrong way.
                 // However, we expect the number of groups to be fairly small, so simply
                 // searching every group for every portfolio in the submission is not so bad.
-                for (group, _) in submission.demand_curves.iter() {
+                for (offset, (group, _)) in submission.demand_curves.iter().enumerate() {
                     if let Some(&weight) = group.get(id) {
                         a_nzval.push(weight);
-                        a_rowval.push(group_offset);
+                        a_rowval.push(group_offset + offset);
                     }
-                    group_offset += 1;
                 }
             }
+
+            group_offset += submission.demand_curves.len();
         }
 
         // Now we setup the segment variables
