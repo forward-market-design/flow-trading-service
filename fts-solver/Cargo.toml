@@ -39,7 +39,7 @@ rstest = { workspace = true }
 rstest_reuse = { workspace = true }
 
 # enable all the features for testing purposes
-fts-solver = { path = ".", features = ["clarabel", "osqp", "serde"] }
+fts-solver = { path = ".", features = ["cli"] }
 
 [features]
 default = ["clarabel"]
