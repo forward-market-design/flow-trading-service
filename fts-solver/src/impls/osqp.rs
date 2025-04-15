@@ -1,8 +1,4 @@
-use crate::{
-    AuctionOutcome, Auth, AuthOutcome, Constant, Point, ProductOutcome, Solver, Submission,
-};
-use crate::{Map, SubmissionOutcome};
-use core::f64;
+use crate::{AuctionOutcome, HashMap, PortfolioOutcome, ProductOutcome, Solver, Submission};
 use osqp::{CscMatrix, Problem, Settings, Status};
 use std::hash::Hash;
 
@@ -40,7 +36,7 @@ impl Solver for OsqpSolver {
     where
         for<'t> &'t T: IntoIterator<Item = (&'t BidderId, &'t Submission<AuthId, ProductId>)>,
     {
-        let (auths, products, ncosts) = super::prepare(auction);
+        let (products, ncosts) = super::prepare(auction);
 
         if products.len() == 0 {
             return AuctionOutcome::default();
@@ -73,15 +69,7 @@ impl Solver for OsqpSolver {
 
         // We begin by setting up the portfolio variables
         for (_, submission) in auction.into_iter() {
-            for (
-                auth_id,
-                Auth {
-                    min_trade,
-                    max_trade,
-                    portfolio,
-                },
-            ) in submission.auths_active.iter()
-            {
+            for (id, portfolio) in submission.portfolios.iter() {
                 // portfolio variables contribute nothing to the objective
                 p.push(0.0);
                 q.push(0.0);
@@ -92,69 +80,34 @@ impl Solver for OsqpSolver {
                 // We copy the portfolio definition into the matrix
                 for (product, &weight) in portfolio.iter() {
                     a_nzval.push(weight);
-                    a_rowval.push(*products.get(product).unwrap());
+                    a_rowval.push(products.get_index_of(product).unwrap());
                 }
 
                 // Now we embed the weights from each group. This loop is a little wonky;
                 // in matrix terms, the representation is transposed in the wrong way.
                 // However, we expect the number of groups to be fairly small, so simply
                 // searching every group for every portfolio in the submission is not so bad.
-                for group in submission
-                    .costs_curve
-                    .iter()
-                    .map(|(group, _)| group)
-                    .chain(submission.costs_constant.iter().map(|(group, _)| group))
-                {
-                    if let Some(x) = group.get(auth_id) {
-                        a_nzval.push(x);
-                        a_rowval.push(group_offset);
-                        group_offset += 1;
+                for (offset, (group, _)) in submission.demand_curves.iter().enumerate() {
+                    if let Some(&weight) = group.get(id) {
+                        a_nzval.push(weight);
+                        a_rowval.push(group_offset + offset);
                     }
                 }
-
-                // Now we add the box constraints.
-                if min_trade.is_finite() || max_trade.is_finite() {
-                    a_nzval.push(1.0);
-                    a_rowval.push(lb.len());
-                    lb.push(*min_trade);
-                    ub.push(*max_trade);
-                }
             }
+
+            group_offset += submission.demand_curves.len();
         }
 
         // Now we setup the segment variables
         group_offset = products.len();
         for (_, submission) in auction.into_iter() {
-            for (_, curve) in submission.costs_curve.iter() {
-                for pair in curve.points.windows(2) {
-                    // Extract the coordinates
-                    let Point {
-                        quantity: x0,
-                        price: y0,
-                    } = pair[0];
-                    let Point {
-                        quantity: x1,
-                        price: y1,
-                    } = pair[1];
-
-                    // Slide the segment so that it abuts x=0
-                    let (x0, x1) = {
-                        let translate = x0.max(0.0) + x1.min(0.0);
-                        (x0 - translate, x1 - translate)
-                    };
-
-                    let dx = x1 - x0;
-                    let dy = y1 - y0;
-
-                    // We ignore vertical segments
-                    if dx == 0.0 {
-                        continue;
-                    }
+            for (_, curve) in submission.demand_curves.iter() {
+                for segment in curve.iter() {
+                    let (m, pzero) = segment.slope_intercept();
 
                     // Setup the contributions to the objective
-                    let quad = -dy / dx;
-                    p.push(quad);
-                    q.push(-(y0 + quad * x0));
+                    p.push(-m);
+                    q.push(-pzero);
 
                     // Insert a new column
                     a_colptr.push(a_nzval.len());
@@ -166,40 +119,8 @@ impl Solver for OsqpSolver {
                     // Setup the box constraints
                     a_nzval.push(1.0);
                     a_rowval.push(lb.len());
-                    lb.push(x0);
-                    ub.push(x1);
-                }
-
-                // Advance the group offset for the next bid/constraint
-                group_offset += 1;
-            }
-
-            for (
-                _,
-                Constant {
-                    quantity: (min, max),
-                    price,
-                },
-            ) in submission.costs_constant.iter()
-            {
-                // Constraint segments contribute nothing to the objective, but otherwise
-                // act a lot like a curve.
-                p.push(0.0);
-                q.push(-price);
-
-                // Insert a new column
-                a_colptr.push(a_nzval.len());
-
-                // Ensure it counts towards the group
-                a_nzval.push(-1.0);
-                a_rowval.push(group_offset);
-
-                // Also establish the relevant constraints
-                if min.is_finite() || max.is_finite() {
-                    a_nzval.push(1.0);
-                    a_rowval.push(lb.len());
-                    lb.push(*min);
-                    ub.push(*max);
+                    lb.push(segment.q0);
+                    ub.push(segment.q1);
                 }
 
                 // Advance the group offset for the next bid/constraint
@@ -237,91 +158,73 @@ impl Solver for OsqpSolver {
             .expect("unable to setup problem");
         solver.warm_start_x(&vec![0.0; n]);
         let status = solver.solve();
+
         if let Status::Solved(solution) = status {
             // We get the raw optimization output
-            // TODO: make a determination on whether the price should actually be None
 
-            let mut trade: Map<ProductId, f64> =
-                products.iter().map(|(id, _)| (id.clone(), 0.0)).collect();
-
-            let prices: Map<ProductId, f64> = products
+            let mut product_outcomes: HashMap<ProductId, ProductOutcome> = products
                 .into_iter()
                 .zip(solution.y())
-                .map(|((p, _), x)| (p, *x))
+                .map(|(product, &price)| (product, ProductOutcome { price, trade: 0.0 }))
                 .collect();
 
-            let auth_outcomes: Map<AuthId, AuthOutcome> = auction
+            let mut trades = solution.x().iter();
+
+            let submission_outcomes = auction
                 .into_iter()
-                .flat_map(|(_, submission)| submission.auths_active.iter())
-                .zip(solution.x())
-                .map(|((id, auth), x)| {
-                    let mut price = 0.0;
-                    for (product_id, weight) in auth.portfolio.iter() {
-                        trade[product_id] += (weight * x).abs();
-                        price += weight * prices[product_id];
-                    }
-                    (id.clone(), AuthOutcome { price, trade: *x })
+                .map(|(bidder_id, submission)| {
+                    let outcome = submission
+                        .portfolios
+                        .iter()
+                        .map(|(id, portfolio)| {
+                            // Safe, because we necessarily have every portfolio represented in the solution
+                            let trade = *trades.next().unwrap();
+
+                            let mut price = 0.0;
+
+                            for (product_id, weight) in portfolio.iter() {
+                                // Safe, because product outcomes contains all referenced products
+                                let product_outcome = product_outcomes.get_mut(product_id).unwrap();
+
+                                // We report the trade (in an absolute sense), to be halved later
+                                product_outcome.trade += (weight * trade).abs();
+
+                                // We also compute the effective price of the portfolio
+                                price += weight * product_outcome.price;
+
+                                // TODO: consider special summation algorithms (i.e. Kahan) for the above dot products
+                            }
+
+                            (id.clone(), PortfolioOutcome { price, trade })
+                        })
+                        .collect::<HashMap<_, _>>();
+
+                    (bidder_id.clone(), outcome)
                 })
-                .collect();
+                .collect::<HashMap<_, _>>();
 
-            // This whole bit is somewhat hacky for now. Computing the volume is easy:
-            // just add the absolute value of each trade (weighted by the portfolio weight)
-            // and ultimately divide by 2. If we had exact arithmetic, then if volume = 0
-            // we know the price should be None. However, as we are in floating point land,
-            // the solver will arrive at an arbitrary price. It would likely be better to either
-            // detect this and say the price is non-existent, OR choose a price according to some
-            // criteria that is compatible with no-trade. The latter would require a secondary
-            // solve that necessarily distinguishes between zero and non-zero dual variables from
-            // the first solve, which is also asking for a world of trouble.
-
-            // Roll up the decision variable solutions to the bidder level
-            let mut bidders = Map::<BidderId, SubmissionOutcome<AuthId>>::default();
-            for (auth_id, auth_outcome) in auth_outcomes {
-                // ASSERTION: the auths map will contain a record for every auth
-                let bidder_id = auths.get(&auth_id).unwrap().clone();
-                bidders
-                    .entry(bidder_id)
-                    .or_default()
-                    .auths
-                    .insert(auth_id, auth_outcome);
+            // We have double-counted the trade for each product, so we halve it
+            for outcome in product_outcomes.values_mut() {
+                outcome.trade *= 0.5;
             }
+            // TODO:
+            // We have assigned the products prices straight from the solver
+            // (and computed the portfolio prices from those).
+            // Under pathological circumstances, the price may not be unique
+            // (either when there is no trade, or the supply exactly matches the demand).
+            // We should think about injecting an auxiliary solve for choosing a canonical
+            // price and/or for detecting when there is such a degeneracy.
 
-            // Patch the results to also include the inactive auths. Note that there is a possibility
-            // that such portfolio prices might not exist, since the underlying product(s) are not
-            // guaranteed to have been traded.
-            for (bidder_id, submission) in auction {
-                for (auth_id, portfolio) in submission.auths_inactive.iter() {
-                    bidders.entry(bidder_id.clone()).or_default().auths.insert(
-                        auth_id.clone(),
-                        AuthOutcome {
-                            price: portfolio.iter().fold(0.0, |sum, (product_id, weight)| {
-                                sum + weight
-                                    * prices.get(product_id).map(Clone::clone).unwrap_or(f64::NAN)
-                            }),
-                            trade: 0.0,
-                        },
-                    );
-                }
+            // TODO:
+            // When there are "flat" demand curves, it is possible for nonuniqueness
+            // in the traded outcomes. The convex regularization is to minimize the L2 norm
+            // of the trades as a tie-break. We should think about the best way to regularize
+            // the solve accordingly.
+
+            AuctionOutcome {
+                submissions: submission_outcomes,
+                products: product_outcomes,
             }
-
-            // Generate per-product outcomes related to trade volume and price
-            let products = prices
-                .into_iter()
-                .zip(trade)
-                // ASSERTION: the product_id from either pair is necessarily the same, due to insertion order
-                // guarantees of IndexMap.
-                .map(|((product_id, price), (_, trade))| {
-                    (
-                        product_id,
-                        ProductOutcome {
-                            price,
-                            trade: trade / 2.0,
-                        },
-                    )
-                })
-                .collect();
-
-            AuctionOutcome { bidders, products }
         } else {
             panic!("inaccurate solve");
         }

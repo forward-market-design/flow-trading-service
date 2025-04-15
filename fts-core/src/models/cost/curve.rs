@@ -175,28 +175,10 @@ impl Curve {
     /// 2. Scaling rates by the provided factor to convert to quantities
     ///
     /// The resulting curve is suitable for use with the solver library.
-    pub fn as_solver(&self, scale: f64) -> fts_solver::PiecewiseLinearCurve {
-        // Start from the first point
-        let mut reduced = vec![self.0.first().unwrap().as_solver(scale)];
-
-        for i in 1..(self.0.len() - 1) {
-            let x0 = reduced.last().unwrap();
-            let x1 = unsafe { self.0.get_unchecked(i) }.as_solver(scale);
-            let x2 = unsafe { self.0.get_unchecked(i + 1) }.as_solver(scale);
-            // Going from the last accepted point, compare against the current point and the one after that.
-            // If collinear, the slopes are the same. (This includes vertical, horizontal, and degenerate cases)
-            if (x2.quantity - x0.quantity) * (x1.price - x0.price)
-                != (x1.quantity - x0.quantity) * (x2.price - x0.price)
-            {
-                reduced.push(x1);
-            }
-        }
-
-        let lst = self.0.last().unwrap().as_solver(scale);
-        if lst != *reduced.last().unwrap() {
-            reduced.push(lst);
-        }
-
-        fts_solver::PiecewiseLinearCurve { points: reduced }
+    pub fn as_solver(&self, scale: f64) -> Vec<fts_solver::Point> {
+        self.0
+            .iter()
+            .map(move |point| point.as_solver(scale))
+            .collect()
     }
 }

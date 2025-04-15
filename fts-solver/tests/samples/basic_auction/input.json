@@ -1,0 +1,102 @@
+{
+    "buyer": {
+        "portfolios": {
+            "X": {
+                "A": 1.0
+            },
+            "Y": {
+                "B": 1.0
+            }
+        },
+        "demand_curves": [
+            {
+                "group": {
+                    "X": 1.0
+                },
+                "points": [
+                    {
+                        "quantity": 0.0,
+                        "price": 10.0
+                    },
+                    {
+                        "quantity": 1.0,
+                        "price": 5.0
+                    }
+                ]
+            },
+            {
+                "group": {
+                    "Y": 1.0
+                },
+                "points": [
+                    {
+                        "quantity": 0.0,
+                        "price": 10.0
+                    },
+                    {
+                        "quantity": 1.0,
+                        "price": 5.0
+                    }
+                ]
+            },
+            {
+                "group": {
+                    "X": 1.0,
+                    "Y": 1.0
+                },
+                "points": [
+                    {
+                        "quantity": 0.0,
+                        "price": 0.0
+                    },
+                    {
+                        "quantity": 1.0,
+                        "price": 0.0
+                    }
+                ]
+            }
+        ]
+    },
+    "seller": {
+        "portfolios": {
+            "X": {
+                "A": 1.0
+            },
+            "Y": {
+                "B": 1.0
+            }
+        },
+        "demand_curves": [
+            {
+                "group": {
+                    "X": 1.0
+                },
+                "points": [
+                    {
+                        "quantity": -1.0,
+                        "price": 6.25
+                    },
+                    {
+                        "quantity": 0.0,
+                        "price": 6.25
+                    }
+                ]
+            },
+            {
+                "group": {
+                    "Y": 1.0
+                },
+                "points": [
+                    {
+                        "quantity": -1.0,
+                        "price": 6.25
+                    },
+                    {
+                        "quantity": 0.0,
+                        "price": 6.25
+                    }
+                ]
+            }
+        ]
+    }
+}

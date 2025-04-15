@@ -5,18 +5,26 @@
 //! [fts_solver]: https://docs.rs/fts_solver/latest/fts_solver/index.html
 //! [fts_demo]: https://docs.rs/fts_demo/latest/fts_demo/index.html
 #![doc = include_str!("../README.md")]
+
 /**
- * These are implementations of the flow trading solver.
+ * The various solver implementations.
  */
 mod impls;
 pub use impls::*;
 
 /**
- * These are the core data types the implementations operate on.
+ * The core data types the solver implementations operate on.
  */
 mod types;
 pub use types::*;
 
-// We use non-std collections here for their ordering semantics and performance
-pub(crate) type Map<K, V> = indexmap::IndexMap<K, V, fxhash::FxBuildHasher>;
-pub(crate) type Set<T> = indexmap::IndexSet<T, fxhash::FxBuildHasher>;
+#[cfg(feature = "cli")]
+/// Utilies for a CLI interface to the solver
+pub mod cli;
+
+// For reproducibility, we need explicitly ordered semantics in our collections.
+// Accordingly, we swap out the stdlib collections for those provided by `indexmap`.
+// Since we're swapping out these types already, we can benefit from a hash function
+// that is optimized for small collections.
+pub(crate) type HashMap<K, V> = indexmap::IndexMap<K, V, rustc_hash::FxBuildHasher>;
+pub(crate) type HashSet<T> = indexmap::IndexSet<T, rustc_hash::FxBuildHasher>;

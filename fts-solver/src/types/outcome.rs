@@ -1,52 +1,41 @@
-use serde::Serialize;
-
-use crate::Map;
+use crate::HashMap;
 use std::hash::Hash;
 
-/// Solution data for an entire auction, containing the outcome for
-/// each authorization and product in the market.
+/// The outcome of an auction
 #[derive(Debug)]
-pub struct AuctionOutcome<BidderId: Eq + Hash, AuthId: Eq + Hash, ProductId: Eq + Hash> {
-    /// Outcomes for each submission
-    pub bidders: Map<BidderId, SubmissionOutcome<AuthId>>,
-    /// Outcomes for each product, keyed by their ID
-    pub products: Map<ProductId, ProductOutcome>,
-    // TODO: consider a collection for the cost curves, so that we can report
-    // dual information for their linear constraints
-    // TODO: this struct is also a good home for market-wide summaries, such as
-    // sensitivity information
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(bound = "
+        BidderId: Hash + Eq + serde::Serialize + serde::de::DeserializeOwned,
+        PortfolioId: Clone + Hash + Eq + serde::Serialize + serde::de::DeserializeOwned,
+        ProductId: Hash + Eq + Ord + serde::Serialize + serde::de::DeserializeOwned
+    ")
+)]
+pub struct AuctionOutcome<BidderId, PortfolioId, ProductId> {
+    /// The associated outcome for each submission (in turn, the portfolio trades and prices)
+    pub submissions: HashMap<BidderId, HashMap<PortfolioId, PortfolioOutcome>>,
+
+    /// The associated outcome for each traded product
+    pub products: HashMap<ProductId, ProductOutcome>,
 }
 
-impl<BidderId: Eq + Hash, AuthId: Eq + Hash, ProductId: Eq + Hash> Default
-    for AuctionOutcome<BidderId, AuthId, ProductId>
+impl<BidderId, PortfolioId, ProductId> Default
+    for AuctionOutcome<BidderId, PortfolioId, ProductId>
 {
     fn default() -> Self {
         Self {
-            bidders: Default::default(),
+            submissions: Default::default(),
             products: Default::default(),
-        }
-    }
-}
-
-/// Gather all the outcomes pertaining to a submission.
-#[derive(Debug, Serialize)]
-pub struct SubmissionOutcome<AuthId: Eq + Hash> {
-    /// The mapping of auths to their outcomes
-    pub auths: Map<AuthId, AuthOutcome>,
-}
-
-impl<AuthId: Eq + Hash> Default for SubmissionOutcome<AuthId> {
-    fn default() -> Self {
-        Self {
-            auths: Default::default(),
         }
     }
 }
 
 /// Solution data for an individual authorization, containing
 /// the trade quantity and effective price.
-#[derive(Debug, Serialize)]
-pub struct AuthOutcome {
+#[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct PortfolioOutcome {
     /// The effective price for this authorization
     pub price: f64,
     /// The quantity traded for this authorization (negative for sell, positive for buy)
@@ -57,7 +46,8 @@ pub struct AuthOutcome {
 
 /// Solution data for an individual product, containing
 /// the market-clearing price and total volume traded.
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ProductOutcome {
     /// The market-clearing price for this product
     pub price: f64,

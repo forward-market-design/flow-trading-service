@@ -8,14 +8,28 @@ publish.workspace = true
 rust-version.workspace = true
 version = "0.2.0"
 
+[[bin]]
+name = "ftsolve"
+path = "src/bin/ftsolve.rs"
+required-features = ["cli"]
+
 [dependencies]
 # black-box solvers we can pull in
 clarabel = { version = "0.10", optional = true }
 osqp = { version = "1.0", optional = true }
 
-fxhash = { workspace = true }
-indexmap = { workspace = true, features = ["std", "serde"] }
-serde = { workspace = true, features = ["derive"] }
+# provide the option for (de)serialization of the raw solver types
+serde = { workspace = true, features = ["derive"], optional = true }
+
+# used for building the optional CLI interface
+serde_json = { workspace = true, optional = true }
+clap = { workspace = true, features = ["derive"], optional = true }
+
+# core crates used by the library
+rustc-hash = "2.1"
+anyhow = "1.0"
+
+indexmap = { workspace = true, features = ["std"] }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 
@@ -23,9 +37,13 @@ tracing = { workspace = true }
 approx = "0.5"
 rstest = { workspace = true }
 rstest_reuse = { workspace = true }
-fts-solver = { path = ".", features = ["clarabel", "osqp"] }
+
+# enable all the features for testing purposes
+fts-solver = { path = ".", features = ["cli"] }
 
 [features]
 default = ["clarabel"]
 clarabel = ["dep:clarabel"]
 osqp = ["dep:osqp"]
+serde = ["dep:serde", "indexmap/serde"]
+cli = ["dep:clap", "dep:serde_json", "serde", "clarabel", "osqp"]

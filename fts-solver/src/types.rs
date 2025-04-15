@@ -3,14 +3,8 @@ use std::hash::Hash;
 mod submission;
 pub use submission::*;
 
-mod spvec;
-pub(crate) use spvec::spvec;
-
-mod auth;
-pub use auth::*;
-
-mod cost;
-pub use cost::*;
+mod demand;
+pub use demand::*;
 
 mod outcome;
 pub use outcome::*;
@@ -39,13 +33,13 @@ pub trait Solver {
     fn solve<
         T,
         BidderId: Eq + Hash + Clone + Ord,
-        AuthId: Eq + Hash + Clone + Ord,
+        PortfolioId: Eq + Hash + Clone + Ord,
         ProductId: Eq + Hash + Clone + Ord,
     >(
         &self,
         auction: &T,
         // TODO: warm-starts with the prices
-    ) -> AuctionOutcome<BidderId, AuthId, ProductId>
+    ) -> AuctionOutcome<BidderId, PortfolioId, ProductId>
     where
-        for<'t> &'t T: IntoIterator<Item = (&'t BidderId, &'t Submission<AuthId, ProductId>)>;
+        for<'t> &'t T: IntoIterator<Item = (&'t BidderId, &'t Submission<PortfolioId, ProductId>)>;
 }

@@ -94,17 +94,29 @@ impl<T> RawAuctionInput<T> {
             .filter_map(|(bidder_id, costs)| {
                 // If the bidder has no auths, then the costs are no-op.
                 if let Some(auths) = auths_by_bidder.swap_remove(&bidder_id) {
-                    // Otherwise, we scale the rate-based definitions into quantity-based ones
-                    let auths = auths
-                        .into_iter()
-                        .filter_map(|record| record.into_solver(scale));
+                    let mut portfolios = Vec::new();
+                    let mut curves = Vec::new();
 
-                    let costs = costs
-                        .into_iter()
-                        .filter_map(|record| record.into_solver(scale));
+                    for auth in auths {
+                        let id = auth.auth_id.clone();
+
+                        if let Some((portfolio, curve)) = auth.into_solver(scale) {
+                            portfolios.push((id, portfolio));
+                            curves.push(curve);
+                        }
+                    }
+
+                    for cost in costs {
+                        if let Some(curve) = cost.into_solver(scale) {
+                            curves.push(curve);
+                        }
+                    }
 
                     // Having done all that, we now have a submission
-                    Some((bidder_id, fts_solver::Submission::new(auths, costs)))
+                    Some((
+                        bidder_id,
+                        fts_solver::Submission::new(portfolios, curves).ok()?,
+                    ))
                 } else {
                     None
                 }

@@ -5,6 +5,8 @@ use thiserror::Error;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 
+use super::Group;
+
 uuid_wrapper!(AuthId);
 
 /// The supported constraints for an authorization.
@@ -172,23 +174,27 @@ impl AuthRecord {
     /// This method applies the time scale to rate-based constraints and computes
     /// the appropriate trade bounds for the auction, taking into account the
     /// current accumulated trade.
-    pub fn into_solver(self, scale: f64) -> Option<(AuthId, fts_solver::Auth<ProductId>)> {
+    pub fn into_solver(
+        self,
+        scale: f64,
+    ) -> Option<(
+        Portfolio,
+        fts_solver::DemandCurve<AuthId, Group, Vec<fts_solver::Point>>,
+    )> {
         let trade = self.trade.unwrap_or_default();
         if let Some(data) = self.data {
             let min_trade = (data.min_trade - trade).max(data.min_rate * scale).min(0.0);
             let max_trade = (data.max_trade - trade).min(data.max_rate * scale).max(0.0);
-            let portfolio = self
-                .portfolio
-                .unwrap_or_default()
-                .into_iter()
-                .collect::<fts_solver::Portfolio<_>>();
 
             Some((
-                self.auth_id,
-                fts_solver::Auth {
-                    min_trade,
-                    max_trade,
-                    portfolio,
+                self.portfolio.unwrap_or_default(),
+                fts_solver::DemandCurve {
+                    domain: (min_trade, max_trade),
+                    group: std::iter::once((self.auth_id, 1.0)).collect(),
+                    points: vec![fts_solver::Point {
+                        quantity: 0.0,
+                        price: 0.0,
+                    }],
                 },
             ))
         } else {
