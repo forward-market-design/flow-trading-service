@@ -10,7 +10,7 @@ version = "0.1.3"
 
 [dependencies]
 # This pulls in the Solver trait. TODO: invert this dependency?
-fts-solver = { path = "../fts-solver", version = "0.2.0" }
+fts-solver = { path = "../fts-solver", version = "0.3.0" }
 
 fxhash = { workspace = true }
 humantime = { workspace = true }
