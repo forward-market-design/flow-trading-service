@@ -1,18 +1,12 @@
 {
     "buyer": {
         "portfolios": {
-            "X": {
-                "A": 1.0
-            },
-            "Y": {
-                "B": 1.0
-            }
+            "X": "A",
+            "Y": "B"
         },
         "demand_curves": [
             {
-                "group": {
-                    "X": 1.0
-                },
+                "group": "X",
                 "points": [
                     {
                         "quantity": 0.0,
@@ -25,9 +19,7 @@
                 ]
             },
             {
-                "group": {
-                    "Y": 1.0
-                },
+                "group": "Y",
                 "points": [
                     {
                         "quantity": 0.0,
@@ -40,10 +32,10 @@
                 ]
             },
             {
-                "group": {
-                    "X": 1.0,
-                    "Y": 1.0
-                },
+                "group": [
+                    "X",
+                    "Y"
+                ],
                 "points": [
                     {
                         "quantity": 0.0,
@@ -59,18 +51,12 @@
     },
     "seller": {
         "portfolios": {
-            "X": {
-                "A": 1.0
-            },
-            "Y": {
-                "B": 1.0
-            }
+            "X": "A",
+            "Y": "B"
         },
         "demand_curves": [
             {
-                "group": {
-                    "X": 1.0
-                },
+                "group": "X",
                 "points": [
                     {
                         "quantity": -1.0,
@@ -83,9 +69,7 @@
                 ]
             },
             {
-                "group": {
-                    "Y": 1.0
-                },
+                "group": "Y",
                 "points": [
                     {
                         "quantity": -1.0,

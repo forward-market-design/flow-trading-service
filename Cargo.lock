@@ -851,9 +851,7 @@ dependencies = [
 name = "fts-solver"
 version = "0.2.0"
 dependencies = [
- "anyhow",
  "approx",
- "clap",
  "clarabel",
  "fts-solver",
  "indexmap",
@@ -865,6 +863,16 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.12",
  "tracing",
+]
+
+[[package]]
+name = "ftsolve"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "fts-solver",
+ "serde_json",
 ]
 
 [[package]]

@@ -31,6 +31,9 @@ This package defines a few basic types and a solver interface to operate over th
 
 Additional solvers will be developed as needed. The present implementations are intended as "reference" for future work.
 
+There are a few additional features exposed by this crate. If an application intends to (de)serialize the primitive data types directly,
+enabling `feature = ["serde"]` will provide Serde bindings.
+
 ## Primitive Types
 
 There are two externally-defined types `ProductId` and `AuthId`, which allow the application host to provide their own implementations. These are black-boxes as far as the solver is concerned -- they just need to implement `Clone + Eq + Hash + Ord`.

@@ -1,15 +1,11 @@
 {
     "buyer": {
         "portfolios": {
-            "X": {
-                "A": 1.0
-            }
+            "X": "A"
         },
         "demand_curves": [
             {
-                "group": {
-                    "X": 1.0
-                },
+                "group": "X",
                 "points": [
                     {
                         "quantity": 0.0,
@@ -25,15 +21,11 @@
     },
     "seller": {
         "portfolios": {
-            "X": {
-                "A": 1.0
-            }
+            "X": "A"
         },
         "demand_curves": [
             {
-                "group": {
-                    "X": 1.0
-                },
+                "group": "X",
                 "points": [
                     {
                         "quantity": -1.0,

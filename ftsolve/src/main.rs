@@ -1,14 +1,15 @@
 use clap::{Parser, ValueEnum};
 use fts_solver::{
-    AuctionOutcome, Solver as _,
+    Auction, AuctionOutcome, Solver as _, Submission,
     clarabel::ClarabelSolver,
-    cli::{BidderId, PortfolioId, ProductId, RawAuction},
+    io::{AuctionDto, BidderId, PortfolioId, ProductId},
     osqp::OsqpSolver,
 };
 use std::{
     fmt::Display,
     fs::File,
     io::{BufReader, BufWriter, stdin, stdout},
+    ops::Deref,
     path::PathBuf,
 };
 
@@ -34,6 +35,24 @@ enum SolverFlag {
     Osqp,
 }
 
+impl SolverFlag {
+    fn solve<T>(&self, auction: &T) -> AuctionOutcome<BidderId, PortfolioId, ProductId>
+    where
+        for<'t> &'t T: IntoIterator<Item = (&'t BidderId, &'t Submission<PortfolioId, ProductId>)>,
+    {
+        match self {
+            SolverFlag::Clarabel => {
+                let solver = ClarabelSolver::default();
+                solver.solve(auction)
+            }
+            SolverFlag::Osqp => {
+                let solver = OsqpSolver::default();
+                solver.solve(auction)
+            }
+        }
+    }
+}
+
 impl Display for SolverFlag {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         (match self {
@@ -45,7 +64,7 @@ impl Display for SolverFlag {
 }
 
 impl Args {
-    fn read(&self) -> anyhow::Result<RawAuction> {
+    fn read(&self) -> anyhow::Result<AuctionDto> {
         if let Some(path) = &self.input {
             let reader = BufReader::new(File::open(path)?);
             Ok(serde_json::from_reader(reader)?)
@@ -71,18 +90,12 @@ impl Args {
 }
 
 pub fn main() -> anyhow::Result<()> {
-    let args = Args::try_parse()?;
-    let input = args.read()?.prepare()?;
-    let output = match args.solver {
-        SolverFlag::Clarabel => {
-            let solver = ClarabelSolver::default();
-            solver.solve(&input)
-        }
-        SolverFlag::Osqp => {
-            let solver = OsqpSolver::default();
-            solver.solve(&input)
-        }
-    };
+    let args = Args::parse();
+
+    let raw = args.read()?;
+    let input: Auction<_, _, _> = raw.try_into()?;
+
+    let output = args.solver.solve(input.deref());
     args.write(&output)?;
 
     Ok(())

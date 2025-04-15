@@ -1,11 +1,8 @@
 use approx::assert_abs_diff_eq;
-use fts_solver::{
-    AuctionOutcome,
-    cli::{BidderId, PortfolioId, ProductId, RawAuction},
-};
+use fts_solver::{Auction, AuctionOutcome, io::AuctionDto};
 use rstest::*;
 use rstest_reuse::{self, *};
-use std::{fmt::Debug, fs::File, io::BufReader, path::PathBuf};
+use std::{fmt::Debug, fs::File, io::BufReader, ops::Deref as _, path::PathBuf};
 
 mod all_solvers;
 use all_solvers::all_solvers;
@@ -29,13 +26,15 @@ fn run_auction(
     let mut output = input.clone();
     output.set_file_name("output.json");
 
-    let auction: RawAuction =
+    let raw_auction: AuctionDto =
         serde_json::from_reader(BufReader::new(File::open(input).unwrap())).unwrap();
 
-    let reference: AuctionOutcome<BidderId, PortfolioId, ProductId> =
+    let auction: Auction<_, _, _> = raw_auction.try_into().unwrap();
+
+    let reference: AuctionOutcome<_, _, _> =
         serde_json::from_reader(BufReader::new(File::open(output).unwrap())).unwrap();
 
-    let solution = solver.solve(&auction.prepare().unwrap());
+    let solution = solver.solve(auction.deref());
 
     cmp(&solution, &reference, 1e-6, 1e-6);
 }
