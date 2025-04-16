@@ -1,6 +1,6 @@
 [package]
 name = "ftsolve"
-description = "Solve a flow trading problem" 
+description = "Tools for flow trading" 
 version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
@@ -9,7 +9,8 @@ publish.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-fts-solver = { path = "../fts-solver", version = "0.3.0", features = ["clarabel", "osqp", "io"] }
+fts-solver = { path = "../fts-solver", version = "0.3.0", features = ["clarabel", "osqp", "io", "export"] }
 anyhow = { workspace = true }
+thiserror = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }

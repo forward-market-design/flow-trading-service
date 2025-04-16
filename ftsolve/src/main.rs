@@ -1,14 +1,14 @@
-use clap::{Parser, ValueEnum};
+use clap::{Parser, Subcommand, ValueEnum};
 use fts_solver::{
     Auction, AuctionOutcome, Solver as _, Submission,
     clarabel::ClarabelSolver,
+    export::{export_lp, export_mps},
     io::{AuctionDto, BidderId, PortfolioId, ProductId},
     osqp::OsqpSolver,
 };
 use std::{
-    fmt::Display,
     fs::File,
-    io::{BufReader, BufWriter, stdin, stdout},
+    io::{BufReader, BufWriter, Write, stdin, stdout},
     ops::Deref,
     path::PathBuf,
 };
@@ -16,36 +16,52 @@ use std::{
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 struct Args {
-    /// The JSON file to read (defaults to stdin if omitted)
+    /// The auction JSON file (defaults to stdin if omitted)
     #[arg(short, long)]
     input: Option<PathBuf>,
 
-    /// The JSON file to write (defaults to stdout if omitted)
+    /// The output file (defaults to stdout if omitted)
     #[arg(short, long)]
     output: Option<PathBuf>,
 
-    /// The underlying solver implementation to use
-    #[arg(short, long, default_value_t = SolverFlag::Clarabel)]
-    solver: SolverFlag,
+    #[command(subcommand)]
+    command: Commands,
 }
 
-#[derive(Clone, ValueEnum)]
-enum SolverFlag {
+#[derive(Subcommand)]
+enum Commands {
+    /// Solve the auction and report the solution
+    Solve {
+        /// Request a specific QP solver
+        #[arg(short, long, default_value = "clarabel")]
+        lib: SolverLib,
+    },
+
+    /// Export the quadratic program without solving
+    Export {
+        /// The file format to use (if omitted, will infer based on filename)
+        #[arg(short, long)]
+        format: Option<ExportFormat>,
+    },
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum SolverLib {
     Clarabel,
     Osqp,
 }
 
-impl SolverFlag {
+impl SolverLib {
     fn solve<T>(&self, auction: &T) -> AuctionOutcome<BidderId, PortfolioId, ProductId>
     where
         for<'t> &'t T: IntoIterator<Item = (&'t BidderId, &'t Submission<PortfolioId, ProductId>)>,
     {
         match self {
-            SolverFlag::Clarabel => {
+            SolverLib::Clarabel => {
                 let solver = ClarabelSolver::default();
                 solver.solve(auction)
             }
-            SolverFlag::Osqp => {
+            SolverLib::Osqp => {
                 let solver = OsqpSolver::default();
                 solver.solve(auction)
             }
@@ -53,13 +69,23 @@ impl SolverFlag {
     }
 }
 
-impl Display for SolverFlag {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        (match self {
-            Self::Clarabel => "clarabel",
-            Self::Osqp => "osqp",
-        })
-        .fmt(f)
+#[derive(Clone, Copy, ValueEnum)]
+enum ExportFormat {
+    Mps,
+    Lp,
+}
+
+impl ExportFormat {
+    fn export<T, W>(&self, auction: &T, buffer: &mut W) -> anyhow::Result<()>
+    where
+        for<'t> &'t T: IntoIterator<Item = (&'t BidderId, &'t Submission<PortfolioId, ProductId>)>,
+        W: Write,
+    {
+        match self {
+            Self::Mps => export_mps(auction, buffer)?,
+            Self::Lp => export_lp(auction, buffer)?,
+        };
+        Ok(())
     }
 }
 
@@ -74,18 +100,19 @@ impl Args {
         }
     }
 
-    fn write(
-        &self,
-        outcome: &AuctionOutcome<BidderId, PortfolioId, ProductId>,
-    ) -> anyhow::Result<()> {
+    fn write(&self) -> anyhow::Result<Box<dyn Write>> {
         if let Some(path) = &self.output {
-            let writer = BufWriter::new(File::create(path)?);
-            serde_json::to_writer_pretty(writer, outcome)?;
+            Ok(Box::new(BufWriter::new(File::create(path)?)))
         } else {
-            let writer = stdout().lock();
-            serde_json::to_writer_pretty(writer, outcome)?;
+            Ok(Box::new(stdout().lock()))
         }
-        Ok(())
+    }
+
+    fn extension(&self) -> Option<&str> {
+        self.output
+            .as_ref()
+            .and_then(|path| path.extension())
+            .and_then(|ext| ext.to_str())
     }
 }
 
@@ -95,8 +122,31 @@ pub fn main() -> anyhow::Result<()> {
     let raw = args.read()?;
     let input: Auction<_, _, _> = raw.try_into()?;
 
-    let output = args.solver.solve(input.deref());
-    args.write(&output)?;
+    match &args.command {
+        Commands::Solve { lib } => {
+            let output = lib.solve(input.deref());
+            let writer = args.write()?;
+            serde_json::to_writer_pretty(writer, &output)?;
+        }
+        Commands::Export { format } => {
+            let format = format
+                .or_else(|| match args.extension() {
+                    Some("mps") => Some(ExportFormat::Mps),
+                    Some("lp") => Some(ExportFormat::Lp),
+                    _ => None,
+                })
+                .ok_or(CliError::ExportExtension)?;
+
+            let mut writer = args.write()?;
+            format.export(input.deref(), &mut writer)?;
+        }
+    }
 
     Ok(())
+}
+
+#[derive(thiserror::Error, Debug)]
+enum CliError {
+    #[error("Unsupported export format")]
+    ExportExtension,
 }

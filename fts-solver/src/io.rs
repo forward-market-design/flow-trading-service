@@ -1,6 +1,6 @@
 use crate::{Auction, DemandCurve, HashMap, Point, Submission, SubmissionError};
 use serde::{Deserialize, Deserializer, Serialize};
-use std::{hash::Hash, iter, ops::Deref};
+use std::{fmt, hash::Hash, iter, ops::Deref};
 
 // First order of business: create some newtype wrappers for the various primitives.
 
@@ -10,6 +10,12 @@ macro_rules! string_wrapper {
         #[serde(transparent)]
         #[doc = concat!("A newtype wrapper for ", stringify!($struct))]
         pub struct $struct(String);
+
+        impl fmt::Display for $struct {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                write!(f, "{}", self.0)
+            }
+        }
     };
 }
 
