@@ -2,7 +2,9 @@
 
 This crate is a light wrapper around `fts-solver`, providing a binary that can
 read flow trading-based auctions from a standardized JSON input format and writes
-their solution to stdout or a file.
+their solution to stdout or a file. This binary also makes available other useful operations,
+such as exporting the intermediate quadratic program to a standardized output format
+for analysis in other tools.
 
 The JSON format is very simple. Given the following type definitions:
 ```typescript
