@@ -29,7 +29,7 @@ rstest_reuse = { workspace = true }
 serde_json = { workspace = true }
 
 # enable all the features for testing purposes
-fts-solver = { path = ".", features = ["clarabel", "osqp", "io", "export"] }
+fts-solver = { path = ".", features = ["clarabel", "osqp", "io"] }
 
 [features]
 default = ["clarabel"]
@@ -37,4 +37,3 @@ clarabel = ["dep:clarabel"]
 osqp = ["dep:osqp"]
 serde = ["dep:serde", "indexmap/serde"]
 io = ["serde"]
-export = []

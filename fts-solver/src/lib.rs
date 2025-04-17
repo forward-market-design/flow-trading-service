@@ -23,7 +23,6 @@ pub use types::*;
 pub mod io;
 
 /// Utilities for converting the derived QP to standard file formats
-#[cfg(feature = "export")]
 pub mod export;
 
 // For reproducibility, we need explicitly ordered semantics in our collections.
