@@ -788,7 +788,7 @@ dependencies = [
 
 [[package]]
 name = "fts-core"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "fts-solver",
  "fxhash",
@@ -804,7 +804,7 @@ dependencies = [
 
 [[package]]
 name = "fts-demo"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "clap",
  "dotenvy",
@@ -829,7 +829,7 @@ dependencies = [
 
 [[package]]
 name = "fts-server"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "axum",
  "axum-extra",
@@ -860,7 +860,7 @@ dependencies = [
 
 [[package]]
 name = "fts-solver"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "approx",
  "clarabel",
