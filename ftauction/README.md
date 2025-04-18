@@ -25,7 +25,7 @@ interface Point {
 
 interface DemandCurve {
     // If omitted, `domain` is computed from `points`.
-    // If provided, the points will be interpolated or extrapolated accordingly.
+    // If provided, the curve will be interpolated or extrapolated accordingly.
     // Use `null` as a stand-in for ±∞
     domain?: [number | null, number | null];
 
@@ -47,4 +47,22 @@ The JSON input format is simply anything that deserializes as
 To install, simply run `cargo install ftauction`.
 To build from source, `cargo build --release --bin ftauction`.
 
-Execute `ftauction --help` to see options.
+## Usage
+
+All options are documented in `ftauction --help` and `ftauction [SUBCOMMAND] --help`.
+
+Some examples:
+
+```bash
+
+# Solve an auction given a file
+ftauction solve -o solution.json input.json
+
+# Solve an auction over stdin
+curl http://some.remote/file.json | ftauction solve -o solution.json -
+
+# Read an auction over stdin, export to stdout
+cat input.json | ftauction export - --format mps
+```
+
+The ordering between the input (a path, or "-") and the flags ("--format", for example) is not important.
