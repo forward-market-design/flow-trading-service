@@ -1,8 +1,10 @@
-# `ftsolve`
+# `ftauction`
 
 This crate is a light wrapper around `fts-solver`, providing a binary that can
 read flow trading-based auctions from a standardized JSON input format and writes
-their solution to stdout or a file.
+their solution to stdout or a file. This binary also makes available other useful operations,
+such as exporting the intermediate quadratic program to a standardized output format
+for analysis in other tools.
 
 The JSON format is very simple. Given the following type definitions:
 ```typescript
@@ -23,7 +25,7 @@ interface Point {
 
 interface DemandCurve {
     // If omitted, `domain` is computed from `points`.
-    // If provided, the points will be interpolated or extrapolated accordingly.
+    // If provided, the curve will be interpolated or extrapolated accordingly.
     // Use `null` as a stand-in for ±∞
     domain?: [number | null, number | null];
 
@@ -42,7 +44,25 @@ The JSON input format is simply anything that deserializes as
 
 ## Installation
 
-To install, simply run `cargo install ftsolve`.
-To build from source, `cargo build --release --bin ftsolve`.
+To install, simply run `cargo install ftauction`.
+To build from source, `cargo build --release --bin ftauction`.
 
-Execute `ftsolve --help` to see options.
+## Usage
+
+All options are documented in `ftauction --help` and `ftauction [SUBCOMMAND] --help`.
+
+Some examples:
+
+```bash
+
+# Solve an auction given a file
+ftauction solve -o solution.json input.json
+
+# Solve an auction over stdin
+curl http://some.remote/file.json | ftauction solve -o solution.json -
+
+# Read an auction over stdin, export to stdout
+cat input.json | ftauction export - --format mps
+```
+
+The ordering between the input (a path, or "-") and the flags ("--format", for example) is not important.

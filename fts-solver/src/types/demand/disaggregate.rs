@@ -280,4 +280,22 @@ mod tests {
 
         assert_eq!(segments, answer);
     }
+
+    #[test]
+    fn check_slope() {
+        let points = vec![
+            Point {
+                quantity: -2.0,
+                price: 4.0,
+            },
+            Point {
+                quantity: 2.0,
+                price: 5.0,
+            },
+        ];
+        let segments = disaggregate(points.into_iter(), -1.0, 1.0)
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>();
+        assert!(segments.is_err());
+    }
 }

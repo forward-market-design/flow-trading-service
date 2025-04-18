@@ -1,11 +1,27 @@
 use approx::assert_abs_diff_eq;
-use fts_solver::{Auction, AuctionOutcome, io::AuctionDto};
+use fts_solver::{
+    Auction, AuctionOutcome,
+    export::{export_lp, export_mps},
+    io::AuctionDto,
+};
 use rstest::*;
 use rstest_reuse::{self, *};
-use std::{fmt::Debug, fs::File, io::BufReader, ops::Deref as _, path::PathBuf};
+use std::{
+    fmt::Debug,
+    fs::File,
+    io::{BufReader, Read},
+    ops::Deref,
+    path::PathBuf,
+};
 
-mod all_solvers;
-use all_solvers::all_solvers;
+// This creates a testing "template" to allow for the injection of each solver
+// implementation
+
+#[template]
+#[rstest]
+#[case::clarabel(fts_solver::clarabel::ClarabelSolver::default())]
+#[case::osqp(fts_solver::osqp::OsqpSolver::default())]
+pub fn all_solvers<PortfolioId, ProductId>(#[case] solver: impl solver::Solver) -> () {}
 
 // This test case is actually a dynamically generated, Cartesian product of test cases.
 // For every solver implementation, and for every (input.json, output.json) pair in `./samples/**`,
@@ -21,10 +37,10 @@ use all_solvers::all_solvers;
 #[rstest]
 fn run_auction(
     solver: impl fts_solver::Solver,
-    #[files("tests/samples/**/input.json")] input: PathBuf,
+    #[files("tests/samples/**/output.json")] output: PathBuf,
 ) {
-    let mut output = input.clone();
-    output.set_file_name("output.json");
+    let mut input = output.clone();
+    input.set_file_name("input.json");
 
     let raw_auction: AuctionDto =
         serde_json::from_reader(BufReader::new(File::open(input).unwrap())).unwrap();
@@ -37,6 +53,46 @@ fn run_auction(
     let solution = solver.solve(auction.deref());
 
     cmp(&solution, &reference, 1e-6, 1e-6);
+}
+
+#[rstest]
+fn check_mps_export(#[files("tests/samples/**/export.mps")] output: PathBuf) {
+    let mut input = output.clone();
+    input.set_file_name("input.json");
+
+    let raw_auction: AuctionDto =
+        serde_json::from_reader(BufReader::new(File::open(input).unwrap())).unwrap();
+
+    let auction: Auction<_, _, _> = raw_auction.try_into().unwrap();
+
+    let mut output_bytes = Vec::new();
+    let output_size = File::open(output)
+        .unwrap()
+        .read_to_end(&mut output_bytes)
+        .unwrap();
+    let mut export_bytes = Vec::with_capacity(output_size);
+    export_mps(auction.deref(), &mut export_bytes).unwrap();
+    assert!(output_bytes == export_bytes, "mps files are not identical");
+}
+
+#[rstest]
+fn check_lp_export(#[files("tests/samples/**/export.lp")] output: PathBuf) {
+    let mut input = output.clone();
+    input.set_file_name("input.json");
+
+    let raw_auction: AuctionDto =
+        serde_json::from_reader(BufReader::new(File::open(input).unwrap())).unwrap();
+
+    let auction: Auction<_, _, _> = raw_auction.try_into().unwrap();
+
+    let mut output_bytes = Vec::new();
+    let output_size = File::open(output)
+        .unwrap()
+        .read_to_end(&mut output_bytes)
+        .unwrap();
+    let mut export_bytes = Vec::with_capacity(output_size);
+    export_lp(auction.deref(), &mut export_bytes).unwrap();
+    assert!(output_bytes == export_bytes, "mps files are not identical");
 }
 
 fn cmp<BidderId: Debug + Eq, PortfolioId: Debug + Eq, ProductId: Debug + Eq>(

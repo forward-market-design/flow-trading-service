@@ -22,6 +22,9 @@ pub use types::*;
 #[cfg(feature = "io")]
 pub mod io;
 
+/// Utilities for converting the derived QP to standard file formats
+pub mod export;
+
 // For reproducibility, we need explicitly ordered semantics in our collections.
 // Accordingly, we swap out the stdlib collections for those provided by `indexmap`.
 // Since we're swapping out these types already, we can benefit from a hash function
