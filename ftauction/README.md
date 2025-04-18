@@ -1,4 +1,4 @@
-# `ftsolve`
+# `ftauction`
 
 This crate is a light wrapper around `fts-solver`, providing a binary that can
 read flow trading-based auctions from a standardized JSON input format and writes
@@ -44,7 +44,7 @@ The JSON input format is simply anything that deserializes as
 
 ## Installation
 
-To install, simply run `cargo install ftsolve`.
-To build from source, `cargo build --release --bin ftsolve`.
+To install, simply run `cargo install ftauction`.
+To build from source, `cargo build --release --bin ftauction`.
 
-Execute `ftsolve --help` to see options.
+Execute `ftauction --help` to see options.

@@ -1,6 +1,6 @@
 [package]
-name = "ftsolve"
-description = "Tools for flow trading" 
+name = "ftauction"
+description = "Tools for analyzing flow trading auctions" 
 version = "0.1.0"
 authors.workspace = true
 edition.workspace = true
