@@ -1,12 +1,6 @@
-mod constant;
-mod curve;
-
-use crate::models::{AuthId, BidderId, map_wrapper, uuid_wrapper};
-pub use constant::{Constant, RawConstant};
-pub use curve::{Curve, Point};
+use crate::models::{AuthId, BidderId, DemandCurve, map_wrapper, uuid_wrapper};
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
-use thiserror::Error;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 
@@ -32,69 +26,6 @@ impl Default for GroupDisplay {
     }
 }
 
-/// The utility-specification of the cost
-///
-/// CostData represents either:
-/// - A non-increasing, piecewise-linear demand curve assigning a cost to each quantity in its domain, or
-/// - A simple, "flat" demand curve assining a constant cost to each quantity in its domain.
-///
-/// This is the core component that defines how a bidder values different trade outcomes.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
-#[serde(untagged, try_from = "RawCostData", into = "RawCostData")]
-// TODO: Utoipa doesn't fully support all the Serde annotations,
-// so we injected `untagged` (which Serde will ignore given the presence of
-// of `try_from` and `into`), then inline the actual fields. This appears
-// to correctly generate the OpenAPI schema, but we should revisit.
-pub enum CostData {
-    /// A piecewise linear demand curve defined by points
-    Curve(#[schema(inline)] Curve),
-    /// A constant constraint enforcing a specific trade quantity at a price
-    Constant(#[schema(inline)] Constant),
-}
-
-/// An error type for the ways in which the provided utility function may be invalid.
-#[derive(Error, Debug)]
-pub enum ValidationError {
-    /// Error when a curve's definition is invalid
-    #[error("invalid demand curve: {0}")]
-    Curve(#[from] curve::ValidationError),
-    /// Error when a constant curve's definition is invalid
-    #[error("invalid constant curve: {0}")]
-    Constraint(#[from] constant::ValidationError),
-}
-
-/// The "DTO" type for the utility
-///
-/// This enum represents the raw data formats accepted in API requests for defining costs.
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
-#[serde(untagged)]
-pub enum RawCostData {
-    /// A sequence of points defining a piecewise linear demand curve
-    Curve(Vec<Point>),
-    /// A raw constant constraint definition
-    Constant(RawConstant),
-}
-
-impl TryFrom<RawCostData> for CostData {
-    type Error = ValidationError;
-
-    fn try_from(value: RawCostData) -> Result<Self, Self::Error> {
-        match value {
-            RawCostData::Curve(curve) => Ok(CostData::Curve(curve.try_into()?)),
-            RawCostData::Constant(constant) => Ok(CostData::Constant(constant.try_into()?)),
-        }
-    }
-}
-
-impl From<CostData> for RawCostData {
-    fn from(value: CostData) -> Self {
-        match value {
-            CostData::Curve(curve) => RawCostData::Curve(curve.into()),
-            CostData::Constant(constant) => RawCostData::Constant(constant.into()),
-        }
-    }
-}
-
 /// A record of the cost's data at the time it was updated or defined
 ///
 /// This provides historical versioning of cost data, allowing the system
@@ -102,7 +33,7 @@ impl From<CostData> for RawCostData {
 #[derive(Serialize, Deserialize, PartialEq, ToSchema, Debug)]
 pub struct CostHistoryRecord {
     /// The cost data, or None if the cost was deactivated
-    pub data: Option<CostData>,
+    pub data: Option<DemandCurve>,
     /// The timestamp when this version was created
     #[serde(with = "time::serde::rfc3339")]
     pub version: OffsetDateTime,
@@ -128,7 +59,7 @@ pub struct CostRecord {
     pub group: Option<Group>,
 
     /// The utility for the cost
-    pub data: Option<CostData>,
+    pub data: Option<DemandCurve>,
 
     /// The "last-modified-or-created" time as recorded by the system
     #[serde(with = "time::serde::rfc3339")]
@@ -149,8 +80,8 @@ impl CostRecord {
         if let Some(data) = self.data {
             let group = self.group.unwrap_or_default();
             let points = match data {
-                CostData::Curve(curve) => curve.as_solver(scale),
-                CostData::Constant(constant) => constant.as_solver(scale),
+                DemandCurve::Curve(curve) => curve.as_solver(scale),
+                DemandCurve::Constant(constant) => constant.as_solver(scale),
             };
             let domain = (
                 points.first().map(|pt| pt.quantity).unwrap_or_default(),

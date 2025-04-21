@@ -1,6 +1,6 @@
 use super::{AuthFailure, CostFailure};
 use crate::{
-    models::{AuthData, AuthId, BidderId, CostData, CostId, Group, Portfolio, SubmissionRecord},
+    models::{AuthData, AuthId, BidderId, DemandCurve, CostId, Group, Portfolio, SubmissionRecord},
     ports::CostRepository,
 };
 use serde::Deserialize;
@@ -77,14 +77,14 @@ pub enum SubmissionCostDto {
         /// The group associated with this cost
         group: Group,
         /// The cost data
-        data: CostData,
+        data: DemandCurve,
     },
     /// Update an existing cost with new data
     Update {
         /// The unique identifier for the cost
         cost_id: CostId,
         /// The cost data
-        data: CostData,
+        data: DemandCurve,
     },
     /// Read an existing cost
     Read {
