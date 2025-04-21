@@ -8,6 +8,7 @@ mod disaggregate;
 pub use disaggregate::disaggregate;
 
 /// A demand curve represents utility via a piecewise linear function
+#[derive(Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct DemandCurve<Idx, A: IntoIterator<Item = (Idx, f64)>, B: IntoIterator<Item = Point>> {
     /// Constrains the otherwise-infinite domain of the function to q ∈ 𝒟

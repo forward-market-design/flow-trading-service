@@ -89,37 +89,31 @@ impl<T> RawAuctionInput<T> {
         let scale = (self.thru - self.from) / self.trade_duration;
 
         // Now we produce a list of submissions
-        let submissions_by_bidder = costs_by_bidder
+        let submissions_by_bidder = auths_by_bidder
             .into_iter()
-            .filter_map(|(bidder_id, costs)| {
-                // If the bidder has no auths, then the costs are no-op.
-                if let Some(auths) = auths_by_bidder.swap_remove(&bidder_id) {
-                    let mut portfolios = Vec::new();
-                    let mut curves = Vec::new();
+            .filter_map(|(bidder_id, auths)| {
+                let mut portfolios = Vec::new();
+                let mut curves = Vec::new();
 
-                    for auth in auths {
-                        let id = auth.auth_id.clone();
-
-                        if let Some((portfolio, curve)) = auth.into_solver(scale) {
-                            portfolios.push((id, portfolio));
-                            curves.push(curve);
-                        }
+                for auth in auths {
+                    let id = auth.auth_id.clone();
+                    if let Some((portfolio, curve)) = auth.into_solver(scale) {
+                        portfolios.push((id, portfolio));
+                        curves.push(curve);
                     }
+                }
 
+                if let Some(costs) = costs_by_bidder.swap_remove(&bidder_id) {
                     for cost in costs {
                         if let Some(curve) = cost.into_solver(scale) {
                             curves.push(curve);
                         }
                     }
-
-                    // Having done all that, we now have a submission
-                    Some((
-                        bidder_id,
-                        fts_solver::Submission::new(portfolios, curves).ok()?,
-                    ))
-                } else {
-                    None
                 }
+
+                fts_solver::Submission::new(portfolios, curves)
+                    .ok()
+                    .map(|submission| (bidder_id, submission))
             })
             .collect();
 

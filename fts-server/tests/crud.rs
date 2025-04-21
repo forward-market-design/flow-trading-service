@@ -2,8 +2,7 @@ use axum::http::StatusCode;
 use axum_test::TestServer;
 use fts_core::{
     models::{
-        AuthId, AuthRecord, BidderId, CostHistoryRecord, CostRecord, DateTimeRangeResponse,
-        ProductId, SubmissionRecord,
+        AuthHistoryRecord, AuthRecord, BidderId, DateTimeRangeResponse, ProductId, SubmissionRecord,
     },
     ports::MarketRepository,
 };
@@ -98,7 +97,7 @@ async fn crud(#[case] backend: impl Future<Output = (impl MarketRepository, Box<
         );
     }
 
-    let auth_id: AuthId = {
+    let (auth_id, version) = {
         let res = server
             .post("/v0/auths")
             .authorization_bearer(&token)
@@ -108,15 +107,17 @@ async fn crud(#[case] backend: impl Future<Output = (impl MarketRepository, Box<
                     banana: 1.0
                 },
                 "data": {
-                    "min_rate": serde_json::Value::Null,
-                    "max_rate": serde_json::Value::Null,
+                    "demand": [
+                        { "rate": -5.0, "price": 10.0 },
+                        { "rate": 5.0, "price": 5.0 }
+                    ],
                     "min_trade": serde_json::Value::Null,
                     "max_trade": serde_json::Value::Null,
                 }
             }))
             .await;
         let response = res.json::<AuthRecord>();
-        response.auth_id
+        (response.auth_id, response.version)
     };
 
     {
@@ -147,85 +148,44 @@ async fn crud(#[case] backend: impl Future<Output = (impl MarketRepository, Box<
         assert_eq!(response.auths[0].auth_id, auth_id);
     }
 
-    let (cost_id, version) = {
-        let res = server
-            .post("/v0/costs")
-            .authorization_bearer(&token)
-            .json(&json!({
-                "group": {
-                    auth_id: 1.0
-                },
-                "data": [
-                    { "rate": -5.0, "price": 10.0 },
-                    { "rate": 5.0, "price": 5.0 }
-                ]
-            }))
-            .await;
-
-        let response = res.json::<CostRecord>();
-
-        (response.cost_id, response.version)
-    };
-
-    // Let's now try a few things. First, let's list our bids again:
-    {
-        let submission = server
-            .get(&format!("/v0/submissions/{}", account))
-            .authorization_bearer(&token)
-            .await
-            .json::<SubmissionRecord>();
-        assert_eq!(submission.costs.len(), 1);
-        assert_eq!(submission.costs[0].bidder_id, account);
-        assert_eq!(submission.costs[0].cost_id, cost_id);
-        assert_eq!(submission.costs[0].version, version);
-    }
-
-    // Let's also grab the most recent order and verify it is this one
-    {
-        let bid = server
-            .get(&format!("/v0/costs/{}", cost_id))
-            .authorization_bearer(&token)
-            .await
-            .json::<CostRecord>();
-        assert_eq!(bid.version, version);
-    };
-
     // We can also try to explicitly grab the order with its version
     {
         let version_iso = urlencoding::encode(&version.format(&Rfc3339).unwrap()).to_string();
-        let costs = server
+        let auths = server
             .get(&format!(
-                "/v0/costs/{}/history?before={}&after={}",
-                cost_id, version_iso, version_iso
+                "/v0/auths/{}/history?before={}&after={}",
+                auth_id, version_iso, version_iso
             ))
             .authorization_bearer(&token)
             .await;
 
-        let costs = costs.json::<DateTimeRangeResponse<CostHistoryRecord>>();
-        assert_eq!(costs.results.len(), 1);
-        assert!(costs.more.is_none());
-        assert!(costs.results[0].data.is_some());
-        assert_eq!(costs.results[0].version, version);
+        let auths = auths.json::<DateTimeRangeResponse<AuthHistoryRecord>>();
+        assert_eq!(auths.results.len(), 1);
+        assert!(auths.more.is_none());
+        assert!(auths.results[0].data.is_some());
+        assert_eq!(auths.results[0].version, version);
     }
 
     // now let's patch the order (keeping the same portfolio)
     {
         let bid = server
-            .put(&format!("/v0/costs/{}", cost_id))
+            .put(&format!("/v0/auths/{}", auth_id))
             .authorization_bearer(&token)
-            .json(&json!({"data": [
-                { "rate": -5.0, "price": 15.0 },
-                { "rate": 5.0, "price": 5.0 }
-            ]}))
+            .json(&json!({"data": {
+                "demand": [
+                    { "rate": -5.0, "price": 15.0 },
+                    { "rate": 5.0, "price": 5.0 }
+                ]
+            }}))
             .await;
 
-        let cost = bid.json::<CostRecord>();
-        assert_ne!(version, cost.version);
+        let auth = bid.json::<AuthRecord>();
+        assert_ne!(version, auth.version);
     }
     // test the deletion of the order and ensure the order list does not pick it up
     {
         let response = server
-            .delete(&format!("/v0/costs/{}", cost_id))
+            .delete(&format!("/v0/auths/{}", auth_id))
             .authorization_bearer(&token)
             .await;
 
@@ -237,6 +197,6 @@ async fn crud(#[case] backend: impl Future<Output = (impl MarketRepository, Box<
             .await
             .json::<SubmissionRecord>();
 
-        assert_eq!(submission.costs.len(), 0);
+        assert_eq!(submission.auths.len(), 0);
     }
 }
