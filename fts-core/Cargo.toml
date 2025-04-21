@@ -6,11 +6,11 @@ edition.workspace = true
 license.workspace = true
 publish.workspace = true
 rust-version.workspace = true
-version = "0.1.4"
+version = "0.1.5"
 
 [dependencies]
 # This pulls in the Solver trait. TODO: invert this dependency?
-fts-solver = { path = "../fts-solver", version = "0.3.0" }
+fts-solver = { path = "../fts-solver", version = "0.3.1" }
 
 fxhash = { workspace = true }
 humantime = { workspace = true }

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1](https://github.com/forward-market-design/flow-trading-service/compare/fts-solver-v0.3.0...fts-solver-v0.3.1) - 2025-04-21
+
+### Added
+
+- lp format export
+- mps export
+
+### Fixed
+
+- remove export feature flag
+
+### Other
+
+- test suite for qp export
+- skeleton for export functionality
+
 ## [0.2.0](https://github.com/forward-market-design/flow-trading-service/compare/fts-solver-v0.1.2...fts-solver-v0.2.0) - 2025-04-11
 
 ### Added
