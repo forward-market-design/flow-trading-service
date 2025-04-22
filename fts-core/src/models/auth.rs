@@ -5,32 +5,21 @@ use thiserror::Error;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 
-use super::Group;
+use super::{
+    DemandCurve, Group,
+    demand::{self, RawDemandCurve},
+};
 
 uuid_wrapper!(AuthId);
 
-/// The supported constraints for an authorization.
-///
-/// An AuthData defines the trading constraints for an authorization:
-/// - Rate constraints limit how fast a portfolio can be traded (in units per time)
-/// - Trade constraints limit the total accumulated trade amount over time
-///
-/// The rate constraints must allow the possibility of zero trade (min_rate ≤ 0 ≤ max_rate).
-///
-/// The trade constraints do not have this restriction, but instead, at time of
-/// specification, they *should* allow for the currently traded amount of the auth.
-/// If they do not, the trade constraint is implicitly expanded to include 0 at
-/// each auction, which may not be desired.
+/// An authorization defines a portfolio and associates some data. This data
+/// describes any trading constraints, as well as a default demand curve to
+/// associate to the portfolio.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
 #[serde(try_from = "RawAuthorization", into = "RawAuthorization")]
 pub struct AuthData {
-    /// The fastest rate at which the portfolio may sell (non-positive)
-    #[schema(value_type = Option<f64>)]
-    pub min_rate: f64,
-
-    /// The fastest rate at which the portfolio may buy (non-negative)
-    #[schema(value_type = Option<f64>)]
-    pub max_rate: f64,
+    /// The demand curve to associate to the portfolio
+    pub demand: DemandCurve,
 
     /// A minimum amount of trade to preserve (always enforced against the authorization's contemporaneous amount of trade)
     #[schema(value_type = Option<f64>)]
@@ -44,18 +33,10 @@ pub struct AuthData {
 impl AuthData {
     /// Creates a new AuthData with the specified constraints.
     pub fn new(
-        min_rate: f64,
-        max_rate: f64,
+        demand: DemandCurve,
         min_trade: f64,
         max_trade: f64,
     ) -> Result<Self, ValidationError> {
-        if min_rate.is_nan() || max_rate.is_nan() {
-            return Err(ValidationError::NAN);
-        }
-        if !(min_rate <= 0.0 && 0.0 <= max_rate) {
-            return Err(ValidationError::ZERORATE);
-        }
-
         if min_trade.is_nan() || max_trade.is_nan() {
             return Err(ValidationError::NAN);
         }
@@ -64,8 +45,7 @@ impl AuthData {
         }
 
         Ok(Self {
-            min_rate,
-            max_rate,
+            demand,
             min_trade,
             max_trade,
         })
@@ -78,9 +58,9 @@ pub enum ValidationError {
     /// Error when any constraint value is NaN
     #[error("NaN value encountered")]
     NAN,
-    /// Error when rate constraints don't allow zero trade
-    #[error("Rate restriction must allow for 0")]
-    ZERORATE,
+    /// Error when demand curve is invalid
+    #[error("Invalid demand curve: {0:?}")]
+    DEMAND(demand::ValidationError),
     /// Error when min_trade > max_trade
     #[error("Trade restriction is infeasible")]
     INFEASIBLETRADE,
@@ -92,8 +72,7 @@ pub enum ValidationError {
 /// missing values to default to appropriate infinities.
 #[derive(Serialize, Deserialize)]
 pub struct RawAuthorization {
-    pub min_rate: Bound,
-    pub max_rate: Bound,
+    pub demand: RawDemandCurve,
     pub min_trade: Bound,
     pub max_trade: Bound,
 }
@@ -103,8 +82,10 @@ impl TryFrom<RawAuthorization> for AuthData {
 
     fn try_from(value: RawAuthorization) -> Result<Self, Self::Error> {
         AuthData::new(
-            value.min_rate.or_neg_inf(),
-            value.max_rate.or_pos_inf(),
+            value
+                .demand
+                .try_into()
+                .map_err(|err| ValidationError::DEMAND(err))?,
             value.min_trade.or_neg_inf(),
             value.max_trade.or_pos_inf(),
         )
@@ -114,8 +95,7 @@ impl TryFrom<RawAuthorization> for AuthData {
 impl From<AuthData> for RawAuthorization {
     fn from(value: AuthData) -> Self {
         Self {
-            min_rate: value.min_rate.into(),
-            max_rate: value.max_rate.into(),
+            demand: value.demand.into(),
             min_trade: value.min_trade.into(),
             max_trade: value.max_trade.into(),
         }
@@ -183,18 +163,16 @@ impl AuthRecord {
     )> {
         let trade = self.trade.unwrap_or_default();
         if let Some(data) = self.data {
-            let min_trade = (data.min_trade - trade).max(data.min_rate * scale).min(0.0);
-            let max_trade = (data.max_trade - trade).min(data.max_rate * scale).max(0.0);
+            let (min_rate, max_rate) = data.demand.domain();
+            let min_trade = (data.min_trade - trade).max(min_rate * scale).min(0.0);
+            let max_trade = (data.max_trade - trade).min(max_rate * scale).max(0.0);
 
             Some((
                 self.portfolio.unwrap_or_default(),
                 fts_solver::DemandCurve {
                     domain: (min_trade, max_trade),
                     group: std::iter::once((self.auth_id, 1.0)).collect(),
-                    points: vec![fts_solver::Point {
-                        quantity: 0.0,
-                        price: 0.0,
-                    }],
+                    points: data.demand.as_solver(scale),
                 },
             ))
         } else {

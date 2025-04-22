@@ -168,6 +168,13 @@ impl Point {
 }
 
 impl Curve {
+    /// Return the domain of the demand curve (min and max rates)
+    pub fn domain(&self) -> (f64, f64) {
+        let min = self.0.first().map(|pt| pt.rate).unwrap_or(0.0);
+        let max = self.0.last().map(|pt| pt.rate).unwrap_or(0.0);
+        (min, max)
+    }
+
     /// Removes any collinearities and scales by the provided value
     ///
     /// This optimizes the curve representation by:

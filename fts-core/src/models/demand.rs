@@ -27,6 +27,24 @@ pub enum DemandCurve {
     Constant(#[schema(inline)] Constant),
 }
 
+impl DemandCurve {
+    /// Return the domain of the demand curve (min and max rates)
+    pub fn domain(&self) -> (f64, f64) {
+        match self {
+            Self::Constant(constant) => constant.domain(),
+            Self::Curve(curve) => curve.domain(),
+        }
+    }
+
+    /// Convert the curve data into a solver-specific representation
+    pub fn as_solver(&self, scale: f64) -> Vec<fts_solver::Point> {
+        match self {
+            Self::Constant(constant) => constant.as_solver(scale),
+            Self::Curve(curve) => curve.as_solver(scale),
+        }
+    }
+}
+
 /// An error type for the ways in which the provided utility function may be invalid.
 #[derive(Error, Debug)]
 pub enum ValidationError {
