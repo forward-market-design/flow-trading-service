@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0](https://github.com/forward-market-design/flow-trading-service/compare/fts-core-v0.1.5...fts-core-v0.2.0) - 2025-04-22
+
+### Added
+
+- unify cost data model convention with auth data model convention
+
+### Fixed
+
+- update all former cost endpoints to use proper type
+
+### Other
+
+- adapt tests to new data, update submission construction
+- refactor and rename cost data to demand curve
+
 ## [0.1.5](https://github.com/forward-market-design/flow-trading-service/compare/fts-core-v0.1.4...fts-core-v0.1.5) - 2025-04-21
 
 ### Other

@@ -777,7 +777,7 @@ checksum = "42703706b716c37f96a77aea830392ad231f44c9e9a67872fa5548707e11b11c"
 
 [[package]]
 name = "ftauction"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -788,7 +788,7 @@ dependencies = [
 
 [[package]]
 name = "fts-core"
-version = "0.1.5"
+version = "0.2.0"
 dependencies = [
  "fts-solver",
  "fxhash",
@@ -804,7 +804,7 @@ dependencies = [
 
 [[package]]
 name = "fts-demo"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "clap",
  "dotenvy",
@@ -829,7 +829,7 @@ dependencies = [
 
 [[package]]
 name = "fts-server"
-version = "0.2.2"
+version = "0.2.3"
 dependencies = [
  "axum",
  "axum-extra",
@@ -860,7 +860,7 @@ dependencies = [
 
 [[package]]
 name = "fts-solver"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "approx",
  "clarabel",

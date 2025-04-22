@@ -6,12 +6,12 @@ edition.workspace = true
 license.workspace = true
 publish.workspace = true
 rust-version.workspace = true
-version = "0.1.5"
+version = "0.1.6"
 
 [dependencies]
-fts-core = { path = "../fts-core", version = "0.1.5" }
-fts-server = { path = "../fts-server", version = "0.2.2" }
-fts-solver = { path = "../fts-solver", version = "0.3.1", features = ["clarabel", "serde"] }
+fts-core = { path = "../fts-core", version = "0.2.0" }
+fts-server = { path = "../fts-server", version = "0.2.3" }
+fts-solver = { path = "../fts-solver", version = "0.3.2", features = ["clarabel", "serde"] }
 
 clap = { workspace = true, features = ["derive", "env"] }
 fxhash = { workspace = true }
