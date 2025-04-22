@@ -13,7 +13,7 @@ use fts_core::{
 use rusqlite::TransactionBehavior;
 use time::OffsetDateTime;
 
-type Map<K, V> = indexmap::IndexMap<K, V, fxhash::FxBuildHasher>;
+type Map<K, V> = indexmap::IndexMap<K, V, rustc_hash::FxBuildHasher>;
 
 impl SubmissionRepository for db::Database {
     async fn get_submission(

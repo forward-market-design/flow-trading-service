@@ -13,9 +13,9 @@ fts-core = { path = "../fts-core", version = "0.1.5" }
 fts-server = { path = "../fts-server", version = "0.2.2" }
 fts-solver = { path = "../fts-solver", version = "0.3.1", features = ["clarabel", "serde"] }
 
-fxhash = { workspace = true }
 humantime = { workspace = true }
 indexmap = { workspace = true }
+rustc-hash = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

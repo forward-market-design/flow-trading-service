@@ -1,5 +1,5 @@
-use fxhash::FxBuildHasher;
 use indexmap::IndexMap;
+use rustc_hash::FxBuildHasher;
 use serde::{Deserialize, Deserializer, Serialize};
 use time::{Duration, OffsetDateTime};
 use utoipa::ToSchema;

@@ -90,10 +90,10 @@ macro_rules! map_wrapper {
         #[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
         #[serde(transparent)]
         #[schema(value_type = std::collections::HashMap<$key, $value>)]
-        pub struct $struct(pub indexmap::IndexMap<$key, $value, fxhash::FxBuildHasher>);
+        pub struct $struct(pub indexmap::IndexMap<$key, $value, rustc_hash::FxBuildHasher>);
 
         impl std::ops::Deref for $struct {
-            type Target = indexmap::IndexMap<$key, $value, fxhash::FxBuildHasher>;
+            type Target = indexmap::IndexMap<$key, $value, rustc_hash::FxBuildHasher>;
 
             fn deref(&self) -> &Self::Target {
                 &self.0

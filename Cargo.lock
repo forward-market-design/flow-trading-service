@@ -804,9 +804,9 @@ name = "fts-core"
 version = "0.1.5"
 dependencies = [
  "fts-solver",
- "fxhash",
  "humantime",
  "indexmap",
+ "rustc-hash",
  "serde",
  "serde_json",
  "thiserror 2.0.12",
@@ -826,11 +826,11 @@ dependencies = [
  "fts-core",
  "fts-solver",
  "fts-sqlite",
- "fxhash",
  "http-body-util",
  "jwt-simple",
  "rstest",
  "rstest_reuse",
+ "rustc-hash",
  "serde",
  "serde_json",
  "thiserror 2.0.12",
@@ -871,13 +871,13 @@ dependencies = [
  "fts-core",
  "fts-server",
  "fts-solver",
- "fxhash",
  "humantime",
  "indexmap",
  "r2d2",
  "r2d2_sqlite",
  "refinery",
  "rusqlite",
+ "rustc-hash",
  "serde",
  "serde_json",
  "thiserror 2.0.12",
@@ -931,15 +931,6 @@ dependencies = [
  "pin-project-lite",
  "pin-utils",
  "slab",
-]
-
-[[package]]
-name = "fxhash"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
-dependencies = [
- "byteorder",
 ]
 
 [[package]]
