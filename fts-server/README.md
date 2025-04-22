@@ -16,18 +16,18 @@ The different crates in this workspace are as follows:
 - **[fts_core]**: Defines a set of data primitives and operations but defers the implementations of these operations, consistent with a so-called "hexagonal architecture" approach to separating responsibilities.
 - **[fts_solver]**: Provides a reference solver for the flow trading quadratic program.
 - **[fts_server]**: A REST API HTTP server for interacting with the solver and persisting state across auctions.
-- **[fts_demo]**: An implementation of the core data operations using SQLite, suitable for exploration of flow trading-based marketplaces such as a forward market.
+- **[fts_sqlite]**: An implementation of the core data operations using SQLite, suitable for exploration of flow trading-based marketplaces such as a forward market.
 
 [fts_core]: ../fts-core/README.md
 [fts_solver]: ../fts-solver/README.md
 [fts_server]: ../fts-server/README.md
-[fts_demo]: ../fts-demo/README.md
+[fts_sqlite]: ../fts-sqlite/README.md
 
 
 # FTS Server
 
 This crate provides a REST API for the core flow trading operations. Building
-the sibling crate `fts-demo` will generate an OpenAPI schema. A running server will host this schema at http://localhost:8080/rapidoc.
+the sibling crate `fts-sqlite` will generate an OpenAPI schema. A running server will host this schema at http://localhost:8080/rapidoc.
 
 ## On the use of JSON and HTTP
 

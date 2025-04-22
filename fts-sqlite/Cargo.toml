@@ -1,5 +1,5 @@
 [package]
-name = "fts-demo"
+name = "fts-sqlite"
 description = "A simple, reference backend for `fts` implemented with SQLite"
 authors.workspace = true
 edition.workspace = true

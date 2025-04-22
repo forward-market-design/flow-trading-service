@@ -36,7 +36,7 @@ utoipa-rapidoc = { version = "6.0", features = ["axum"] }
 http-body-util = "0.1"
 tower          = { version = "0.5", features = ["util"] }
 axum-test      = "17.3"
-fts-demo = { path = "../fts-demo" }
+fts-sqlite = { path = "../fts-sqlite" }
 urlencoding  = "2.1"
 rstest       = { workspace = true }
 rstest_reuse = { workspace = true }

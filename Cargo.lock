@@ -792,8 +792,8 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "dotenvy",
- "fts-demo",
  "fts-server",
+ "fts-sqlite",
  "humantime",
  "tokio",
  "tracing-subscriber",
@@ -816,27 +816,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fts-demo"
-version = "0.1.5"
-dependencies = [
- "fts-core",
- "fts-server",
- "fts-solver",
- "fxhash",
- "humantime",
- "indexmap",
- "r2d2",
- "r2d2_sqlite",
- "refinery",
- "rusqlite",
- "serde",
- "serde_json",
- "thiserror 2.0.12",
- "time",
- "uuid",
-]
-
-[[package]]
 name = "fts-server"
 version = "0.2.2"
 dependencies = [
@@ -845,8 +824,8 @@ dependencies = [
  "axum-test",
  "dashmap",
  "fts-core",
- "fts-demo",
  "fts-solver",
+ "fts-sqlite",
  "fxhash",
  "http-body-util",
  "jwt-simple",
@@ -883,6 +862,27 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.12",
  "tracing",
+]
+
+[[package]]
+name = "fts-sqlite"
+version = "0.1.5"
+dependencies = [
+ "fts-core",
+ "fts-server",
+ "fts-solver",
+ "fxhash",
+ "humantime",
+ "indexmap",
+ "r2d2",
+ "r2d2_sqlite",
+ "refinery",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.12",
+ "time",
+ "uuid",
 ]
 
 [[package]]

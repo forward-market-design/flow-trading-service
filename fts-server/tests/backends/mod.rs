@@ -3,7 +3,7 @@
 use std::{any::Any, marker::PhantomData};
 
 use fts_core::ports::MarketRepository;
-use fts_demo::{Config as simple_config, db::Database as simple_database};
+use fts_sqlite::{Config as simple_config, db::Database as simple_database};
 use rstest_reuse::template;
 // use pg_backend::db::initialize_db;
 // use testcontainers_modules::{

@@ -1,5 +1,5 @@
 use clap::Parser;
-use fts_demo::{
+use fts_sqlite::{
     Config,
     db::{self, Database},
 };
