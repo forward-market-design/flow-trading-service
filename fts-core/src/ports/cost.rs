@@ -1,8 +1,8 @@
 use time::OffsetDateTime;
 
 use crate::models::{
-    AuthId, BidderId, CostHistoryRecord, CostId, CostRecord, DateTimeRangeQuery,
-    DateTimeRangeResponse, DemandCurve, GroupDisplay,
+    AuthId, BidderId, CostData, CostHistoryRecord, CostId, CostRecord, DateTimeRangeQuery,
+    DateTimeRangeResponse, GroupDisplay,
 };
 use crate::ports::AuthRepository;
 use std::{borrow::Borrow, future::Future};
@@ -45,7 +45,7 @@ pub trait CostRepository: AuthRepository {
         bidder_id: BidderId,
         cost_id: Option<CostId>,
         group: impl Iterator<Item = P> + Send,
-        data: DemandCurve,
+        data: CostData,
         timestamp: OffsetDateTime,
         include_group: GroupDisplay,
     ) -> impl Future<Output = Result<Result<CostRecord, CostFailure>, Self::Error>> + Send;
@@ -64,7 +64,7 @@ pub trait CostRepository: AuthRepository {
         &self,
         bidder_id: BidderId,
         cost_id: CostId,
-        data: DemandCurve,
+        data: CostData,
         timestamp: OffsetDateTime,
         include_group: GroupDisplay,
     ) -> impl Future<Output = Result<Result<CostRecord, CostFailure>, Self::Error>> + Send;

@@ -3,7 +3,7 @@ use std::{borrow::Borrow, ops::Deref as _};
 use crate::{DateTime, db};
 use fts_core::{
     models::{
-        AuthId, BidderId, DemandCurve, CostHistoryRecord, CostId, CostRecord, DateTimeRangeQuery,
+        AuthId, BidderId, CostData, CostHistoryRecord, CostId, CostRecord, DateTimeRangeQuery,
         DateTimeRangeResponse, GroupDisplay,
     },
     ports::{CostFailure, CostRepository},
@@ -18,7 +18,7 @@ impl CostRepository for db::Database {
         bidder_id: BidderId,
         cost_id: Option<CostId>,
         group: impl Iterator<Item = P>,
-        cost: DemandCurve,
+        cost: CostData,
         timestamp: OffsetDateTime,
         include_group: GroupDisplay,
     ) -> Result<Result<CostRecord, CostFailure>, Self::Error> {
@@ -70,7 +70,7 @@ impl CostRepository for db::Database {
         &self,
         bidder_id: BidderId,
         cost_id: CostId,
-        data: DemandCurve,
+        data: CostData,
         timestamp: OffsetDateTime,
         include_group: GroupDisplay,
     ) -> Result<Result<CostRecord, CostFailure>, Self::Error> {
@@ -197,7 +197,7 @@ pub fn create_cost<K: Borrow<AuthId>, V: Borrow<f64>, P: Borrow<(K, V)>>(
     bidder_id: BidderId,
     cost_id: Option<CostId>,
     group: impl Iterator<Item = P>,
-    cost: DemandCurve,
+    cost: CostData,
     timestamp: OffsetDateTime,
 ) -> Result<Option<CostId>, db::Error> {
     // Generate a new random id if not provided
@@ -281,7 +281,7 @@ pub fn get_cost(
     let result = stmt
         .query_and_then(
             (cost_id.deref(), DateTime::from(as_of)),
-            |row| -> Result<(Option<DemandCurve>, OffsetDateTime, BidderId), db::Error> {
+            |row| -> Result<(Option<CostData>, OffsetDateTime, BidderId), db::Error> {
                 Ok((
                     serde_json::from_value(row.get(0)?)?,
                     row.get::<usize, DateTime>(1)?.into(),
@@ -327,7 +327,7 @@ pub fn get_cost(
 pub fn update_cost(
     ctx: &Connection,
     cost_id: CostId,
-    data: Option<DemandCurve>,
+    data: Option<CostData>,
     timestamp: OffsetDateTime,
 ) -> Result<(), db::Error> {
     ctx.execute(

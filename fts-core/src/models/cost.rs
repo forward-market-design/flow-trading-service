@@ -77,7 +77,7 @@ impl Default for GroupDisplay {
 #[derive(Serialize, Deserialize, PartialEq, ToSchema, Debug)]
 pub struct CostHistoryRecord {
     /// The cost data, or None if the cost was deactivated
-    pub data: Option<DemandCurve>,
+    pub data: Option<CostData>,
     /// The timestamp when this version was created
     #[serde(with = "time::serde::rfc3339")]
     pub version: OffsetDateTime,
@@ -103,7 +103,7 @@ pub struct CostRecord {
     pub group: Option<Group>,
 
     /// The utility for the cost
-    pub data: Option<DemandCurve>,
+    pub data: Option<CostData>,
 
     /// The "last-modified-or-created" time as recorded by the system
     #[serde(with = "time::serde::rfc3339")]
@@ -123,7 +123,7 @@ impl CostRecord {
     ) -> Option<fts_solver::DemandCurve<AuthId, Group, Vec<fts_solver::Point>>> {
         if let Some(data) = self.data {
             let group = self.group.unwrap_or_default();
-            let points = match data {
+            let points = match data.demand {
                 DemandCurve::Curve(curve) => curve.as_solver(scale),
                 DemandCurve::Constant(constant) => constant.as_solver(scale),
             };

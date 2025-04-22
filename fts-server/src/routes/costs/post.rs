@@ -5,7 +5,7 @@ use axum::{
     http::StatusCode,
 };
 use fts_core::{
-    models::{CostId, CostRecord, DemandCurve, Group},
+    models::{CostData, CostId, CostRecord, Group},
     ports::{CostFailure, CostRepository, MarketRepository},
 };
 use serde::Deserialize;
@@ -19,7 +19,7 @@ pub struct PostCostDto {
     cost_id: Option<CostId>,
     #[schema(value_type = std::collections::HashMap<fts_core::models::AuthId, f64>)]
     group: Group,
-    data: DemandCurve,
+    data: CostData,
 }
 
 #[utoipa::path(

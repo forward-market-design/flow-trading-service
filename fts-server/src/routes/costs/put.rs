@@ -6,7 +6,7 @@ use axum::{
     http::StatusCode,
 };
 use fts_core::{
-    models::{DemandCurve, CostId, CostRecord, Group},
+    models::{CostData, CostId, CostRecord, Group},
     ports::{CostFailure, CostRepository, MarketRepository},
 };
 use serde::Deserialize;
@@ -16,8 +16,8 @@ use utoipa::ToSchema;
 #[derive(Deserialize, ToSchema)]
 #[serde(untagged)]
 pub enum PutCostDto {
-    Create { group: Group, data: DemandCurve },
-    Update { data: DemandCurve },
+    Create { group: Group, data: CostData },
+    Update { data: CostData },
     Delete,
 }
 
