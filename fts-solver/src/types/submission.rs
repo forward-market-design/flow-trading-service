@@ -5,6 +5,7 @@ use thiserror::Error;
 
 /// The fundamental input to a `Solver` implementation, containing an
 /// independent collection of portfolios and demand curves.
+#[derive(Debug)]
 #[cfg_attr(
     feature = "serde",
     derive(serde::Serialize, serde::Deserialize),

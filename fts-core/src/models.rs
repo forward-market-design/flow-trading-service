@@ -3,6 +3,7 @@ mod auth;
 mod bound;
 mod cost;
 mod datetime;
+mod demand;
 mod outcome;
 mod product;
 mod submission;
@@ -10,10 +11,9 @@ mod submission;
 pub use auction::{AuctionMetaData, AuctionSolveRequest, RawAuctionInput};
 pub use auth::{AuthData, AuthHistoryRecord, AuthId, AuthRecord, Portfolio};
 pub use bound::Bound;
-pub use cost::{
-    Constant, CostData, CostHistoryRecord, CostId, CostRecord, Curve, Group, GroupDisplay, Point,
-};
+pub use cost::{CostData, CostHistoryRecord, CostId, CostRecord, Group, GroupDisplay};
 pub use datetime::{DateTimeRangeQuery, DateTimeRangeResponse};
+pub use demand::{Constant, Curve, DemandCurve, Point};
 pub use outcome::{AuctionOutcome, Outcome};
 pub use product::{ProductData, ProductQuery, ProductQueryResponse, ProductRecord};
 pub use submission::SubmissionRecord;

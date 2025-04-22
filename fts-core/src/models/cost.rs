@@ -1,17 +1,55 @@
-mod constant;
-mod curve;
-
-use crate::models::{AuthId, BidderId, map_wrapper, uuid_wrapper};
-pub use constant::{Constant, RawConstant};
-pub use curve::{Curve, Point};
+use crate::models::{AuthId, BidderId, DemandCurve, map_wrapper, uuid_wrapper};
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
-use thiserror::Error;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 
+use super::demand;
+
 // A simple newtype for a Uuid
 uuid_wrapper!(CostId);
+
+/// An authorization defines a portfolio and associates some data. This data
+/// describes any trading constraints, as well as a default demand curve to
+/// associate to the portfolio.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(try_from = "RawCost", into = "RawCost")]
+pub struct CostData {
+    /// The demand curve to associate to the portfolio
+    pub demand: DemandCurve,
+}
+
+impl CostData {
+    /// Creates a new AuthData with the specified constraints.
+    pub fn new(demand: DemandCurve) -> Self {
+        Self { demand }
+    }
+}
+
+/// The "DTO" type for AuthData. Omitted values default to the appropriately signed infinity.
+///
+/// This provides a user-friendly interface for specifying auth constraints, allowing
+/// missing values to default to appropriate infinities.
+#[derive(Serialize, Deserialize)]
+pub struct RawCost {
+    pub demand: demand::RawDemandCurve,
+}
+
+impl TryFrom<RawCost> for CostData {
+    type Error = demand::ValidationError;
+
+    fn try_from(value: RawCost) -> Result<Self, Self::Error> {
+        Ok(CostData::new(value.demand.try_into()?))
+    }
+}
+
+impl From<CostData> for RawCost {
+    fn from(value: CostData) -> Self {
+        Self {
+            demand: value.demand.into(),
+        }
+    }
+}
 
 /// Controls whether cost group details should be included in API responses
 ///
@@ -29,69 +67,6 @@ pub enum GroupDisplay {
 impl Default for GroupDisplay {
     fn default() -> Self {
         Self::Exclude
-    }
-}
-
-/// The utility-specification of the cost
-///
-/// CostData represents either:
-/// - A non-increasing, piecewise-linear demand curve assigning a cost to each quantity in its domain, or
-/// - A simple, "flat" demand curve assining a constant cost to each quantity in its domain.
-///
-/// This is the core component that defines how a bidder values different trade outcomes.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
-#[serde(untagged, try_from = "RawCostData", into = "RawCostData")]
-// TODO: Utoipa doesn't fully support all the Serde annotations,
-// so we injected `untagged` (which Serde will ignore given the presence of
-// of `try_from` and `into`), then inline the actual fields. This appears
-// to correctly generate the OpenAPI schema, but we should revisit.
-pub enum CostData {
-    /// A piecewise linear demand curve defined by points
-    Curve(#[schema(inline)] Curve),
-    /// A constant constraint enforcing a specific trade quantity at a price
-    Constant(#[schema(inline)] Constant),
-}
-
-/// An error type for the ways in which the provided utility function may be invalid.
-#[derive(Error, Debug)]
-pub enum ValidationError {
-    /// Error when a curve's definition is invalid
-    #[error("invalid demand curve: {0}")]
-    Curve(#[from] curve::ValidationError),
-    /// Error when a constant curve's definition is invalid
-    #[error("invalid constant curve: {0}")]
-    Constraint(#[from] constant::ValidationError),
-}
-
-/// The "DTO" type for the utility
-///
-/// This enum represents the raw data formats accepted in API requests for defining costs.
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
-#[serde(untagged)]
-pub enum RawCostData {
-    /// A sequence of points defining a piecewise linear demand curve
-    Curve(Vec<Point>),
-    /// A raw constant constraint definition
-    Constant(RawConstant),
-}
-
-impl TryFrom<RawCostData> for CostData {
-    type Error = ValidationError;
-
-    fn try_from(value: RawCostData) -> Result<Self, Self::Error> {
-        match value {
-            RawCostData::Curve(curve) => Ok(CostData::Curve(curve.try_into()?)),
-            RawCostData::Constant(constant) => Ok(CostData::Constant(constant.try_into()?)),
-        }
-    }
-}
-
-impl From<CostData> for RawCostData {
-    fn from(value: CostData) -> Self {
-        match value {
-            CostData::Curve(curve) => RawCostData::Curve(curve.into()),
-            CostData::Constant(constant) => RawCostData::Constant(constant.into()),
-        }
     }
 }
 
@@ -148,9 +123,9 @@ impl CostRecord {
     ) -> Option<fts_solver::DemandCurve<AuthId, Group, Vec<fts_solver::Point>>> {
         if let Some(data) = self.data {
             let group = self.group.unwrap_or_default();
-            let points = match data {
-                CostData::Curve(curve) => curve.as_solver(scale),
-                CostData::Constant(constant) => constant.as_solver(scale),
+            let points = match data.demand {
+                DemandCurve::Curve(curve) => curve.as_solver(scale),
+                DemandCurve::Constant(constant) => constant.as_solver(scale),
             };
             let domain = (
                 points.first().map(|pt| pt.quantity).unwrap_or_default(),

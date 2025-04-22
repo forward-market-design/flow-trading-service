@@ -1,6 +1,6 @@
 use axum_test::TestServer;
 use fts_core::{
-    models::{AuctionOutcome, AuthId, AuthRecord, BidderId, DateTimeRangeResponse, ProductId},
+    models::{AuctionOutcome, AuthRecord, BidderId, DateTimeRangeResponse, ProductId},
     ports::MarketRepository,
 };
 use fts_server::{CustomJWTClaims, router, state};
@@ -82,131 +82,80 @@ async fn roundtrip(#[case] backend: impl Future<Output = (impl MarketRepository,
     // account_tokens[0] will be a FRUIT seller
     let fruit_id = {
         // Step 1: Create a portfolio and authorization for it
-        let auth_id: AuthId = {
-            let response = server
-                .post("/v0/auths")
-                .authorization_bearer(&account_tokens[0].1)
-                .json(&json!({
-                    "portfolio": {
-                        apple: 1.0,
-                        banana: 1.0
-                    },
-                    "data": {
-                        "min_rate": -10.0,
-                        "max_rate": 0.0,
-                        "min_trade": serde_json::Value::Null,
-                        "max_trade": serde_json::Value::Null,
-                    }
-                }))
-                .await
-                .json::<AuthRecord>();
-
-            response.auth_id
-        };
-
-        // Step 2: Create a cost and submit data for it
-        server
-            .post("/v0/costs")
+        let response = server
+            .post("/v0/auths")
             .authorization_bearer(&account_tokens[0].1)
             .json(&json!({
-                "group": {
-                    auth_id: 1.0
+                "portfolio": {
+                    apple: 1.0,
+                    banana: 1.0
                 },
-                "data": [
-                    { "rate": -10.0, "price": 10.0 },
-                    { "rate": 0.0, "price": 5.0 }
-                ]
+                "data": {
+                    "demand":  [
+                        { "rate": -10.0, "price": 10.0 },
+                        { "rate": 0.0, "price": 5.0 }
+                    ],
+                    "min_trade": serde_json::Value::Null,
+                    "max_trade": serde_json::Value::Null,
+                }
             }))
-            .await;
+            .await
+            .json::<AuthRecord>();
 
-        auth_id
+        response.auth_id
     };
 
     // we do the same thing again, with i=1 a VEGGIE seller and i=2 a buyer of any produce
     let veggie_id = {
         // Step 1: Create a portfolio and authorization for it
-        let auth_id: AuthId = {
-            let response = server
-                .post("/v0/auths")
-                .authorization_bearer(&account_tokens[1].1)
-                .json(&json!({
-                    "portfolio": {
-                        carrot: 1.0,
-                        daikon: 1.0
-                    },
-                    "data": {
-                        "min_rate": -10.0,
-                        "max_rate": 0.0,
-                        "min_trade": serde_json::Value::Null,
-                        "max_trade": serde_json::Value::Null,
-                    }
-                }))
-                .await
-                .json::<AuthRecord>();
-
-            response.auth_id
-        };
-
-        // Step 2: Create a cost and submit data for it
-        server
-            .post("/v0/costs")
+        let response = server
+            .post("/v0/auths")
             .authorization_bearer(&account_tokens[1].1)
             .json(&json!({
-                "group": {
-                    auth_id: 1.0
+                "portfolio": {
+                    carrot: 1.0,
+                    daikon: 1.0
                 },
-                "data": [
-                    { "rate": -10.0, "price": 10.0 },
-                    { "rate": 0.0, "price": 5.0 }
-                ]
+                "data": {
+                    "demand": [
+                        { "rate": -10.0, "price": 10.0 },
+                        { "rate": 0.0, "price": 5.0 }
+                    ],
+                    "min_trade": serde_json::Value::Null,
+                    "max_trade": serde_json::Value::Null,
+                }
             }))
-            .await;
+            .await
+            .json::<AuthRecord>();
 
-        auth_id
+        response.auth_id
     };
 
     let produce_id = {
         // Step 1: Create a portfolio and authorization for it
-        let auth_id: AuthId = {
-            let response = server
-                .post("/v0/auths")
-                .authorization_bearer(&account_tokens[2].1)
-                .json(&json!({
-                    "portfolio": {
-                        apple: 1.0,
-                        banana: 1.0,
-                        carrot: 1.0,
-                        daikon: 1.0,
-                    },
-                    "data":{
-                        "min_rate": 0.0,
-                        "max_rate": 10.0,
-                        "min_trade": serde_json::Value::Null,
-                        "max_trade": serde_json::Value::Null,
-                    }
-                }))
-                .await
-                .json::<AuthRecord>();
-
-            response.auth_id
-        };
-
-        // Step 2: Create a cost and submit data for it
-        server
-            .post("/v0/costs")
+        let response = server
+            .post("/v0/auths")
             .authorization_bearer(&account_tokens[2].1)
             .json(&json!({
-                "group": {
-                    auth_id: 1.0
+                "portfolio": {
+                    apple: 1.0,
+                    banana: 1.0,
+                    carrot: 1.0,
+                    daikon: 1.0,
                 },
-                "data": [
-                    { "rate": 0.0, "price": 30.0 },
-                    { "rate": 10.0, "price": 0.0 }
-                ]
+                "data":{
+                    "demand": [
+                        { "rate": 0.0, "price": 30.0 },
+                        { "rate": 10.0, "price": 0.0 }
+                    ],
+                    "min_trade": serde_json::Value::Null,
+                    "max_trade": serde_json::Value::Null,
+                }
             }))
-            .await;
+            .await
+            .json::<AuthRecord>();
 
-        auth_id
+        response.auth_id
     };
 
     // In theory we have an auction!

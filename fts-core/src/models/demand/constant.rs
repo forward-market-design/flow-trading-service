@@ -186,6 +186,11 @@ fn validate_price(x: f64) -> Option<PriceError> {
 }
 
 impl Constant {
+    /// Return the domain of the demand curve (min and max rates)
+    pub fn domain(&self) -> (f64, f64) {
+        (self.min_rate, self.max_rate)
+    }
+
     /// Converts this constant curve to the solver's representation
     ///
     /// Applies the given time scale to rate-based values to produce
