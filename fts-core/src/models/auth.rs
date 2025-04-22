@@ -1,14 +1,10 @@
-use crate::models::{BidderId, Bound, ProductId, map_wrapper, uuid_wrapper};
+use super::demand;
+use crate::models::{BidderId, Bound, DemandCurve, Group, ProductId, map_wrapper, uuid_wrapper};
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 use thiserror::Error;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
-
-use super::{
-    DemandCurve, Group,
-    demand::{self, RawDemandCurve},
-};
 
 uuid_wrapper!(AuthId);
 
@@ -72,7 +68,7 @@ pub enum ValidationError {
 /// missing values to default to appropriate infinities.
 #[derive(Serialize, Deserialize)]
 pub struct RawAuthorization {
-    pub demand: RawDemandCurve,
+    pub demand: demand::RawDemandCurve,
     pub min_trade: Bound,
     pub max_trade: Bound,
 }

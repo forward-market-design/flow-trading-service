@@ -4,8 +4,52 @@ use std::hash::Hash;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 
+use super::demand;
+
 // A simple newtype for a Uuid
 uuid_wrapper!(CostId);
+
+/// An authorization defines a portfolio and associates some data. This data
+/// describes any trading constraints, as well as a default demand curve to
+/// associate to the portfolio.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, ToSchema)]
+#[serde(try_from = "RawCost", into = "RawCost")]
+pub struct CostData {
+    /// The demand curve to associate to the portfolio
+    pub demand: DemandCurve,
+}
+
+impl CostData {
+    /// Creates a new AuthData with the specified constraints.
+    pub fn new(demand: DemandCurve) -> Self {
+        Self { demand }
+    }
+}
+
+/// The "DTO" type for AuthData. Omitted values default to the appropriately signed infinity.
+///
+/// This provides a user-friendly interface for specifying auth constraints, allowing
+/// missing values to default to appropriate infinities.
+#[derive(Serialize, Deserialize)]
+pub struct RawCost {
+    pub demand: demand::RawDemandCurve,
+}
+
+impl TryFrom<RawCost> for CostData {
+    type Error = demand::ValidationError;
+
+    fn try_from(value: RawCost) -> Result<Self, Self::Error> {
+        Ok(CostData::new(value.demand.try_into()?))
+    }
+}
+
+impl From<CostData> for RawCost {
+    fn from(value: CostData) -> Self {
+        Self {
+            demand: value.demand.into(),
+        }
+    }
+}
 
 /// Controls whether cost group details should be included in API responses
 ///
