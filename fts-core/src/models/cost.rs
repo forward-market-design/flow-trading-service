@@ -1,10 +1,9 @@
+use super::demand;
 use crate::models::{AuthId, BidderId, DemandCurve, map_wrapper, uuid_wrapper};
 use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
-
-use super::demand;
 
 // A simple newtype for a Uuid
 uuid_wrapper!(CostId);
@@ -25,10 +24,7 @@ impl CostData {
     }
 }
 
-/// The "DTO" type for AuthData. Omitted values default to the appropriately signed infinity.
-///
-/// This provides a user-friendly interface for specifying auth constraints, allowing
-/// missing values to default to appropriate infinities.
+/// The "DTO" type for CostData.
 #[derive(Serialize, Deserialize)]
 pub struct RawCost {
     pub demand: demand::RawDemandCurve,
