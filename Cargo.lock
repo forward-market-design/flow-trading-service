@@ -787,6 +787,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ftdemo"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "dotenvy",
+ "fts-demo",
+ "fts-server",
+ "humantime",
+ "tokio",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "fts-core"
 version = "0.1.5"
 dependencies = [
@@ -806,8 +819,6 @@ dependencies = [
 name = "fts-demo"
 version = "0.1.5"
 dependencies = [
- "clap",
- "dotenvy",
  "fts-core",
  "fts-server",
  "fts-solver",
@@ -822,8 +833,6 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.12",
  "time",
- "tokio",
- "tracing-subscriber",
  "uuid",
 ]
 

@@ -13,7 +13,6 @@ fts-core = { path = "../fts-core", version = "0.1.5" }
 fts-server = { path = "../fts-server", version = "0.2.2" }
 fts-solver = { path = "../fts-solver", version = "0.3.1", features = ["clarabel", "serde"] }
 
-clap = { workspace = true, features = ["derive", "env"] }
 fxhash = { workspace = true }
 humantime = { workspace = true }
 indexmap = { workspace = true }
@@ -23,18 +22,7 @@ thiserror = { workspace = true }
 time = { workspace = true, features = ["serde", "formatting", "parsing"] }
 uuid = { workspace = true, features = ["serde", "v4"] }
 
-dotenvy = { version = "0.15" }
 r2d2 = { version = "0.8" }
 r2d2_sqlite = { version = "0.26" }
 refinery = { version = "0.8", features = ["rusqlite"] }
 rusqlite = { version = "0.33", features = ["bundled", "serde_json", "time", "uuid"] }
-
-# For running the server
-tokio = { workspace = true, features = ["full"] }
-
-# For reporting the traces
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-
-[features]
-default = []
-testmode = []

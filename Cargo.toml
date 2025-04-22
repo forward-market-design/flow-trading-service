@@ -1,5 +1,5 @@
 [workspace]
-members = ["fts-core", "fts-demo", "fts-server", "fts-solver", "ftauction"]
+members = ["fts-core", "fts-demo", "fts-server", "fts-solver", "ftauction", "ftdemo"]
 resolver = "2"
 
 [workspace.package]
