@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1](https://github.com/forward-market-design/flow-trading-service/compare/ftauction-v0.1.0...ftauction-v0.1.1) - 2025-04-28
+
+### Added
+
+- error propagation from solver
+
+### Other
+
+- including explicit LICENSE.md file and updated readmes
+
 ## [0.1.0](https://github.com/forward-market-design/flow-trading-service/releases/tag/ftsolve-v0.1.0) - 2025-04-15
 
 ### Added

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0](https://github.com/forward-market-design/flow-trading-service/compare/fts-core-v0.1.5...fts-core-v0.2.0) - 2025-04-28
+
+### Added
+
+- define core config type, update interfaces
+- attach demand curves directly to auths
+
+### Other
+
+- unrelated - replace fxhash with rustc_hash
+- rename crate
+- unrelated change to fix comment
+
 ## [0.1.5](https://github.com/forward-market-design/flow-trading-service/compare/fts-core-v0.1.4...fts-core-v0.1.5) - 2025-04-21
 
 ### Other

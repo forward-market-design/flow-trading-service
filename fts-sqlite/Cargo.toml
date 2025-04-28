@@ -9,9 +9,9 @@ rust-version.workspace = true
 version = "0.1.5"
 
 [dependencies]
-fts-core = { path = "../fts-core", version = "0.1.5" }
-fts-server = { path = "../fts-server", version = "0.2.2" }
-fts-solver = { path = "../fts-solver", version = "0.3.1", features = ["clarabel", "serde"] }
+fts-core = { path = "../fts-core", version = "0.2.0" }
+fts-server = { path = "../fts-server", version = "0.2.3" }
+fts-solver = { path = "../fts-solver", version = "0.4.0", features = ["clarabel", "serde"] }
 
 humantime = { workspace = true }
 indexmap = { workspace = true }

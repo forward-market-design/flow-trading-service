@@ -9,8 +9,8 @@ publish.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-fts-core = { path = "../fts-core", version = "0.1.5" }
-fts-server = { path = "../fts-server", version = "0.2.2" }
+fts-core = { path = "../fts-core", version = "0.2.0" }
+fts-server = { path = "../fts-server", version = "0.2.3" }
 fts-sqlite = { path = "../fts-sqlite", version = "0.1.5" }
 
 # For parsing CLI args
