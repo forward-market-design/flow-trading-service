@@ -2,9 +2,9 @@ use super::{
     auth::{PortfolioOptions, active_auths},
     cost::active_costs,
 };
-use crate::{Config, DateTime, db};
+use crate::{DateTime, db};
 use fts_core::{
-    models::{AuctionMetaData, AuthId, GroupDisplay, Outcome, ProductId, RawAuctionInput},
+    models::{AuctionMetaData, AuthId, Config, GroupDisplay, Outcome, ProductId, RawAuctionInput},
     ports::AuctionRepository,
 };
 use rusqlite::{OptionalExtension, TransactionBehavior};
@@ -13,6 +13,10 @@ use time::{Duration, OffsetDateTime};
 
 impl AuctionRepository for db::Database {
     type AuctionId = i64;
+
+    fn config(&self) -> &Config {
+        self.config()
+    }
 
     fn solver() -> impl fts_solver::Solver + Send {
         fts_solver::clarabel::ClarabelSolver::default()
@@ -56,11 +60,7 @@ impl AuctionRepository for db::Database {
         let auction_duration = by.map(|x| x.clone()).unwrap_or(thru - from);
 
         // What units are the bids specified in?
-        let reference_duration = {
-            let config = Config::get(&ctx)?;
-            assert!(config.is_some());
-            config.unwrap().trade_rate.try_into().unwrap()
-        };
+        let reference_duration = self.config().trade_rate.try_into().unwrap();
 
         // Collect the batches to run
         let mut submissions = Vec::new();

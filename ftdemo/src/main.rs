@@ -1,8 +1,6 @@
 use clap::Parser;
-use fts_sqlite::{
-    Config,
-    db::{self, Database},
-};
+use fts_core::models::Config;
+use fts_sqlite::db::{self, Database};
 use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
 #[cfg(feature = "testmode")]
@@ -29,7 +27,7 @@ async fn main() -> Result<(), db::Error> {
             // so we're not in an inconsistent state.
             let database = Database::open(
                 args.database.as_ref(),
-                Some(&Config {
+                Some(Config {
                     trade_rate: args.trade_rate.into(),
                 }),
             )?;

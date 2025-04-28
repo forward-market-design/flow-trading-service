@@ -1,6 +1,7 @@
 mod auction;
 mod auth;
 mod bound;
+mod config;
 mod cost;
 mod datetime;
 mod demand;
@@ -11,6 +12,7 @@ mod submission;
 pub use auction::{AuctionMetaData, AuctionSolveRequest, RawAuctionInput};
 pub use auth::{AuthData, AuthHistoryRecord, AuthId, AuthRecord, Portfolio};
 pub use bound::Bound;
+pub use config::Config;
 pub use cost::{CostData, CostHistoryRecord, CostId, CostRecord, Group, GroupDisplay};
 pub use datetime::{DateTimeRangeQuery, DateTimeRangeResponse};
 pub use demand::{Constant, Curve, DemandCurve, Point};

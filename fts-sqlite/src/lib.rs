@@ -5,12 +5,10 @@
 //! [fts_solver]: https://docs.rs/fts_solver/latest/fts_solver/index.html
 //! [fts_sqlite]: https://docs.rs/fts_sqlite/latest/fts_sqlite/index.html
 #![doc = include_str!("../README.md")]
-mod config;
+
 /// Database operations and connection management
 pub mod db;
 mod impls;
-
-pub use config::Config;
 
 // This manages our database setup/migrations
 mod embedded {

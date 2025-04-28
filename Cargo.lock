@@ -792,6 +792,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "dotenvy",
+ "fts-core",
  "fts-server",
  "fts-sqlite",
  "humantime",
