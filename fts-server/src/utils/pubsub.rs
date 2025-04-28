@@ -4,7 +4,7 @@ use fts_core::{
     models::{BidderId, ProductId},
     ports::MarketRepository,
 };
-use fxhash::FxBuildHasher;
+use rustc_hash::FxBuildHasher;
 use std::{convert::Infallible, sync::Arc};
 use tokio::sync::watch;
 

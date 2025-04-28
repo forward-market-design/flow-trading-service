@@ -1,6 +1,7 @@
 mod auction;
 mod auth;
 mod bound;
+mod config;
 mod cost;
 mod datetime;
 mod demand;
@@ -11,6 +12,7 @@ mod submission;
 pub use auction::{AuctionMetaData, AuctionSolveRequest, RawAuctionInput};
 pub use auth::{AuthData, AuthHistoryRecord, AuthId, AuthRecord, Portfolio};
 pub use bound::Bound;
+pub use config::Config;
 pub use cost::{CostData, CostHistoryRecord, CostId, CostRecord, Group, GroupDisplay};
 pub use datetime::{DateTimeRangeQuery, DateTimeRangeResponse};
 pub use demand::{Constant, Curve, DemandCurve, Point};
@@ -90,10 +92,10 @@ macro_rules! map_wrapper {
         #[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
         #[serde(transparent)]
         #[schema(value_type = std::collections::HashMap<$key, $value>)]
-        pub struct $struct(pub indexmap::IndexMap<$key, $value, fxhash::FxBuildHasher>);
+        pub struct $struct(pub indexmap::IndexMap<$key, $value, rustc_hash::FxBuildHasher>);
 
         impl std::ops::Deref for $struct {
-            type Target = indexmap::IndexMap<$key, $value, fxhash::FxBuildHasher>;
+            type Target = indexmap::IndexMap<$key, $value, rustc_hash::FxBuildHasher>;
 
             fn deref(&self) -> &Self::Target {
                 &self.0

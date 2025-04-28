@@ -2,8 +2,8 @@
 
 use std::{any::Any, marker::PhantomData};
 
-use fts_core::ports::MarketRepository;
-use fts_demo::{Config as simple_config, db::Database as simple_database};
+use fts_core::{models::Config, ports::MarketRepository};
+use fts_sqlite::db::Database as simple_database;
 use rstest_reuse::template;
 // use pg_backend::db::initialize_db;
 // use testcontainers_modules::{
@@ -27,7 +27,7 @@ use rstest_reuse::template;
 pub async fn launch_simple_backend() -> (impl MarketRepository, Box<dyn Any>) {
     let db = simple_database::open(
         None,
-        Some(&simple_config {
+        Some(Config {
             trade_rate: std::time::Duration::from_secs(60 * 60),
         }),
     )

@@ -15,7 +15,7 @@ Much of this technical documentation is also available here: https://docs.rs/fts
 We define a core set of primitives in `fts-core` (so-called
 "models" and "ports", using the terminology of hexagonal architecture), a
 reference solver for the relevant quadratic program in `fts-solver`, a REST API HTTP server for interacting with the solver in `fts-server`, and
-finally an implementation of the core data operations in `fts-demo` using
+finally an implementation of the core data operations in `fts-sqlite` using
 SQLite, suitable for exploration of flow trading-based marketplaces such as a forward market.
 
 These 4 crates each contain their own `README.md` which explains the crate's functionality and the relevant high-level design. We explicitly call out `fts-core/README.md` as an introduction to the bid primitives used in our flow trading implementation.

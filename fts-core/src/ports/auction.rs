@@ -1,4 +1,4 @@
-use crate::models::{AuctionMetaData, AuthId, Outcome, ProductId, RawAuctionInput};
+use crate::models::{AuctionMetaData, AuthId, Config, Outcome, ProductId, RawAuctionInput};
 use crate::ports::SubmissionRepository;
 use std::fmt::Debug;
 use std::future::Future;
@@ -20,6 +20,9 @@ pub trait AuctionRepository: SubmissionRepository {
     /// However, because there is a background solver thread, implementations might want to
     /// "passthru" an id between preparation and reporting steps.
     type AuctionId: Clone + Debug + Send + Sync + 'static;
+
+    /// Return any configuration associated to the flow trading context
+    fn config(&self) -> &Config;
 
     /// Create an instance of a solver for use in auction execution
     fn solver() -> impl fts_solver::Solver + Send;

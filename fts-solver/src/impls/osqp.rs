@@ -1,5 +1,5 @@
 use crate::{AuctionOutcome, HashMap, PortfolioOutcome, ProductOutcome, Solver, Submission};
-use osqp::{CscMatrix, Problem, Settings, Status};
+use osqp::{CscMatrix, Problem, Settings, Solution, Status};
 use std::hash::Hash;
 
 /// A solver implementation that uses the OSQP (Operator Splitting Quadratic Program)
@@ -18,6 +18,7 @@ impl Default for OsqpSolver {
 
 impl Solver for OsqpSolver {
     type Settings = Settings;
+    type Status = OsqpStatus;
 
     fn new(settings: Self::Settings) -> Self {
         Self(settings)
@@ -32,14 +33,14 @@ impl Solver for OsqpSolver {
         &self,
         auction: &T,
         // TODO: warm-starts with the prices
-    ) -> AuctionOutcome<BidderId, AuthId, ProductId>
+    ) -> Result<AuctionOutcome<BidderId, AuthId, ProductId>, Self::Status>
     where
         for<'t> &'t T: IntoIterator<Item = (&'t BidderId, &'t Submission<AuthId, ProductId>)>,
     {
         let (products, ncosts) = super::prepare(auction);
 
         if products.len() == 0 {
-            return AuctionOutcome::default();
+            return Ok(AuctionOutcome::default());
         }
 
         // The trade and bid constraints are all (something) = 0, we need to
@@ -157,9 +158,11 @@ impl Solver for OsqpSolver {
         let mut solver = Problem::new(&p_matrix, &q, &a_matrix, &lb, &ub, &self.0)
             .expect("unable to setup problem");
         solver.warm_start_x(&vec![0.0; n]);
-        let status = solver.solve();
+        let (status, solution) = remap(solver.solve());
 
-        if let Status::Solved(solution) = status {
+        if status.ok() {
+            // Does not panic, because ok() is only true when we return the solution
+            let solution = solution.unwrap();
             // We get the raw optimization output
 
             let mut product_outcomes: HashMap<ProductId, ProductOutcome> = products
@@ -221,12 +224,65 @@ impl Solver for OsqpSolver {
             // of the trades as a tie-break. We should think about the best way to regularize
             // the solve accordingly.
 
-            AuctionOutcome {
+            Ok(AuctionOutcome {
                 submissions: submission_outcomes,
                 products: product_outcomes,
-            }
+            })
         } else {
-            panic!("inaccurate solve");
+            Err(status)
         }
+    }
+}
+
+/// OSQP's status contains a reference to the solution data,
+/// which makes the lifetimes complicated. Instead, we just
+/// mirror the names and call it a day.
+#[derive(Clone, Copy, Debug)]
+pub enum OsqpStatus {
+    /// Solved
+    Solved,
+    /// Solved, but less accurately
+    SolvedInaccurate,
+    /// Maybe solveable, but needs more iterations
+    MaxIterationsReached,
+    /// Maybe solveable, but needs more time
+    TimeLimitReached,
+    /// Impossible
+    PrimalInfeasible,
+    /// Impossible
+    PrimalInfeasibleInaccurate,
+    /// Impossible
+    DualInfeasible,
+    /// Impossible
+    DualInfeasibleInaccurate,
+    /// Impossible
+    NonConvex,
+}
+
+impl OsqpStatus {
+    fn ok(self) -> bool {
+        match self {
+            Self::Solved => true,
+            Self::SolvedInaccurate => {
+                tracing::warn!(status = ?self, "convergence issues");
+                true
+            }
+            _ => false,
+        }
+    }
+}
+
+fn remap<'a>(value: Status<'a>) -> (OsqpStatus, Option<Solution<'a>>) {
+    match value {
+        Status::Solved(x) => (OsqpStatus::Solved, Some(x)),
+        Status::SolvedInaccurate(x) => (OsqpStatus::SolvedInaccurate, Some(x)),
+        Status::MaxIterationsReached(x) => (OsqpStatus::MaxIterationsReached, Some(x)),
+        Status::TimeLimitReached(x) => (OsqpStatus::TimeLimitReached, Some(x)),
+        Status::PrimalInfeasible(_) => (OsqpStatus::PrimalInfeasible, None),
+        Status::PrimalInfeasibleInaccurate(_) => (OsqpStatus::PrimalInfeasibleInaccurate, None),
+        Status::DualInfeasible(_) => (OsqpStatus::DualInfeasible, None),
+        Status::DualInfeasibleInaccurate(_) => (OsqpStatus::DualInfeasibleInaccurate, None),
+        Status::NonConvex(_) => (OsqpStatus::NonConvex, None),
+        _ => panic!("unknown status"),
     }
 }

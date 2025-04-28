@@ -1,8 +1,8 @@
-use crate::config::Config;
+use fts_core::models::Config;
 use r2d2::{Pool, PooledConnection};
 use r2d2_sqlite::SqliteConnectionManager;
 use refinery::Runner;
-use rusqlite::OpenFlags;
+use rusqlite::{OpenFlags, OptionalExtension as _};
 use std::{ops::DerefMut, path::PathBuf};
 use thiserror::Error;
 
@@ -57,6 +57,7 @@ pub enum Storage {
 pub struct Database {
     reader: Pool<SqliteConnectionManager>,
     writer: Pool<SqliteConnectionManager>,
+    config: Config,
 }
 
 impl Database {
@@ -64,29 +65,12 @@ impl Database {
     ///
     /// Creates a new database if one doesn't exist, and applies migrations.
     /// Validates that the provided configuration matches any existing configuration.
-    pub fn open(db: Option<&PathBuf>, config: Option<&Config>) -> Result<Self, Error> {
+    pub fn open(db: Option<&PathBuf>, config: Option<Config>) -> Result<Self, Error> {
         let storage = db
             .map(|path| Storage::File(path.clone()))
             .unwrap_or(Storage::Memory("orderbook".to_owned()));
 
-        let database = open_rw(storage, Some(crate::embedded::migrations::runner()))?;
-
-        let conn = database.connect(true)?;
-        let stored_config = Config::get(&conn)?;
-
-        if let Some(stored_config) = stored_config {
-            if let Some(config) = config {
-                if stored_config != *config {
-                    return Err(Error::InconsistentConfig);
-                }
-            }
-        } else if let Some(config) = config {
-            // TODO: can we move this to the arg parsing and surface the message more cleanly?
-            assert_ne!(config.trade_rate.as_secs(), 0, "time unit must be non-zero");
-            config.set(&conn)?;
-        } else {
-            panic!("no configuration specified")
-        };
+        let database = open_rw(storage, config, Some(crate::embedded::migrations::runner()))?;
 
         Ok(database)
     }
@@ -99,6 +83,11 @@ impl Database {
             self.reader.get()
         };
         Ok(conn?)
+    }
+
+    /// Get a reference to the flow trading configuration
+    pub fn config(&self) -> &Config {
+        &self.config
     }
 }
 
@@ -161,8 +150,43 @@ fn pool(
 }
 
 /// Creates an instance of Database with read and write connection pools.
-fn open_rw(storage: Storage, migration: Option<Runner>) -> Result<Database, Error> {
+fn open_rw(
+    storage: Storage,
+    config: Option<Config>,
+    migration: Option<Runner>,
+) -> Result<Database, Error> {
     let writer = pool(&storage, Some(1), false, migration)?;
     let reader = pool(&storage, None, true, None)?;
-    Ok(Database { reader, writer })
+
+    let conn = writer.get()?;
+
+    let stored_config: Option<Config> = {
+        let query: Option<serde_json::Value> = conn
+            .query_row("select data from config where id = 0 limit 1", (), |row| {
+                row.get(0)
+            })
+            .optional()?;
+
+        query
+            .map(|data| serde_json::from_value::<Config>(data))
+            .transpose()?
+    };
+
+    let actual_config = if let Some(stored_config) = stored_config {
+        if config.is_some_and(|c| c != stored_config) {
+            return Err(Error::InconsistentConfig);
+        }
+        stored_config
+    } else if let Some(config) = config {
+        conn.execute("insert into config (id, data) values (0, ?1) on conflict (id) do update set data = excluded.data", (serde_json::to_value(&config)?,))?;
+        config
+    } else {
+        panic!("no configuration specified");
+    };
+
+    Ok(Database {
+        reader,
+        writer,
+        config: actual_config,
+    })
 }

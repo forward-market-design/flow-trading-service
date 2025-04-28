@@ -19,6 +19,7 @@ impl Default for ClarabelSolver {
 
 impl Solver for ClarabelSolver {
     type Settings = DefaultSettings<f64>;
+    type Status = SolverStatus;
 
     fn new(settings: Self::Settings) -> Self {
         Self(settings)
@@ -33,14 +34,14 @@ impl Solver for ClarabelSolver {
         &self,
         auction: &T,
         // TODO: warm-starts with the prices
-    ) -> AuctionOutcome<BidderId, PortfolioId, ProductId>
+    ) -> Result<AuctionOutcome<BidderId, PortfolioId, ProductId>, Self::Status>
     where
         for<'t> &'t T: IntoIterator<Item = (&'t BidderId, &'t Submission<PortfolioId, ProductId>)>,
     {
         let (products, ncosts) = super::prepare(auction);
 
         if products.len() == 0 {
-            return AuctionOutcome::default();
+            return Ok(AuctionOutcome::default());
         }
 
         // The trade and bid constraints are all (something) = 0, we need to
@@ -168,7 +169,15 @@ impl Solver for ClarabelSolver {
         // Now we can solve!
         let mut solver = DefaultSolver::new(&p_matrix, &q, &a_matrix, &b, &s, self.0.clone());
         solver.solve();
-        assert_eq!(solver.solution.status, SolverStatus::Solved);
+        match solver.solution.status {
+            SolverStatus::Solved => {}
+            SolverStatus::AlmostSolved => {
+                tracing::warn!(status = ?solver.solution.status, "convergence issues");
+            }
+            status => {
+                return Err(status);
+            }
+        };
 
         // We get the raw optimization output
 
@@ -232,9 +241,9 @@ impl Solver for ClarabelSolver {
         // of the trades as a tie-break. We should think about the best way to regularize
         // the solve accordingly.
 
-        AuctionOutcome {
+        Ok(AuctionOutcome {
             submissions: submission_outcomes,
             products: product_outcomes,
-        }
+        })
     }
 }

@@ -1,9 +1,9 @@
 #![warn(missing_docs)]
-// Note: this overwrites the link in the README to point to the rust docs of the fts-demo crate.
+// Note: this overwrites the link in the README to point to the rust docs of the fts-sqlite crate.
 //! [fts_core]: https://docs.rs/fts_core/latest/fts_core/index.html
 //! [fts_server]: https://docs.rs/fts_server/latest/fts_server/index.html
 //! [fts_solver]: https://docs.rs/fts_solver/latest/fts_solver/index.html
-//! [fts_demo]: https://docs.rs/fts_demo/latest/fts_demo/index.html
+//! [fts_sqlite]: https://docs.rs/fts_sqlite/latest/fts_sqlite/index.html
 #![doc = include_str!("../README.md")]
 use fts_core::{
     models::{BidderId, Outcome, ProductId, RawAuctionInput},
@@ -15,8 +15,8 @@ use axum::Router;
 use axum::http::header;
 use axum::response::sse::Event;
 use fts_solver::Solver;
-use fxhash::FxBuildHasher;
 use openapi::openapi_router;
+use rustc_hash::FxBuildHasher;
 use serde::Serialize;
 use std::sync::Arc;
 use std::{convert::Infallible, net::SocketAddr};
@@ -122,9 +122,8 @@ pub fn state<T: MarketRepository>(
                 let fts_solver::AuctionOutcome {
                     submissions,
                     products,
-                } = solver.solve(&submissions);
+                } = solver.solve(&submissions).expect("could not solve auction");
 
-                // TODO: update the API to scope the auth_id the bidder_id
                 let auth_outcomes = submissions
                     .values()
                     .flat_map(|outcome| {

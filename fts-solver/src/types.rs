@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::hash::Hash;
 
 mod submission;
@@ -20,6 +21,9 @@ pub trait Solver {
     /// The configuration type for this solver
     type Settings;
 
+    /// The status type (returned as Err when not successful)
+    type Status: Debug;
+
     /// Create a new instance with the provided settings
     fn new(settings: Self::Settings) -> Self;
 
@@ -39,7 +43,7 @@ pub trait Solver {
         &self,
         auction: &T,
         // TODO: warm-starts with the prices
-    ) -> AuctionOutcome<BidderId, PortfolioId, ProductId>
+    ) -> Result<AuctionOutcome<BidderId, PortfolioId, ProductId>, Self::Status>
     where
         for<'t> &'t T: IntoIterator<Item = (&'t BidderId, &'t Submission<PortfolioId, ProductId>)>;
 }

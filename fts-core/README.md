@@ -15,12 +15,12 @@ The different crates in this workspace are as follows:
 - **[fts_core]**: Defines a set of data primitives and operations but defers the implementations of these operations, consistent with a so-called "hexagonal architecture" approach to separating responsibilities.
 - **[fts_solver]**: Provides a reference solver for the flow trading quadratic program.
 - **[fts_server]**: A REST API HTTP server for interacting with the solver and persisting state across auctions.
-- **[fts_demo]**: An implementation of the core data operations using SQLite, suitable for exploration of flow trading-based marketplaces such as a forward market.
+- **[fts_sqlite]**: An implementation of the core data operations using SQLite, suitable for exploration of flow trading-based marketplaces such as a forward market.
 
 [fts_core]: ../fts-core/README.md
 [fts_solver]: ../fts-solver/README.md
 [fts_server]: ../fts-server/README.md
-[fts_demo]: ../fts-demo/README.md
+[fts_sqlite]: ../fts-sqlite/README.md
 
 
 # FTS Core
@@ -87,8 +87,8 @@ The output of an auction are the quantities traded of each auth's portfolio (*no
 
 ## Products
 
-Flow trading by itself imposes no restrictions on the products actually being traded. They are simply "things" that are referenced by auth portfolios and constrained to net-zero trade in each auction. With that said, this project was built with forward markets in mind. The sibling crate `fts-demo` necessarily imposes a product structure, which happens to correspond to a forward market. Details are in [fts_demo], but the takeaway is that the requirements of a forward market led to an additional concept in the core implementation.
+Flow trading by itself imposes no restrictions on the products actually being traded. They are simply "things" that are referenced by auth portfolios and constrained to net-zero trade in each auction. With that said, this project was built with forward markets in mind. The sibling crate `fts-sqlite` necessarily imposes a product structure, which happens to correspond to a forward market. Details are in [fts_sqlite], but the takeaway is that the requirements of a forward market led to an additional concept in the core implementation.
 
 This concept is that of a "product hierarchy", where an operator can decompose products over time. For example, a product corresponding to energy delivery for the month of June 2030 might, at a later time, be refined into products for each day of June 2030, and at an even later time, each day into its hours. A portfolio defined only in terms of the monthly product needs an ability to implicitly decompose into the child products when an auction is executed in order to properly clear the market. This is useful beyond forward markets: consider trading stocks pre- and post-split. Thus, when retrieving portfolios, `fts-core` provides implementers an affordance to control which portfolio is returned (the explicit portfolio, the implicit portfolio, or none at all).
 
-[fts_demo]: ../fts-demo/README.md
+[fts_sqlite]: ../fts-sqlite/README.md
