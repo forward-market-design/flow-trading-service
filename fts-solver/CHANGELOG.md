@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0](https://github.com/forward-market-design/flow-trading-service/compare/fts-solver-v0.3.1...fts-solver-v0.4.0) - 2025-04-28
+
+### Added
+
+- error propagation from solver
+- attach demand curves directly to auths
+
+### Other
+
+- rename crate
+
 ## [0.3.1](https://github.com/forward-market-design/flow-trading-service/compare/fts-solver-v0.3.0...fts-solver-v0.3.1) - 2025-04-21
 
 ### Added
