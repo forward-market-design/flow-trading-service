@@ -50,7 +50,7 @@ fn run_auction(
     let reference: AuctionOutcome<_, _, _> =
         serde_json::from_reader(BufReader::new(File::open(output).unwrap())).unwrap();
 
-    let solution = solver.solve(auction.deref());
+    let solution = solver.solve(auction.deref()).unwrap();
 
     cmp(&solution, &reference, 1e-6, 1e-6);
 }

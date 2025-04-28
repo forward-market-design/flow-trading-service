@@ -23,11 +23,11 @@ impl SolverLib {
         match self {
             SolverLib::Clarabel => {
                 let solver = ClarabelSolver::default();
-                solver.solve(auction)
+                solver.solve(auction).expect("could not solve auction")
             }
             SolverLib::Osqp => {
                 let solver = OsqpSolver::default();
-                solver.solve(auction)
+                solver.solve(auction).expect("could not solve auction")
             }
         }
     }

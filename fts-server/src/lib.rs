@@ -122,9 +122,8 @@ pub fn state<T: MarketRepository>(
                 let fts_solver::AuctionOutcome {
                     submissions,
                     products,
-                } = solver.solve(&submissions);
+                } = solver.solve(&submissions).expect("could not solve auction");
 
-                // TODO: update the API to scope the auth_id the bidder_id
                 let auth_outcomes = submissions
                     .values()
                     .flat_map(|outcome| {
