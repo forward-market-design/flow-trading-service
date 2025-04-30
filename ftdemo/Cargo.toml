@@ -17,6 +17,7 @@ fts-sqlite = { path = "../fts-sqlite", version = "0.1.5" }
 clap = { workspace = true, features = ["derive", "env"] }
 dotenvy = { version = "0.15" }
 humantime = { workspace = true }
+time = { workspace = true, features = ["parsing"] }
 
 # For running the server
 tokio = { workspace = true, features = ["full"] }
