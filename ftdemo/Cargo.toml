@@ -1,7 +1,7 @@
 [package]
 name = "ftdemo"
 description = "A demonstrative implementation of a flow trading server"
-version = "0.1.0"
+version = "0.1.1"
 authors.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,8 +10,8 @@ rust-version.workspace = true
 
 [dependencies]
 fts-core = { path = "../fts-core", version = "0.2.0" }
-fts-server = { path = "../fts-server", version = "0.2.3" }
-fts-sqlite = { path = "../fts-sqlite", version = "0.1.5" }
+fts-server = { path = "../fts-server", version = "0.3.0" }
+fts-sqlite = { path = "../fts-sqlite", version = "0.1.6" }
 
 # For parsing CLI args
 clap = { workspace = true, features = ["derive", "env"] }

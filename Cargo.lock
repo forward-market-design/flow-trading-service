@@ -788,7 +788,7 @@ dependencies = [
 
 [[package]]
 name = "ftdemo"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clap",
  "dotenvy",
@@ -820,7 +820,7 @@ dependencies = [
 
 [[package]]
 name = "fts-server"
-version = "0.2.3"
+version = "0.3.0"
 dependencies = [
  "axum",
  "axum-extra",
@@ -869,7 +869,7 @@ dependencies = [
 
 [[package]]
 name = "fts-sqlite"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "fts-core",
  "fts-server",
