@@ -796,7 +796,9 @@ dependencies = [
  "fts-server",
  "fts-sqlite",
  "humantime",
+ "time",
  "tokio",
+ "tracing",
  "tracing-subscriber",
 ]
 

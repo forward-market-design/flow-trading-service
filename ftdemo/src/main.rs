@@ -1,6 +1,10 @@
-use clap::Parser;
-use fts_core::models::Config;
+use clap::{Args, Parser};
+use fts_core::{models::Config, ports::MarketRepository};
+use fts_server::AppState;
 use fts_sqlite::db::{self, Database};
+use time::format_description::well_known::Rfc3339;
+use tokio::{task::JoinHandle, try_join};
+use tracing::{Level, event, span};
 use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
 #[cfg(feature = "testmode")]
@@ -19,7 +23,7 @@ async fn main() -> Result<(), db::Error> {
 
     // We will need to collect whatever data is necessary to configure the API
     // server. The `Args` struct, defined after this function, does this job for us.
-    let args = Args::import();
+    let args = Cli::import();
 
     match args {
         Ok(args) => {
@@ -45,7 +49,18 @@ async fn main() -> Result<(), db::Error> {
 
             // Finally, we provide this data to the API module, which creates an HTTP
             // server on the specified port.
-            fts_server::start(args.api_port, args.api_secret, database).await;
+            let (server, state) =
+                fts_server::Server::new(args.api_port, args.api_secret, database).await;
+
+            // Spawn the (optional) batch execution scheduler
+            let scheduler = args.schedule.schedule(state);
+
+            // Run the tasks until we get an error
+            if let Some(scheduler) = scheduler {
+                let _ = try_join!(server.server, server.solver, scheduler);
+            } else {
+                let _ = try_join!(server.server, server.solver);
+            }
         }
         Err(e) => {
             let _ = e.print();
@@ -57,7 +72,7 @@ async fn main() -> Result<(), db::Error> {
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
-pub struct Args {
+pub struct Cli {
     /// The port to listen on
     #[arg(long, default_value_t = 8080, env = "API_PORT")]
     pub api_port: u16,
@@ -78,12 +93,90 @@ pub struct Args {
     /// The time unit of rate data
     #[arg(long, env = "TRADE_RATE")]
     pub trade_rate: humantime::Duration,
+
+    /// The args related to scheduling batch execution
+    #[command(flatten)]
+    pub schedule: Scheduler,
 }
 
-impl Args {
+impl Cli {
     pub fn import() -> Result<Self, clap::Error> {
         // Attempt to load a .env file, but don't sweat it if one is not found.
         let _ = dotenvy::dotenv();
         Self::try_parse()
     }
+}
+
+#[derive(Args, Clone, Debug)]
+pub struct Scheduler {
+    /// An RFC3339 timestamp to start the auction schedule from (if omitted or empty, defaults to now)
+    #[arg(long, requires = "schedule", env = "SCHEDULE_FROM", value_parser = parse_timestamp)]
+    pub schedule_from: Option<time::OffsetDateTime>,
+    /// How often to execute an auction
+    #[arg(long, group = "schedule", env = "SCHEDULE_EVERY")]
+    pub schedule_every: Option<humantime::Duration>,
+}
+
+impl Scheduler {
+    pub fn schedule<T: MarketRepository>(&self, state: AppState<T>) -> Option<JoinHandle<()>> {
+        // extract the duration into a std::time::Duration
+        let delta = self
+            .schedule_every
+            .map(<humantime::Duration as Into<std::time::Duration>>::into)?;
+
+        let now = time::OffsetDateTime::now_utc();
+
+        // adjust the anchor time to be >= now
+        let mut anchor = if let Some(mut dt) = self.schedule_from {
+            if dt < now {
+                let x = ((now - dt) / delta).ceil() as u32;
+                dt += delta * x;
+            }
+            dt
+        } else {
+            now
+        };
+
+        Some(tokio::spawn(async move {
+            // now we align the clocks as best we can
+            {
+                let sleepy: std::time::Duration = (anchor - now)
+                    .try_into()
+                    .expect("anchor too far in the future");
+
+                tokio::time::sleep(sleepy).await;
+            };
+
+            // Finally, we can loop over a timer
+            let mut interval = tokio::time::interval(delta);
+
+            loop {
+                interval.tick().await;
+                let next = anchor + delta;
+                let span = span!(Level::INFO, "running scheduled auction");
+
+                let _guard = span.enter();
+
+                event!(
+                    Level::INFO,
+                    from = anchor.format(&Rfc3339).unwrap(),
+                    thru = next.format(&Rfc3339).unwrap()
+                );
+
+                let action = state.solve(Some(anchor), next, None, anchor).await;
+
+                std::mem::drop(_guard);
+
+                anchor = next;
+
+                if action.is_err() {
+                    break;
+                }
+            }
+        }))
+    }
+}
+
+fn parse_timestamp(timestamp: &str) -> Result<time::OffsetDateTime, time::error::Parse> {
+    time::OffsetDateTime::parse(timestamp, &time::format_description::well_known::Rfc3339)
 }

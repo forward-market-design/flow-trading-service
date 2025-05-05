@@ -7,7 +7,7 @@
 #![doc = include_str!("../README.md")]
 use fts_core::{
     models::{BidderId, Outcome, ProductId, RawAuctionInput},
-    ports::{AuctionRepository, MarketRepository},
+    ports::{AuctionRepository, MarketRepository, ProductRepository},
 };
 
 use axum::Json;
@@ -23,7 +23,6 @@ use std::{convert::Infallible, net::SocketAddr};
 use time::OffsetDateTime;
 use tokio::sync::{mpsc, watch};
 use tokio::task::JoinHandle;
-use tokio::try_join;
 use tower_http::cors;
 
 mod openapi;
@@ -60,6 +59,30 @@ pub struct AppState<T: MarketRepository> {
     product_sender: SenderMap<ProductId>,
     /// Channels for bidder-specific updates
     bidder_sender: SenderMap<BidderId>,
+}
+
+impl<T: MarketRepository> AppState<T> {
+    /// Wrap the implementation to provide a convenient method to send auctions to the solve queue
+    pub async fn solve(
+        &self,
+        from: Option<OffsetDateTime>,
+        thru: OffsetDateTime,
+        by: Option<time::Duration>,
+        timestamp: OffsetDateTime,
+    ) -> Result<(), T::Error> {
+        let data = self.market.prepare(from, thru, by, timestamp).await?;
+        if let Some(auctions) = data {
+            for auction in auctions {
+                self.solve_queue
+                    .send(auction)
+                    .await
+                    .expect("queue capacity exceeded");
+            }
+            Ok(())
+        } else {
+            Ok(())
+        }
+    }
 }
 
 /// Represents an update to be sent via server-sent events.
@@ -244,23 +267,35 @@ pub fn router<T: MarketRepository>(state: AppState<T>) -> Router {
     app.layer(policy).with_state(state)
 }
 
-/// Starts the HTTP server with the configured application.
-pub async fn start<T: MarketRepository>(api_port: u16, api_secret: String, market: T) {
-    // Setup the HTTP server
-    let listener = tokio::net::TcpListener::bind(SocketAddr::new([0, 0, 0, 0].into(), api_port))
-        .await
-        .expect("Unable to bind local port");
-    tracing::info!(
-        "Listening for requests on {}",
-        listener.local_addr().unwrap()
-    );
+/// An object to hold the handles for the relevant tokio processes
+pub struct Server<T: MarketRepository> {
+    /// The webserver
+    pub server: JoinHandle<Result<(), std::io::Error>>,
+    /// The solver
+    pub solver: JoinHandle<Result<(), <T as ProductRepository>::Error>>,
+}
 
-    let (app_state, solver) = state(&api_secret, market);
+impl<T: MarketRepository> Server<T> {
+    /// Starts the HTTP server with the configured application.
+    pub async fn new(api_port: u16, api_secret: String, market: T) -> (Self, AppState<T>) {
+        // Setup the HTTP server
+        let listener =
+            tokio::net::TcpListener::bind(SocketAddr::new([0, 0, 0, 0].into(), api_port))
+                .await
+                .expect("Unable to bind local port");
+        tracing::info!(
+            "Listening for requests on {}",
+            listener.local_addr().unwrap()
+        );
 
-    // Setup the combined application state and serve it with our router
-    let server = tokio::spawn(async move {
-        axum::serve(listener, router(app_state).merge(openapi_router())).await
-    });
+        let (state, solver) = state(&api_secret, market);
 
-    let _ = try_join!(solver, server).expect("shutdown");
+        // Setup the combined application state and serve it with our router
+        let state_clone = state.clone();
+        let server = tokio::spawn(async move {
+            axum::serve(listener, router(state_clone).merge(openapi_router())).await
+        });
+
+        (Self { server, solver }, state)
+    }
 }
