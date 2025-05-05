@@ -798,6 +798,7 @@ dependencies = [
  "humantime",
  "time",
  "tokio",
+ "tracing",
  "tracing-subscriber",
 ]
 

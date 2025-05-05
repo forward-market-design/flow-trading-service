@@ -1,6 +1,10 @@
 use clap::{Args, Parser};
-use fts_core::models::Config;
+use fts_core::{models::Config, ports::MarketRepository};
+use fts_server::AppState;
 use fts_sqlite::db::{self, Database};
+use time::format_description::well_known::Rfc3339;
+use tokio::{task::JoinHandle, try_join};
+use tracing::{Level, event, span};
 use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
 #[cfg(feature = "testmode")]
@@ -45,10 +49,18 @@ async fn main() -> Result<(), db::Error> {
 
             // Finally, we provide this data to the API module, which creates an HTTP
             // server on the specified port.
-            fts_server::start(args.api_port, args.api_secret, database).await;
+            let (server, state) =
+                fts_server::Server::new(args.api_port, args.api_secret, database).await;
 
-            // TODO: craft an f(from, thru) function that triggers the solve.
-            // args.schedule.schedule(f)
+            // Spawn the (optional) batch execution scheduler
+            let scheduler = args.schedule.schedule(state);
+
+            // Run the tasks until we get an error
+            if let Some(scheduler) = scheduler {
+                let _ = try_join!(server.server, server.solver, scheduler);
+            } else {
+                let _ = try_join!(server.server, server.solver);
+            }
         }
         Err(e) => {
             let _ = e.print();
@@ -106,13 +118,11 @@ pub struct Scheduler {
 }
 
 impl Scheduler {
-    pub async fn schedule(&self, f: impl Fn(time::OffsetDateTime, time::OffsetDateTime) -> ()) {
+    pub fn schedule<T: MarketRepository>(&self, state: AppState<T>) -> Option<JoinHandle<()>> {
         // extract the duration into a std::time::Duration
-        let delta = if let Some(delta) = self.schedule_every {
-            <humantime::Duration as Into<std::time::Duration>>::into(delta)
-        } else {
-            return;
-        };
+        let delta = self
+            .schedule_every
+            .map(<humantime::Duration as Into<std::time::Duration>>::into)?;
 
         let now = time::OffsetDateTime::now_utc();
 
@@ -127,23 +137,43 @@ impl Scheduler {
             now
         };
 
-        // now we align the clocks as best we can
-        {
-            let sleepy: std::time::Duration = (anchor - now)
-                .try_into()
-                .expect("anchor too far in the future");
+        Some(tokio::spawn(async move {
+            // now we align the clocks as best we can
+            {
+                let sleepy: std::time::Duration = (anchor - now)
+                    .try_into()
+                    .expect("anchor too far in the future");
 
-            tokio::time::sleep(sleepy).await;
-        };
+                tokio::time::sleep(sleepy).await;
+            };
 
-        // Finally, we can loop over a timer
-        let mut interval = tokio::time::interval(delta);
-        loop {
-            interval.tick().await;
-            let next = anchor + delta;
-            f(anchor, next);
-            anchor = next;
-        }
+            // Finally, we can loop over a timer
+            let mut interval = tokio::time::interval(delta);
+
+            loop {
+                interval.tick().await;
+                let next = anchor + delta;
+                let span = span!(Level::INFO, "running scheduled auction");
+
+                let _guard = span.enter();
+
+                event!(
+                    Level::INFO,
+                    from = anchor.format(&Rfc3339).unwrap(),
+                    thru = next.format(&Rfc3339).unwrap()
+                );
+
+                let action = state.solve(Some(anchor), next, None, anchor).await;
+
+                std::mem::drop(_guard);
+
+                anchor = next;
+
+                if action.is_err() {
+                    break;
+                }
+            }
+        }))
     }
 }
 
