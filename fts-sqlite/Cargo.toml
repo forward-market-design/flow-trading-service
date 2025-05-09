@@ -22,7 +22,4 @@ thiserror = { workspace = true }
 time = { workspace = true, features = ["serde", "formatting", "parsing"] }
 uuid = { workspace = true, features = ["serde", "v4"] }
 
-r2d2 = { version = "0.8" }
-r2d2_sqlite = { version = "0.26" }
-refinery = { version = "0.8", features = ["rusqlite"] }
-rusqlite = { version = "0.33", features = ["bundled", "serde_json", "time", "uuid"] }
+sqlx = { version = "0.8.5", features = ["runtime-tokio", "sqlite", "tls-rustls", "macros", "time", "migrate", "rust_decimal", "uuid", "derive"] }

@@ -1,30 +1,28 @@
 use fts_core::models::Config;
-use r2d2::{Pool, PooledConnection};
-use r2d2_sqlite::SqliteConnectionManager;
-use refinery::Runner;
-use rusqlite::{OpenFlags, OptionalExtension as _};
-use std::{ops::DerefMut, path::PathBuf};
+use sqlx::{
+    Pool, Sqlite,
+    migrate::MigrateDatabase,
+    pool::PoolOptions,
+    sqlite::{SqliteConnectOptions, SqlitePool},
+};
+use std::{path::PathBuf, str::FromStr, time::Duration};
 use thiserror::Error;
 
 /// Database operations generate errors for multiple reasons, this is a unified
 /// error type that our functions can return.
 #[derive(Debug, Error)]
 pub enum Error {
-    /// Error from the connection pool
-    #[error("pool error: {0}")]
-    ConnectionPool(#[from] r2d2::Error),
+    /// Error from SQLx operations
+    #[error("sqlx error: {0}")]
+    Sqlx(#[from] sqlx::Error),
 
     /// Error in JSON serialization or deserialization
     #[error("deserialization error: {0}")]
     Deserialization(#[from] serde_json::Error),
 
-    /// Error during database migrations
+    /// Migration error
     #[error("migration error: {0}")]
-    Migration(#[from] refinery::Error),
-
-    /// Error from SQLite operations
-    #[error("sql error: {0}")]
-    Sql(#[from] rusqlite::Error),
+    Migration(#[from] sqlx::migrate::MigrateError),
 
     /// Failure to insert data
     #[error("insertion failed")]
@@ -48,15 +46,23 @@ pub enum Storage {
     Memory(String),
 }
 
+impl Storage {
+    fn connection_string(&self) -> String {
+        match self {
+            Storage::File(path) => format!("sqlite:{}", path.display()),
+            Storage::Memory(name) => {
+                format!("sqlite::memory:?cache=shared&mode=memory&name={}", name)
+            }
+        }
+    }
+}
+
 /// Main database connection manager.
 ///
-/// Sqlite does not have parallel writes, so we create two separate connection
-/// pools. The reader has unlimited connections, while the writer is capped to
-/// one. Sqlite has its own mutex shenanigans to make that work out.
+/// SQLx provides its own connection pooling with reader/writer capabilities.
 #[derive(Clone, Debug)]
 pub struct Database {
-    reader: Pool<SqliteConnectionManager>,
-    writer: Pool<SqliteConnectionManager>,
+    pool: Pool<Sqlite>,
     config: Config,
 }
 
@@ -65,24 +71,36 @@ impl Database {
     ///
     /// Creates a new database if one doesn't exist, and applies migrations.
     /// Validates that the provided configuration matches any existing configuration.
-    pub fn open(db: Option<&PathBuf>, config: Option<Config>) -> Result<Self, Error> {
+    pub async fn open(db: Option<&PathBuf>, config: Option<Config>) -> Result<Self, Error> {
         let storage = db
             .map(|path| Storage::File(path.clone()))
             .unwrap_or(Storage::Memory("orderbook".to_owned()));
 
-        let database = open_rw(storage, config, Some(crate::embedded::migrations::runner()))?;
+        let database = open_db(storage, config).await?;
 
         Ok(database)
     }
 
-    /// Obtains a connection from the pool.
-    pub fn connect(&self, write: bool) -> Result<PooledConnection<SqliteConnectionManager>, Error> {
-        let conn = if write {
-            self.writer.get()
-        } else {
-            self.reader.get()
-        };
-        Ok(conn?)
+    /// Get a connection from the pool.
+    pub async fn acquire(&self) -> Result<sqlx::pool::PoolConnection<Sqlite>, Error> {
+        Ok(self.pool.acquire().await?)
+    }
+
+    /// Get a transaction from the pool.
+    pub async fn begin(&self) -> Result<sqlx::Transaction<'_, Sqlite>, Error> {
+        Ok(self.pool.begin().await?)
+    }
+
+    /// Commit a transaction.
+    pub async fn commit(&self, tx: sqlx::Transaction<'_, Sqlite>) -> Result<(), Error> {
+        tx.commit().await?;
+        Ok(())
+    }
+
+    /// Rollback a transaction.
+    pub async fn rollback(&self, tx: sqlx::Transaction<'_, Sqlite>) -> Result<(), Error> {
+        tx.rollback().await?;
+        Ok(())
     }
 
     /// Get a reference to the flow trading configuration
@@ -91,86 +109,54 @@ impl Database {
     }
 }
 
-/// Constructs the connection pools.
-fn pool(
-    storage: &Storage,
-    max_size: Option<u32>,
-    readonly: bool,
-    migration: Option<Runner>,
-) -> Result<Pool<SqliteConnectionManager>, Error> {
-    let mut flags = OpenFlags::default();
-    if readonly {
-        flags.set(OpenFlags::SQLITE_OPEN_READ_WRITE, false);
-        flags.set(OpenFlags::SQLITE_OPEN_READ_ONLY, true);
-        flags.set(OpenFlags::SQLITE_OPEN_CREATE, false);
-    }
+/// Creates an instance of Database with an SQLx connection pool.
+async fn open_db(storage: Storage, config: Option<Config>) -> Result<Database, Error> {
+    let connection_str = storage.connection_string();
 
-    // Open the database
-    let db = match storage {
-        Storage::File(path) => SqliteConnectionManager::file(path),
-        Storage::Memory(name) => {
-            // for in-memory databases, SQLITE_OPEN_CREATE seems to create errors
-            SqliteConnectionManager::file(format!("file:/{}?vfs=memdb", name))
+    // Create database if it doesn't exist (for file-based storage)
+    if let Storage::File(_) = &storage {
+        if !Sqlite::database_exists(&connection_str)
+            .await
+            .unwrap_or(false)
+        {
+            Sqlite::create_database(&connection_str).await?;
         }
     }
-    .with_flags(flags)
-    .with_init(|c| {
+
+    // Configure SQLite connection options
+    let connect_options = SqliteConnectOptions::from_str(&connection_str)?
         // TODO: validate these settings and possibly add to them. Some helpful resources:
         // * https://lobste.rs/s/fxkk7v/why_does_sqlite_production_have_such_bad
         // * https://kerkour.com/sqlite-for-servers
         // * https://gcollazo.com/optimal-sqlite-settings-for-django/
         // * https://lobste.rs/s/rvsgqy/gotchas_with_sqlite_production
         // * https://blog.pecar.me/sqlite-prod
-        c.execute_batch(
-            r#"
-            PRAGMA journal_mode = WAL;
-            PRAGMA busy_timeout = 5000;
-            PRAGMA synchronous = NORMAL;
-            PRAGMA foreign_keys = true;
-            PRAGMA mmap_size = 134217728;
-            PRAGMA journal_size_limit = 27103364;
-            PRAGMA cache_size=2000;
-            "#,
-        )
-    });
+        .pragma("journal_mode", "WAL")
+        .pragma("busy_timeout", "5000")
+        .pragma("synchronous", "NORMAL")
+        .pragma("foreign_keys", "true")
+        .pragma("mmap_size", "134217728")
+        .pragma("journal_size_limit", "27103364")
+        .pragma("cache_size", "2000")
+        .create_if_missing(true);
 
-    let pool = if let Some(n) = max_size {
-        r2d2::Pool::builder().max_size(n)
-    } else {
-        r2d2::Pool::builder()
-    }
-    .build(db)?;
+    // Create the connection pool
+    let pool_options = PoolOptions::<Sqlite>::new()
+        .max_connections(10)
+        .acquire_timeout(Duration::from_secs(3));
 
-    if let Some(runner) = migration {
-        let mut conn = pool.get()?;
-        runner.run(conn.deref_mut())?;
-    }
+    let pool = pool_options.connect_with(connect_options).await?;
 
-    Ok(pool)
-}
+    // Run migrations
+    run_migrations(&pool).await?;
 
-/// Creates an instance of Database with read and write connection pools.
-fn open_rw(
-    storage: Storage,
-    config: Option<Config>,
-    migration: Option<Runner>,
-) -> Result<Database, Error> {
-    let writer = pool(&storage, Some(1), false, migration)?;
-    let reader = pool(&storage, None, true, None)?;
-
-    let conn = writer.get()?;
-
-    let stored_config: Option<Config> = {
-        let query: Option<serde_json::Value> = conn
-            .query_row("select data from config where id = 0 limit 1", (), |row| {
-                row.get(0)
-            })
-            .optional()?;
-
-        query
-            .map(|data| serde_json::from_value::<Config>(data))
-            .transpose()?
-    };
+    // Handle configuration
+    let stored_config: Option<Config> =
+        sqlx::query_scalar!("SELECT data FROM config WHERE id = 0 LIMIT 1")
+            .fetch_optional(&pool)
+            .await?
+            .map(|json_value: String| serde_json::from_str(&json_value))
+            .transpose()?;
 
     let actual_config = if let Some(stored_config) = stored_config {
         if config.is_some_and(|c| c != stored_config) {
@@ -178,15 +164,31 @@ fn open_rw(
         }
         stored_config
     } else if let Some(config) = config {
-        conn.execute("insert into config (id, data) values (0, ?1) on conflict (id) do update set data = excluded.data", (serde_json::to_value(&config)?,))?;
+        let json = serde_json::to_string(&config)?;
+
+        sqlx::query!(
+            "INSERT INTO config (id, data) VALUES (0, ?1) ON CONFLICT (id) DO UPDATE SET data = excluded.data",
+            json
+        )
+        .execute(&pool)
+        .await?;
+
         config
     } else {
-        panic!("no configuration specified");
+        return Err(Error::Failure("no configuration specified".to_string()));
     };
 
     Ok(Database {
-        reader,
-        writer,
+        pool,
         config: actual_config,
     })
+}
+
+/// Run database migrations using SQLx's migration system
+async fn run_migrations(pool: &SqlitePool) -> Result<(), Error> {
+    // Using SQLx's migration system
+    sqlx::migrate!("./migrations")
+        .run(pool)
+        .await
+        .map_err(|e| Error::Migration(e))
 }

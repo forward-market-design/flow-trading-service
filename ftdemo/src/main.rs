@@ -17,7 +17,10 @@ async fn main() -> Result<(), db::Error> {
     // Accordingly, we likely want to subscribe to these events so we can
     // write them to stdio and possibly some durable location.
     tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::from_default_env())
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
+        )
         .with(tracing_subscriber::fmt::layer())
         .init();
 

@@ -10,11 +10,5 @@
 pub mod db;
 mod impls;
 
-// This manages our database setup/migrations
-mod embedded {
-    use refinery::embed_migrations;
-    embed_migrations!("./sql");
-}
-
 mod datetime;
 pub use datetime::DateTime;

@@ -32,13 +32,14 @@ insert on auth_data begin
 update auth_data_lifetime
 set death = new.version
 from (
-        select id
-        from auth_data
-        where auth_id = new.auth_id
-            and version < new.version
-        order by version desc
-        limit 1
-    ) as prev
+    select id
+    from auth_data
+    where
+        auth_id = new.auth_id --noqa: RF01
+        and version < new.version --noqa: RF01
+    order by version desc
+    limit 1
+) as prev
 where auth_data_lifetime.id = prev.id;
 -- set the birth time for the new auth_data
 insert into auth_data_lifetime (id, birth)
@@ -52,13 +53,14 @@ insert on cost_data begin
 update cost_data_lifetime
 set death = new.version
 from (
-        select id
-        from cost_data
-        where cost_id = new.cost_id
-            and version < new.version
-        order by version desc
-        limit 1
-    ) as prev
+    select id
+    from cost_data
+    where
+        cost_id = new.cost_id --noqa: RF01
+        and version < new.version --noqa: RF01
+    order by version desc
+    limit 1
+) as prev
 where cost_data_lifetime.id = prev.id;
 -- set the birth time for the new cost_data
 insert into cost_data_lifetime (id, birth)

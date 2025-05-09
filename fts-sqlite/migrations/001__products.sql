@@ -51,26 +51,29 @@ insert on product begin
 -- If we're honest with ourselves, it should be the case that
 -- at most 1 product could be considered a parent!
 insert into
-    product_tree (src, dst, ratio, depth, timestamp)
+product_tree (src, dst, ratio, depth, timestamp)
 select
     product_tree.src,
-    new.id,
-    product_tree.ratio * 1.0,
-    product_tree.depth + 1,
-    new.timestamp
+    new.id, --noqa: RF01
+    product_tree.ratio * 1.0 as ratio,
+    product_tree.depth + 1 as depth,
+    new.timestamp --noqa: RF01
 from
     product_tree
 join
     product
-on
-    product_tree.dst = product.id
+    on
+        product_tree.dst = product.id
 where
-    product.kind = new.kind
-and
-    product."from" <= new."from"
-and
-    product.thru >= new.thru;
+    product.kind = new.kind --noqa: RF01
+    and
+    product."from" <= new."from" --noqa: RF01
+    and
+    product.thru >= new.thru; --noqa: RF01
+-- noqa: enable=RF01
 -- Also insert the "root" row for the child itself
-insert into product_tree (src, dst, ratio, depth, timestamp) values (new.id, new.id, 1.0, 0, new.timestamp);
+insert into product_tree (src, dst, ratio, depth, timestamp) values (
+    new.id, new.id, 1.0, 0, new.timestamp
+);
 --
 end;
