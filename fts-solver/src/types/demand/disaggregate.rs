@@ -1,4 +1,5 @@
-use super::{Point, Segment};
+use super::Segment;
+use fts_core::models::Point;
 use std::iter::Peekable;
 
 /// If a demand curve is an aggregation of individual demand segments, then we
@@ -16,11 +17,11 @@ pub fn disaggregate<T: Iterator<Item = Point>>(
     let mut points = points.peekable();
 
     if let Some(point) = points.peek() {
-        let anchor = if point.quantity < min {
+        let anchor = if point.rate < min {
             points.next()
         } else {
             Some(Point {
-                quantity: min,
+                rate: min,
                 price: point.price,
             })
         };
@@ -63,7 +64,7 @@ impl<T: Iterator<Item = Point>> Iterator for Disaggregation<T> {
         // Are we anchored?
         while let Some(prev) = self.anchor.take() {
             // If so, contemplate the next point.
-            if self.domain.1 <= prev.quantity {
+            if self.domain.1 <= prev.rate {
                 // early exit condition
                 return None;
             } else if let Some(mut next) = self.points.next() {
@@ -71,7 +72,7 @@ impl<T: Iterator<Item = Point>> Iterator for Disaggregation<T> {
                 loop {
                     // We remove any interior, collinear points to simplify the curve
                     if let Some(extra) = self.points.peek() {
-                        if next.is_collinear(&prev, extra) {
+                        if is_collinear(&next, &prev, extra) {
                             // Safe, since self.points.peek().is_some()
                             next = self.points.next().unwrap();
                             continue;
@@ -79,12 +80,12 @@ impl<T: Iterator<Item = Point>> Iterator for Disaggregation<T> {
                             break;
                         }
                     } else {
-                        if self.domain.1 > next.quantity {
+                        if self.domain.1 > next.rate {
                             let extra = Point {
-                                quantity: self.domain.1,
+                                rate: self.domain.1,
                                 price: next.price,
                             };
-                            if next.is_collinear(&prev, &extra) {
+                            if is_collinear(&next, &prev, &extra) {
                                 next = extra;
                             }
                         }
@@ -109,7 +110,7 @@ impl<T: Iterator<Item = Point>> Iterator for Disaggregation<T> {
                 // If there are no more points, we are done iterating.
                 // However, we might need to extrapolate one additional point.
                 let next = Point {
-                    quantity: self.domain.1,
+                    rate: self.domain.1,
                     price: prev.price,
                 };
 
@@ -126,6 +127,24 @@ impl<T: Iterator<Item = Point>> Iterator for Disaggregation<T> {
     }
 }
 
+/// Is this point collinear with the other two?
+fn is_collinear(pt: &Point, lhs: &Point, rhs: &Point) -> bool {
+    let &Point {
+        rate: x0,
+        price: y0,
+    } = lhs;
+    let &Point {
+        rate: x1,
+        price: y1,
+    } = pt;
+    let &Point {
+        rate: x2,
+        price: y2,
+    } = rhs;
+
+    (x2 - x0) * (y1 - y0) == (x1 - x0) * (y2 - y0)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -133,19 +152,19 @@ mod tests {
     fn data() -> impl Iterator<Item = Point> {
         vec![
             Point {
-                quantity: -2.0,
+                rate: -2.0,
                 price: 4.0,
             },
             Point {
-                quantity: -1.0,
+                rate: -1.0,
                 price: 3.0,
             },
             Point {
-                quantity: 1.0,
+                rate: 1.0,
                 price: 1.0,
             },
             Point {
-                quantity: 2.0,
+                rate: 2.0,
                 price: 0.0,
             },
         ]
@@ -261,7 +280,7 @@ mod tests {
     fn extrapolate_simple() {
         let segments = disaggregate(
             std::iter::once(Point {
-                quantity: 0.0,
+                rate: 0.0,
                 price: 5.0,
             }),
             -5.0,
@@ -285,11 +304,11 @@ mod tests {
     fn check_slope() {
         let points = vec![
             Point {
-                quantity: -2.0,
+                rate: -2.0,
                 price: 4.0,
             },
             Point {
-                quantity: 2.0,
+                rate: 2.0,
                 price: 5.0,
             },
         ];

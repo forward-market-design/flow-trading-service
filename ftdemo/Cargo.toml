@@ -1,6 +1,6 @@
 [package]
 name = "ftdemo"
-description = "A demonstrative implementation of a flow trading server"
+description = "A demonstration API server for flow trading"
 version = "0.1.1"
 authors.workspace = true
 edition.workspace = true
@@ -9,23 +9,25 @@ publish.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-fts-core = { path = "../fts-core", version = "0.2.0" }
-fts-server = { path = "../fts-server", version = "0.3.0" }
-fts-sqlite = { path = "../fts-sqlite", version = "0.1.6" }
+fts-core = { workspace = true }
+fts-axum = { workspace = true }
+fts-solver = { workspace = true, features = ["clarabel", "serde", "schemars"] }
+fts-sqlite = { workspace = true, features = ["schemars"] }
 
-# For parsing CLI args
-clap = { workspace = true, features = ["derive", "env"] }
-dotenvy = { version = "0.15" }
-humantime = { workspace = true }
+anyhow = { workspace = true }
+clap = { workspace = true, features = ["derive", "env", "string"] }
+headers = { workspace = true }
+serde = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+uuid = { workspace = true, features = ["v4", "v8"] }
+schemars = { workspace = true, features = ["uuid1"] }
 time = { workspace = true, features = ["formatting", "parsing"] }
-
-# For running the server
-tokio = { workspace = true, features = ["full"] }
 tracing = { workspace = true }
 
-# For reporting the traces
+config = { version = "0.15", features = ["toml"] }
+humantime-serde = { version = "1.1" }
+jwt-simple = { version = "0.12", default-features=false, features=["pure-rust"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-[features]
-default = []
-testmode = []
+[dev-dependencies]
+tokio-test = "0.4.4"

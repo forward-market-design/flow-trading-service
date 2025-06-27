@@ -1,122 +1,51 @@
-mod auction;
-mod auth;
-mod bound;
-mod config;
-mod cost;
-mod datetime;
+//! Core domain models for the flow trading system.
+//!
+//! This module contains the fundamental data structures that represent the domain entities.
+//!
+//! The models in this module are primarily data structures with minimal business logic,
+//! following the principles of the hexagonal architecture to separate domain entities
+//! from their persistence and processing implementations.
+
+mod curve;
+pub use curve::*;
+
+mod portfolio;
+pub use portfolio::*;
+
 mod demand;
-mod outcome;
-mod product;
-mod submission;
+pub use demand::*;
 
-pub use auction::{AuctionMetaData, AuctionSolveRequest, RawAuctionInput};
-pub use auth::{AuthData, AuthHistoryRecord, AuthId, AuthRecord, Portfolio};
-pub use bound::Bound;
-pub use config::Config;
-pub use cost::{CostData, CostHistoryRecord, CostId, CostRecord, Group, GroupDisplay};
-pub use datetime::{DateTimeRangeQuery, DateTimeRangeResponse};
-pub use demand::{Constant, Curve, DemandCurve, Point};
-pub use outcome::{AuctionOutcome, Outcome};
-pub use product::{ProductData, ProductQuery, ProductQueryResponse, ProductRecord};
-pub use submission::SubmissionRecord;
+mod map;
+pub use map::*;
 
-macro_rules! uuid_wrapper {
-    ($struct: ident) => {
-        /// A UUID newtype
-        #[derive(
-            Debug,
-            Hash,
-            PartialEq,
-            Eq,
-            Clone,
-            Copy,
-            serde::Serialize,
-            serde::Deserialize,
-            PartialOrd,
-            Ord,
-            utoipa::ToSchema,
-        )]
-        #[serde(transparent)]
-        #[repr(transparent)]
-        pub struct $struct(uuid::Uuid);
+mod datetime;
+pub use datetime::*;
 
-        impl From<uuid::Uuid> for $struct {
-            fn from(value: uuid::Uuid) -> Self {
-                Self(value)
-            }
-        }
-
-        impl Into<uuid::Uuid> for $struct {
-            fn into(self) -> uuid::Uuid {
-                self.0
-            }
-        }
-
-        impl TryFrom<&str> for $struct {
-            type Error = <uuid::Uuid as std::str::FromStr>::Err;
-
-            fn try_from(value: &str) -> Result<Self, Self::Error> {
-                Ok(Self(<uuid::Uuid as std::str::FromStr>::from_str(value)?))
-            }
-        }
-
-        impl Into<String> for $struct {
-            fn into(self) -> String {
-                self.0.to_string()
-            }
-        }
-
-        impl std::ops::Deref for $struct {
-            type Target = uuid::Uuid;
-
-            fn deref(&self) -> &Self::Target {
-                &self.0
-            }
-        }
-
-        impl std::fmt::Display for $struct {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                self.0.fmt(f)
-            }
-        }
-    };
+/// A timestamped record of a component of a user's bid.
+///
+/// The interval for which the component has this value is provided alongside
+/// the value itself.
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct ValueRecord<DateTime, Value> {
+    /// The timestamp when this change occurred
+    pub valid_from: DateTime,
+    /// The timestamp when this change was superceded
+    pub valid_until: Option<DateTime>,
+    /// The component value
+    pub value: Value,
 }
 
-pub(crate) use uuid_wrapper;
-uuid_wrapper!(BidderId);
-uuid_wrapper!(ProductId);
-
-macro_rules! map_wrapper {
-    ($struct:ident, $key:ty, $value:ty) => {
-        /// A hashmap with deterministic ordering
-        #[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
-        #[serde(transparent)]
-        #[schema(value_type = std::collections::HashMap<$key, $value>)]
-        pub struct $struct(pub indexmap::IndexMap<$key, $value, rustc_hash::FxBuildHasher>);
-
-        impl std::ops::Deref for $struct {
-            type Target = indexmap::IndexMap<$key, $value, rustc_hash::FxBuildHasher>;
-
-            fn deref(&self) -> &Self::Target {
-                &self.0
-            }
-        }
-
-        impl IntoIterator for $struct {
-            type Item = ($key, $value);
-            type IntoIter = indexmap::map::IntoIter<$key, $value>;
-            /// Forward the into_iter() implementation from the newtype
-            fn into_iter(self) -> Self::IntoIter {
-                self.0.into_iter()
-            }
-        }
-
-        impl FromIterator<($key, $value)> for $struct {
-            fn from_iter<I: IntoIterator<Item = ($key, $value)>>(iter: I) -> Self {
-                Self(indexmap::IndexMap::from_iter(iter))
-            }
-        }
-    };
+/// A timestamped record of an outcome from batch processing.
+///
+/// This generic structure is used to store results from the solver,
+/// such as portfolio allocations or product clearing prices, along with
+/// the timestamp of the batch they were computed in.
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct OutcomeRecord<DateTime, Outcome> {
+    /// The timestamp when this outcome was computed
+    pub as_of: DateTime,
+    /// The actual outcome data (e.g., allocation, price)
+    pub outcome: Outcome,
 }
-
-pub(crate) use map_wrapper;

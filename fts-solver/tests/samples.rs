@@ -1,16 +1,14 @@
 use approx::assert_abs_diff_eq;
 use fts_solver::{
-    Auction, AuctionOutcome,
-    export::{export_lp, export_mps},
-    io::AuctionDto,
+    PortfolioOutcome, ProductOutcome,
+    io::{Auction, DemandId, Outcome, PortfolioId, ProductId},
 };
 use rstest::*;
 use rstest_reuse::{self, *};
+use serde::de::DeserializeOwned;
 use std::{
-    fmt::Debug,
     fs::File,
     io::{BufReader, Read},
-    ops::Deref,
     path::PathBuf,
 };
 
@@ -21,7 +19,13 @@ use std::{
 #[rstest]
 #[case::clarabel(fts_solver::clarabel::ClarabelSolver::default())]
 #[case::osqp(fts_solver::osqp::OsqpSolver::default())]
-pub fn all_solvers<PortfolioId, ProductId>(#[case] solver: impl solver::Solver) -> () {}
+pub fn all_solvers<PortfolioId, ProductId>(
+    #[case] solver: impl solver::Solver<
+        PortfolioOutcome = fts_solver::PortfolioOutcome,
+        ProductOutcome = fts_solver::ProductOutcome,
+    >,
+) -> () {
+}
 
 // This test case is actually a dynamically generated, Cartesian product of test cases.
 // For every solver implementation, and for every (input.json, output.json) pair in `./samples/**`,
@@ -35,22 +39,34 @@ pub fn all_solvers<PortfolioId, ProductId>(#[case] solver: impl solver::Solver) 
 
 #[apply(all_solvers)]
 #[rstest]
-fn run_auction(
-    solver: impl fts_solver::Solver,
+#[tokio::test]
+async fn run_auction<
+    T: fts_core::ports::Solver<
+            DemandId,
+            PortfolioId,
+            ProductId,
+            PortfolioOutcome = fts_solver::PortfolioOutcome,
+            ProductOutcome = fts_solver::ProductOutcome,
+        >,
+>(
+    solver: T,
     #[files("tests/samples/**/output.json")] output: PathBuf,
-) {
+) where
+    T::PortfolioOutcome: DeserializeOwned,
+    T::ProductOutcome: DeserializeOwned,
+{
+    use fts_solver::io::Outcome;
+
     let mut input = output.clone();
     input.set_file_name("input.json");
 
-    let raw_auction: AuctionDto =
+    let auction: Auction =
         serde_json::from_reader(BufReader::new(File::open(input).unwrap())).unwrap();
 
-    let auction: Auction<_, _, _> = raw_auction.try_into().unwrap();
-
-    let reference: AuctionOutcome<_, _, _> =
+    let reference: Outcome<T::PortfolioOutcome, T::ProductOutcome> =
         serde_json::from_reader(BufReader::new(File::open(output).unwrap())).unwrap();
 
-    let solution = solver.solve(auction.deref()).unwrap();
+    let solution = auction.solve(solver).await;
 
     cmp(&solution, &reference, 1e-6, 1e-6);
 }
@@ -60,10 +76,8 @@ fn check_mps_export(#[files("tests/samples/**/export.mps")] output: PathBuf) {
     let mut input = output.clone();
     input.set_file_name("input.json");
 
-    let raw_auction: AuctionDto =
+    let auction: Auction =
         serde_json::from_reader(BufReader::new(File::open(input).unwrap())).unwrap();
-
-    let auction: Auction<_, _, _> = raw_auction.try_into().unwrap();
 
     let mut output_bytes = Vec::new();
     let output_size = File::open(output)
@@ -71,7 +85,7 @@ fn check_mps_export(#[files("tests/samples/**/export.mps")] output: PathBuf) {
         .read_to_end(&mut output_bytes)
         .unwrap();
     let mut export_bytes = Vec::with_capacity(output_size);
-    export_mps(auction.deref(), &mut export_bytes).unwrap();
+    auction.export_mps(&mut export_bytes).unwrap();
     assert!(output_bytes == export_bytes, "mps files are not identical");
 }
 
@@ -80,10 +94,8 @@ fn check_lp_export(#[files("tests/samples/**/export.lp")] output: PathBuf) {
     let mut input = output.clone();
     input.set_file_name("input.json");
 
-    let raw_auction: AuctionDto =
+    let auction: Auction =
         serde_json::from_reader(BufReader::new(File::open(input).unwrap())).unwrap();
-
-    let auction: Auction<_, _, _> = raw_auction.try_into().unwrap();
 
     let mut output_bytes = Vec::new();
     let output_size = File::open(output)
@@ -91,32 +103,28 @@ fn check_lp_export(#[files("tests/samples/**/export.lp")] output: PathBuf) {
         .read_to_end(&mut output_bytes)
         .unwrap();
     let mut export_bytes = Vec::with_capacity(output_size);
-    export_lp(auction.deref(), &mut export_bytes).unwrap();
+    auction.export_lp(&mut export_bytes).unwrap();
     assert!(output_bytes == export_bytes, "mps files are not identical");
 }
 
-fn cmp<BidderId: Debug + Eq, PortfolioId: Debug + Eq, ProductId: Debug + Eq>(
-    a: &AuctionOutcome<BidderId, PortfolioId, ProductId>,
-    b: &AuctionOutcome<BidderId, PortfolioId, ProductId>,
+fn cmp(
+    a: &Outcome<PortfolioOutcome, ProductOutcome>,
+    b: &Outcome<PortfolioOutcome, ProductOutcome>,
     qeps: f64,
     peps: f64,
 ) {
     assert_eq!(a.products.len(), b.products.len());
     for ((p1, o1), (p2, o2)) in a.products.iter().zip(b.products.iter()) {
         assert_eq!(p1, p2);
-        assert_abs_diff_eq!(o1.trade, o2.trade, epsilon = qeps);
+        assert_abs_diff_eq!(o1.rate, o2.rate, epsilon = qeps);
         assert_abs_diff_eq!(o1.price, o2.price, epsilon = peps);
     }
 
-    assert_eq!(a.submissions.len(), b.submissions.len());
-    for ((b1, s1), (b2, s2)) in a.submissions.iter().zip(b.submissions.iter()) {
-        assert_eq!(b1, b2);
-        assert_eq!(s1.len(), s2.len());
+    assert_eq!(a.portfolios.len(), b.portfolios.len());
 
-        for ((p1, o1), (p2, o2)) in s1.iter().zip(s2.iter()) {
-            assert_eq!(p1, p2);
-            assert_abs_diff_eq!(o1.trade, o2.trade, epsilon = qeps);
-            assert_abs_diff_eq!(o1.price, o2.price, epsilon = peps);
-        }
+    for ((p1, o1), (p2, o2)) in a.portfolios.iter().zip(b.portfolios.iter()) {
+        assert_eq!(p1, p2);
+        assert_abs_diff_eq!(o1.rate, o2.rate, epsilon = qeps);
+        assert_abs_diff_eq!(o1.price, o2.price, epsilon = peps);
     }
 }

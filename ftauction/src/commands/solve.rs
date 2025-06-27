@@ -1,8 +1,8 @@
 use clap::ValueEnum;
 use fts_solver::{
-    AuctionOutcome, Solver as _, Submission,
+    PortfolioOutcome, ProductOutcome,
     clarabel::ClarabelSolver,
-    io::{BidderId, PortfolioId, ProductId},
+    io::{Auction, Outcome},
     osqp::OsqpSolver,
 };
 
@@ -16,19 +16,10 @@ pub enum SolverLib {
 // Conveniently, we can use the same enum to handle the particulars of calling into
 // the various solver implementations
 impl SolverLib {
-    pub fn solve<T>(&self, auction: &T) -> AuctionOutcome<BidderId, PortfolioId, ProductId>
-    where
-        for<'t> &'t T: IntoIterator<Item = (&'t BidderId, &'t Submission<PortfolioId, ProductId>)>,
-    {
+    pub async fn solve(&self, auction: Auction) -> Outcome<PortfolioOutcome, ProductOutcome> {
         match self {
-            SolverLib::Clarabel => {
-                let solver = ClarabelSolver::default();
-                solver.solve(auction).expect("could not solve auction")
-            }
-            SolverLib::Osqp => {
-                let solver = OsqpSolver::default();
-                solver.solve(auction).expect("could not solve auction")
-            }
+            SolverLib::Clarabel => auction.solve(ClarabelSolver::default()).await,
+            SolverLib::Osqp => auction.solve(OsqpSolver::default()).await,
         }
     }
 }

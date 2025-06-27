@@ -1,0 +1,21 @@
+# Application Configuration
+
+# HTTP Server Configuration
+[server]
+# The address and port to bind the server to
+bind_address = "0.0.0.0:8080"
+
+# Database Configuration
+[database]
+# Path to the SQLite database file (If not specified, uses an in-memory database)
+#database_path = "./dev.db"
+  
+# Whether to create the database if it doesn't exist
+create_if_missing = true
+
+[schedule]
+# What "anchor" time to start the auctions from?
+from = "2025-01-01T00:00:00Z"
+
+# How often to run a batch auction?
+every = "15s"

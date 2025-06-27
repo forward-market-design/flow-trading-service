@@ -1,22 +1,18 @@
 {
-    "submissions": {
+    "portfolios": {
         "buyer": {
-            "X": {
-                "price": 7.5,
-                "trade": 0.5
-            }
+            "price": 7.5,
+            "rate": 0.5
         },
         "seller": {
-            "X": {
-                "price": 7.5,
-                "trade": -0.5
-            }
+            "price": 7.5,
+            "rate": -0.5
         }
     },
     "products": {
         "A": {
             "price": 7.5,
-            "trade": 0.5
+            "rate": 0.5
         }
     }
 }

@@ -1,60 +1,53 @@
-use crate::models::{
-    AuctionOutcome, DateTimeRangeQuery, DateTimeRangeResponse, ProductId, ProductQueryResponse,
-    ProductRecord,
-};
-use serde::{Serialize, de::DeserializeOwned};
-use std::future::Future;
-use time::OffsetDateTime;
-
-/// Repository trait for product-related operations.
+/// Repository interface for product hierarchy management.
 ///
-/// This trait provides functionality for managing products in the trading system.
-/// Products are the fundamental tradable entities in the system, which can be
-/// referenced by authorization portfolios and are constrained to net-zero trade
-/// in each auction.
+/// This trait encapsulates the functionality related to defining and maintaining
+/// a hierarchical tree of products. Products can be partitioned into child products,
+/// enabling fine-grained control over tradeable assets.
 ///
-/// Implementations provide methods for defining new products, querying existing
-/// products, and retrieving auction outcomes for specific products.
-pub trait ProductRepository: Clone + Sized + Send + Sync + 'static {
-    /// The error type returned by this repository's operations
-    type Error: std::error::Error + Send + Sync + 'static;
-
-    /// An implementation must provide a type describing the products
-    type ProductData: Serialize + DeserializeOwned + Send + Sync + 'static;
-
-    /// An implementation must also provide a query type
-    type ProductQuery: Serialize + DeserializeOwned + Send + Sync + 'static;
-
-    /// Define new products
-    fn define_products(
+/// # Product Hierarchy
+///
+/// Products form a tree structure where:
+/// - Root products have no parent
+/// - Products can be partitioned into weighted children
+/// - Child weights represent the proportion of the parent product
+pub trait ProductRepository<ProductData>: super::Repository {
+    /// Define a new root product with no parent.
+    fn create_product(
         &self,
-        products: impl Iterator<Item = Self::ProductData> + Send,
-        timestamp: OffsetDateTime,
-    ) -> impl Future<Output = Result<Vec<ProductId>, Self::Error>> + Send;
+        product_id: Self::ProductId,
+        app_data: ProductData,
+        as_of: Self::DateTime,
+    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
 
-    /// View a specific product by its id
-    fn view_product(
+    /// Partition an existing product into new weighted children.
+    ///
+    /// This operation creates child products that represent portions of the parent.
+    /// The weights determine how allocations to the parent are distributed to children.
+    ///
+    /// # Returns
+    ///
+    /// Ok(n) if successful, where n is the number of products created.
+    ///
+    /// # Errors
+    ///
+    /// Should fail if the product_id does not already exist.
+    fn partition_product<T: Send + IntoIterator<Item = (Self::ProductId, ProductData, f64)>>(
         &self,
-        product_id: ProductId,
-    ) -> impl Future<Output = Result<Option<ProductRecord<Self::ProductData>>, Self::Error>> + Send;
+        product_id: Self::ProductId,
+        children: T,
+        as_of: Self::DateTime,
+    ) -> impl Future<Output = Result<usize, Self::Error>> + Send
+    where
+        T::IntoIter: Send + ExactSizeIterator;
 
-    /// Search for products using a query
-    fn query_products(
+    /// Get the data associated with a product at a specific time.
+    ///
+    /// # Returns
+    ///
+    /// The product data if it exists at the specified time, None otherwise.
+    fn get_product(
         &self,
-        query: Self::ProductQuery,
-        limit: usize,
-    ) -> impl Future<
-        Output = Result<
-            ProductQueryResponse<ProductRecord<Self::ProductData>, Self::ProductQuery>,
-            Self::Error,
-        >,
-    > + Send;
-
-    /// Retrieve any posted results
-    fn get_outcomes(
-        &self,
-        product_id: ProductId,
-        query: DateTimeRangeQuery,
-        limit: usize,
-    ) -> impl Future<Output = Result<DateTimeRangeResponse<AuctionOutcome>, Self::Error>> + Send;
+        product_id: Self::ProductId,
+        as_of: Self::DateTime,
+    ) -> impl Future<Output = Result<Option<ProductData>, Self::Error>> + Send;
 }

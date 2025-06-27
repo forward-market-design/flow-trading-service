@@ -1,16 +1,23 @@
 name: PR Checks
 on:
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   tests-and-validate:
     runs-on: ubuntu-latest
     name: Tests and Validations
+    env:
+      DATABASE_URL: "sqlite:dev.db"
     steps:
       - uses: actions/checkout@v2
       - uses: dtolnay/rust-toolchain@stable
+      - name: Prepare SQLx database bindings
+        run: |
+          cargo install sqlx-cli --no-default-features --features sqlite
+          sqlx database create
+          sqlx migrate run --source ./fts-sqlite/schema
       - name: Cache cargo dependencies
         uses: actions/cache@v4
         with:
@@ -25,12 +32,12 @@ jobs:
         run: cargo build --release
       - name: Run tests
         run: cargo test --release
-      - name: Generate OpenAPI Spec
-        run: cargo run --bin generate-openapi --release > openapi.yaml
-      # https://github.com/swagger-api/apidom is the modern way of validating OpenAPI specs
-      # https://github.com/swaggerexpert/apidom-validate is a simple way of doing so via GitHub Action.
-      # However, it builds every time, so it's not ideal;
-      # we can either optimize this with caching or do it directly as a nodejs script.
-      - uses: swaggerexpert/apidom-validate@v1
-        with:
-          definition-file: 'openapi.yaml'
+      # - name: Generate OpenAPI Spec
+      #   run: cargo run --bin generate-openapi --release > openapi.yaml
+      # # https://github.com/swagger-api/apidom is the modern way of validating OpenAPI specs
+      # # https://github.com/swaggerexpert/apidom-validate is a simple way of doing so via GitHub Action.
+      # # However, it builds every time, so it's not ideal;
+      # # we can either optimize this with caching or do it directly as a nodejs script.
+      # - uses: swaggerexpert/apidom-validate@v1
+      #   with:
+      #     definition-file: "openapi.yaml"

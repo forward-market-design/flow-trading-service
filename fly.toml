@@ -26,11 +26,10 @@ wait_timeout = "1m"
     path = "/health"
 
 [env]
-  API_PORT = "8080"
-  TRADE_RATE = "1h"
+  APP_SERVER__BIND_ADDRESS = "0.0.0.0:8080"
 
 [processes]
-  app = "--api-secret ${DEMO_API_SECRET}"
+  app = "--secret ${DEMO_API_SECRET}"
 
 [[vm]]
   memory = '1gb'

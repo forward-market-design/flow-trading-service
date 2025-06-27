@@ -1,6 +1,5 @@
 /target
 .env
 /.github
-*.session.sql
 Dockerfile
 fly.toml
