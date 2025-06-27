@@ -1313,7 +1313,7 @@ dependencies = [
 
 [[package]]
 name = "fts-core"
-version = "0.2.0"
+version = "0.4.0"
 dependencies = [
  "fts-core",
  "indexmap",
@@ -1348,7 +1348,7 @@ dependencies = [
 
 [[package]]
 name = "fts-sqlite"
-version = "0.1.6"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "fts-core",
