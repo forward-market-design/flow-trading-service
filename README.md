@@ -14,7 +14,7 @@ Much of this technical documentation is also available here: https://docs.rs/fts
 
 We define a core set of primitives in `fts-core` (so-called
 "models" and "ports", using the terminology of hexagonal architecture), a
-reference solver for the relevant quadratic program in `fts-solver`, a REST API HTTP server for interacting with the solver in `fts-server`, and
+reference solver for the relevant quadratic program in `fts-solver`, a REST API HTTP server for interacting with the solver in `fts-axum`, and
 finally an implementation of the core data operations in `fts-sqlite` using
 SQLite, suitable for exploration of flow trading-based marketplaces such as a forward market.
 

@@ -1,46 +1,40 @@
 # `ftdemo`
 
-This crate combines the SQLite implementation of `fts-sqlite` with the REST API  of `fts-server` to product a binary suitable for interactive demonstration of flow trading functionality. As suggested by the name, correctness and simplicity are prioritized over performance, though the use of SQLite nevertheless enables very fast operations.
+This crate combines the SQLite implementation of `fts-sqlite` with the REST API  of `fts-axum` to create a binary suitable for interactive demonstration of flow trading functionality. As suggested by the name, correctness and simplicity are prioritized over performance, though the use of SQLite nevertheless enables very fast operations.
 
 It is recommended to pair this binary with a frontend client, such as [this one](https://github.com/forward-market-design/flow-trading-client). The client provides a graphical, administrative interface for familiarizing oneself with the primitives and operations of flow trading and how a forward market might be built upon this foundation.
 
-## Configuration
+## Installation and Usage
 
-Run the binary with the `--help` flag to see the available CLI arguments.
+The binary can be installed as simply as `cargo install ftdemo`. Once installed, running the server looks like this:
 ```bash
-# Build and run the binary in one step
-cargo run --release --bin ftdemo -- --help
-
-# OR,
-# (1) build the binary...
-cargo build --release --bin ftdemo
-# ... and (2) run the binary
-./target/release/ftdemo --help
+APP_SECRET=SECRET ftdemo --config ./path/to/config.toml
 ```
 
-This output is duplicated below:
-```bash
-$ ftdemo --help
+The two key things are setting the HMAC secret for JWT authentication, and the configuration file `./path/to/config.toml`. This file looks like:
 
-A demonstrative implementation of a flow trading server
+```toml
+# HTTP Server Configuration
+[server]
+# The address and port to bind the server to
+bind_address = "0.0.0.0:8080"
 
-Usage: ftdemo [OPTIONS] --api-secret <API_SECRET> --trade-rate <TRADE_RATE>
+# Database Configuration
+[database]
+# Path to the SQLite database file (If not specified, uses an in-memory database)
+#database_path = "./dev.db"
+  
+# Whether to create the database if it doesn't exist
+create_if_missing = true
 
-Options:
-      --api-port <API_PORT>      The port to listen on [env: API_PORT=] [default: 8080]
-      --api-secret <API_SECRET>  The HMAC-secret for verification of JWT claims [env: API_SECRET=]
-      --database <DATABASE>      The location of the database (if omitted, use an in-memory db) [env: DATABASE=]
-      --trade-rate <TRADE_RATE>  The time unit of rate data [env: TRADE_RATE=]
-  -h, --help                     Print help
-  -V, --version                  Print version
+[schedule]
+# What "anchor" time to start the auctions from?
+from = "2025-01-01T00:00:00Z"
+
+# How often to run a batch auction?
+every = "10s"
 ```
 
-As suggested by this output, a `.env` file may alternatively be provided to specify these configuration options (useful for container-based deployments). 
+All the configuration options may alternatively be specified by environment variables `APP_[SERVER|DATABASE|SCHEDULE]__[VARNAME]`.
 
-Note that `--trade-rate / TRADE_RATE` is specified as a string that can be parsed by [humantime](https://docs.rs/humantime/latest/humantime/), e.g. `1h` or `30min`. This value provides the units for *auths* and *costs*, e.g. if an auth specifies a `max_rate` of `5` and the server was configured with `--trade-rate 1h`, then this means the authorization allows for trading the associated portfolio at a rate not exceeding 5 units per hour.
-
-For convenience, a compile-time feature (disabled by default) is available, that when enabled, adds a `--test N` flag which will print JWT tokens to stdout for 1 admin user and `N` randomly generated bidders, valid for 1 day, for use in external tooling and testing scenarios. Use with the appropriate care. To enable support, build with the `testmode` feature:
-
-```bash
-cargo build --release --bin ftdemo --features testmode
-```
+Once running, the server will respond to requests sent to the bind address. If the bind address is 0.0.0.0:8080, then browsing to http://localhost:8080/docs will show an interactive API explorer if the server is successfully running. 

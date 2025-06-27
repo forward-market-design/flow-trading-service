@@ -9,24 +9,30 @@ rust-version.workspace = true
 version = "0.4.0"
 
 [dependencies]
+fts-core = { workspace = true }
+
 # black-box solvers we can pull in
 clarabel = { version = "0.10", optional = true }
 osqp = { version = "1.0", optional = true }
 
 # provide the option for (de)serialization of the raw solver types
 serde = { workspace = true, features = ["derive"], optional = true }
+schemars = { workspace = true, features = ["derive", "preserve_order"], optional = true }
 
 # core crates used by the library
 indexmap = { workspace = true, features = ["std"] }
 rustc-hash = { workspace = true }
 thiserror = { workspace = true }
+tokio = { workspace = true, features = ["rt"] }
 tracing = { workspace = true }
 
 [dev-dependencies]
 approx = "0.5"
+
 rstest = { workspace = true }
 rstest_reuse = { workspace = true }
 serde_json = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt"] }
 
 # enable all the features for testing purposes
 fts-solver = { path = ".", features = ["clarabel", "osqp", "io"] }
@@ -35,5 +41,6 @@ fts-solver = { path = ".", features = ["clarabel", "osqp", "io"] }
 default = ["clarabel"]
 clarabel = ["dep:clarabel"]
 osqp = ["dep:osqp"]
-serde = ["dep:serde", "indexmap/serde"]
+serde = ["dep:serde", "fts-core/serde", "indexmap/serde"]
 io = ["serde"]
+schemars = ["dep:schemars"]

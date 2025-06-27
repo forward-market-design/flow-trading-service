@@ -1,9 +1,5 @@
 use clap::ValueEnum;
-use fts_solver::{
-    Submission,
-    export::{export_lp, export_mps},
-    io::{BidderId, PortfolioId, ProductId},
-};
+use fts_solver::io::Auction;
 use std::{io::Write, str::FromStr};
 
 // Same story here with the ExportFormat enum, as with the SolverLib enum
@@ -14,14 +10,10 @@ pub enum ExportFormat {
 }
 
 impl ExportFormat {
-    pub fn export<T, W>(&self, auction: &T, buffer: &mut W) -> anyhow::Result<()>
-    where
-        for<'t> &'t T: IntoIterator<Item = (&'t BidderId, &'t Submission<PortfolioId, ProductId>)>,
-        W: Write,
-    {
+    pub fn export<W: Write>(&self, auction: Auction, buffer: &mut W) -> anyhow::Result<()> {
         match self {
-            Self::Mps => export_mps(auction, buffer)?,
-            Self::Lp => export_lp(auction, buffer)?,
+            Self::Mps => auction.export_mps(buffer)?,
+            Self::Lp => auction.export_lp(buffer)?,
         };
         Ok(())
     }

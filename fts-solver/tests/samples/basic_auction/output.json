@@ -1,34 +1,30 @@
 {
-  "submissions": {
-    "buyer": {
-      "X": {
-        "price": 6.25,
-        "trade": 0.5
-      },
-      "Y": {
-        "price": 6.25,
-        "trade": 0.5
-      }
+  "portfolios": {
+    "buyerx": {
+      "price": 6.25,
+      "rate": 0.5
     },
-    "seller": {
-      "X": {
-        "price": 6.25,
-        "trade": -0.5
-      },
-      "Y": {
-        "price": 6.25,
-        "trade": -0.5
-      }
+    "buyery": {
+      "price": 6.25,
+      "rate": 0.5
+    },
+    "sellerx": {
+      "price": 6.25,
+      "rate": -0.5
+    },
+    "sellery": {
+      "price": 6.25,
+      "rate": -0.5
     }
   },
   "products": {
     "A": {
       "price": 6.25,
-      "trade": 0.5
+      "rate": 0.5
     },
     "B": {
       "price": 6.25,
-      "trade": 0.5
+      "rate": 0.5
     }
   }
 }

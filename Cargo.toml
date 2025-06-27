@@ -1,6 +1,13 @@
 [workspace]
-members = ["fts-core", "fts-sqlite", "fts-server", "fts-solver", "ftauction", "ftdemo"]
 resolver = "2"
+members = [
+    "fts-axum",
+    "fts-core",
+    "fts-solver",
+    "fts-sqlite",
+    "ftauction",
+    "ftdemo",
+]
 
 [workspace.package]
 authors = ["Jason Dark <jason.dark@forwardmarketdesign.com>", "Fabio Isler <fabio.isler@forwardmarketdesign.com>"]
@@ -10,18 +17,25 @@ publish = true
 rust-version = "1.85"
 
 [workspace.dependencies]
+fts-axum = { path = "./fts-axum" }
+fts-core = { path = "./fts-core" }
+fts-solver = { path = "./fts-solver" }
+fts-sqlite = { path = "./fts-sqlite" }
+
+aide = "0.15"
 anyhow = "1.0"
 clap = "4.5"
-humantime = "2.2"
+headers = "0.4"
 indexmap = "2.9"
 rstest = { version = "0.25", default-features = false }
 rstest_reuse = "0.7"
 rustc-hash = "2.1"
+schemars = "0.9"
 serde = "1.0"
 serde_json = "1.0"
+sqlx = "0.8"
 thiserror = "2.0"
 time = "0.3"
-tokio = "1.44"
+tokio = "1.45"
 tracing = "0.1"
-utoipa = "5.3"
 uuid = "1.16"

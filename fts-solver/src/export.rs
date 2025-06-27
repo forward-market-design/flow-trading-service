@@ -1,4 +1,5 @@
-use crate::{HashSet, Submission};
+use crate::{HashSet, Segment, disaggregate};
+use fts_core::models::{DemandCurve, Map};
 use std::fmt::Display;
 use std::hash::Hash;
 use std::io::Write;
@@ -6,20 +7,20 @@ use std::io::Write;
 /// Convert a set of flow trading submissions to a quadratic program and export
 /// this program to `.mps` format.
 pub fn export_mps<
-    T,
-    BidderId: Display + Eq + Hash + Clone + Ord,
-    PortfolioId: Display + Eq + Hash + Clone + Ord,
+    DemandId: Display + Eq + Hash + Clone,
+    PortfolioId: Display + Eq + Hash + Clone,
     ProductId: Display + Eq + Hash + Clone + Ord,
 >(
-    auction: &T,
+    demand_curves: Map<DemandId, DemandCurve>,
+    portfolios: Map<PortfolioId, (Map<DemandId>, Map<ProductId>)>,
     buffer: &mut impl Write,
-) -> Result<(), std::io::Error>
-where
-    for<'t> &'t T: IntoIterator<Item = (&'t BidderId, &'t Submission<PortfolioId, ProductId>)>,
-{
+) -> Result<(), std::io::Error> {
     // MPS is a somewhat archaic format, but is easy enough to generate.
     // https://www.ibm.com/docs/en/icos/22.1.2?topic=standard-records-in-mps-format
     // is a good reference.
+
+    // This prepare method canonicalizes the input in an appropriate manner
+    let (demand_curves, portfolios, _, products) = super::prepare(demand_curves, portfolios);
 
     writeln!(buffer, "NAME flow_trade_qp")?;
     writeln!(buffer, "ROWS")?;
@@ -28,23 +29,14 @@ where
     writeln!(buffer, " N    gft")?;
 
     // We will have one row per product, set equal to zero, which will give us the shadow prices
-    let mut products = auction
-        .into_iter()
-        .flat_map(|(_, submission)| submission.portfolios.values())
-        .flat_map(|portfolio| portfolio.keys())
-        .collect::<HashSet<_>>();
-    products.sort_unstable();
-    for product_id in products.iter() {
+    for product_id in products.keys() {
         // The product dual variables are named `p_{product_id}`
         writeln!(buffer, " E    p_{product_id}")?;
     }
 
     // We will also have one row per demand curve, set equal to zero.
-    for (bidder_id, submission) in auction.into_iter() {
-        // The group dual variables are named `g_{bidder_id}_{offset}`
-        for (offset, _) in submission.demand_curves.iter().enumerate() {
-            writeln!(buffer, " E    g_{bidder_id}_{offset}")?;
-        }
+    for demand_id in demand_curves.keys() {
+        writeln!(buffer, " E    d_{demand_id}")?;
     }
 
     // We have two sets of variables: the per-product allocations `x`, and
@@ -52,90 +44,83 @@ where
     // where the rows of Σ are disjoint 1 vectors.
     writeln!(buffer, "COLUMNS")?;
 
-    // We begin with this first set x. Notably, these variables *do not* appear in the objective.
-    for (bidder_id, submission) in auction.into_iter() {
-        for (portfolio_id, portfolio) in submission.portfolios.iter() {
-            for (product_id, weight) in portfolio.iter() {
-                writeln!(
-                    buffer,
-                    "    x_{bidder_id}_{portfolio_id}    p_{product_id}    {weight}",
-                )?;
-            }
+    let mut zeroed = HashSet::default();
 
-            for (offset, (group, _)) in submission.demand_curves.iter().enumerate() {
-                if let Some(weight) = group.get(portfolio_id) {
-                    writeln!(
-                        buffer,
-                        "    x_{bidder_id}_{portfolio_id}    g_{bidder_id}_{offset}    {weight}",
-                    )?;
-                }
-            }
+    // We begin with this first set x. Notably, these variables *do not* appear in the objective.
+    for (portfolio_id, (demand_weights, product_weights)) in portfolios.iter() {
+        for (product_id, weight) in product_weights.iter() {
+            writeln!(buffer, "    x_{portfolio_id}    p_{product_id}    {weight}",)?;
+        }
+        for (demand_id, weight) in demand_weights.iter() {
+            writeln!(buffer, "    x_{portfolio_id}    d_{demand_id}    {weight}",)?;
+        }
+        if product_weights.len() == 0 || demand_weights.len() == 0 {
+            zeroed.insert(portfolio_id);
         }
     }
 
     // Now the second set y.
-    for (bidder_id, submission) in auction.into_iter() {
-        for (offset, (_, curve)) in submission.demand_curves.iter().enumerate() {
-            for (idx, segment) in curve.iter().enumerate() {
-                // MPS defaults to minimization. Further, the quadratic terms are specified in a
-                // well-supported extension, so we only do the linear terms here.
-                let (_, b) = segment.slope_intercept();
-                writeln!(
-                    buffer,
-                    "    y_{bidder_id}_{offset}_{idx}    gft    {term}    g_{bidder_id}_{offset}    -1",
-                    term = -b
-                )?;
-            }
+    let mut all_segments = Map::<(DemandId, usize), Segment>::default();
+    for (demand_id, demand_curve) in demand_curves.into_iter() {
+        let (min, max) = demand_curve.domain();
+        let points = demand_curve.points();
+
+        let segments = disaggregate(points.into_iter(), min, max).expect("empty demand curve");
+        for (idx, segment) in segments.enumerate() {
+            // TODO: propagate the error upwards
+            let segment = segment.unwrap();
+
+            // MPS defaults to minimization. Further, the quadratic terms are specified in a
+            // well-supported extension, so we only do the linear terms here.
+            let (_, b) = segment.slope_intercept();
+            writeln!(
+                buffer,
+                "    y_{demand_id}_{idx}    gft    {term}    d_{demand_id}    -1",
+                term = -b
+            )?;
+
+            // keep track of the segment
+            all_segments.insert((demand_id.clone(), idx), segment);
         }
     }
 
     // Now we specify the domains for each variable.
     writeln!(buffer, "BOUNDS")?;
-    for (bidder_id, submission) in auction.into_iter() {
-        for portfolio_id in submission.portfolios.keys() {
-            // The allocation variables are unconstrained.
-            writeln!(buffer, " FR BND x_{bidder_id}_{portfolio_id}")?;
+    for portfolio_id in portfolios.keys() {
+        if zeroed.contains(portfolio_id) {
+            writeln!(buffer, " FX BND    x_{portfolio_id} 0")?;
+        } else {
+            // The allocation variables are unconstrained typically.
+            writeln!(buffer, " FR BND    x_{portfolio_id}")?;
         }
     }
-    for (bidder_id, submission) in auction.into_iter() {
-        for (offset, (_, curve)) in submission.demand_curves.iter().enumerate() {
-            for (idx, segment) in curve.iter().enumerate() {
-                // The segment variables are bounded above and below (unless infinite)
-                if segment.q0.is_finite() {
-                    writeln!(
-                        buffer,
-                        " LO BND    y_{bidder_id}_{offset}_{idx}    {min}",
-                        min = segment.q0,
-                    )?;
-                } else {
-                    writeln!(buffer, " MI BND    y_{bidder_id}_{offset}_{idx}",)?;
-                }
-                if segment.q1.is_finite() {
-                    writeln!(
-                        buffer,
-                        " UP BND    y_{bidder_id}_{offset}_{idx}    {max}",
-                        max = segment.q1,
-                    )?;
-                } else {
-                    writeln!(buffer, " PL BND    y_{bidder_id}_{offset}_{idx}",)?;
-                }
-            }
+
+    for ((demand_id, idx), segment) in all_segments.iter() {
+        let min = segment.q0;
+        let max = segment.q1;
+
+        // The segment variables are bounded above and below (unless infinite)
+        if min.is_finite() {
+            writeln!(buffer, " LO BND    y_{demand_id}_{idx}    {min}",)?;
+        } else {
+            writeln!(buffer, " MI BND    y_{demand_id}_{idx}",)?;
+        }
+        if max.is_finite() {
+            writeln!(buffer, " UP BND    y_{demand_id}_{idx}    {max}",)?;
+        } else {
+            writeln!(buffer, " PL BND    y_{demand_id}_{idx}",)?;
         }
     }
 
     // Finally, we leverage the quadratic extension
     writeln!(buffer, "QUADOBJ")?;
-    for (bidder_id, submission) in auction.into_iter() {
-        for (offset, (_, curve)) in submission.demand_curves.iter().enumerate() {
-            for (idx, segment) in curve.iter().enumerate() {
-                let (m, _) = segment.slope_intercept();
-                writeln!(
-                    buffer,
-                    "    y_{bidder_id}_{offset}_{idx}    y_{bidder_id}_{offset}_{idx}    {term}",
-                    term = -m
-                )?;
-            }
-        }
+    for ((demand_id, idx), segment) in all_segments {
+        let (m, _) = segment.slope_intercept();
+        writeln!(
+            buffer,
+            "    y_{demand_id}_{idx}    y_{demand_id}_{idx}    {term}",
+            term = -m
+        )?;
     }
 
     writeln!(buffer, "ENDATA")?;
@@ -145,17 +130,18 @@ where
 /// Convert a set of flow trading submissions to a quadratic program and export
 /// this program to `.lp` format.
 pub fn export_lp<
-    T,
-    BidderId: Display + Eq + Hash + Clone + Ord,
-    PortfolioId: Display + Eq + Hash + Clone + Ord,
+    DemandId: Display + Eq + Hash + Clone,
+    PortfolioId: Display + Eq + Hash + Clone,
     ProductId: Display + Eq + Hash + Clone + Ord,
 >(
-    auction: &T,
+    demand_curves: Map<DemandId, DemandCurve>,
+    portfolios: Map<PortfolioId, (Map<DemandId>, Map<ProductId>)>,
     buffer: &mut impl Write,
-) -> Result<(), std::io::Error>
-where
-    for<'t> &'t T: IntoIterator<Item = (&'t BidderId, &'t Submission<PortfolioId, ProductId>)>,
-{
+) -> Result<(), std::io::Error> {
+    // This prepare method canonicalizes the input in an appropriate manner
+    let (demand_curves, portfolios, _, products) = super::prepare(demand_curves, portfolios);
+    let mut all_segments = Map::<(DemandId, usize), Segment>::default();
+
     // Start with the objective section - maximize gains from trade
     writeln!(buffer, "Maximize")?;
 
@@ -165,19 +151,28 @@ where
     // Flag to track if we've written any terms yet
     let mut first_term = true;
     let mut has_quadratic_terms = false;
+
     // Add linear terms from the y variables
-    for (bidder_id, submission) in auction.into_iter() {
-        for (offset, (_, curve)) in submission.demand_curves.iter().enumerate() {
-            for (idx, segment) in curve.iter().enumerate() {
-                let (m, b) = segment.slope_intercept();
-                has_quadratic_terms = has_quadratic_terms || m != 0.0;
-                if first_term {
-                    write!(buffer, "{b} y_{bidder_id}_{offset}_{idx}")?;
-                    first_term = false;
-                } else {
-                    write!(buffer, " + {b} y_{bidder_id}_{offset}_{idx}")?;
-                }
+    for (demand_id, demand_curve) in demand_curves.iter() {
+        let (min, max) = demand_curve.domain();
+        let points = demand_curve.clone().points();
+
+        let segments = disaggregate(points.into_iter(), min, max).expect("empty demand curve");
+        for (idx, segment) in segments.enumerate() {
+            // TODO: propagate the error upwards
+            let segment = segment.unwrap();
+
+            let (m, b) = segment.slope_intercept();
+            has_quadratic_terms = has_quadratic_terms || m != 0.0;
+            if first_term {
+                write!(buffer, "{b} y_{demand_id}_{idx}")?;
+                first_term = false;
+            } else {
+                write!(buffer, " + {b} y_{demand_id}_{idx}")?;
             }
+
+            // keep track of the segment
+            all_segments.insert((demand_id.clone(), idx), segment);
         }
     }
 
@@ -192,17 +187,13 @@ where
         // Reset first_term flag for quadratic terms
         first_term = true;
 
-        for (bidder_id, submission) in auction.into_iter() {
-            for (offset, (_, curve)) in submission.demand_curves.iter().enumerate() {
-                for (idx, segment) in curve.iter().enumerate() {
-                    let (m, _) = segment.slope_intercept();
-                    if first_term {
-                        write!(buffer, "{m} y_{bidder_id}_{offset}_{idx} ^ 2")?;
-                        first_term = false;
-                    } else {
-                        write!(buffer, " + {m} y_{bidder_id}_{offset}_{idx} ^ 2",)?;
-                    }
-                }
+        for ((demand_id, idx), segment) in all_segments.iter() {
+            let (m, _) = segment.slope_intercept();
+            if first_term {
+                write!(buffer, "{m} y_{demand_id}_{idx} ^ 2")?;
+                first_term = false;
+            } else {
+                write!(buffer, " + {m} y_{demand_id}_{idx} ^ 2",)?;
             }
         }
 
@@ -216,14 +207,7 @@ where
     writeln!(buffer, "Subject To")?;
 
     // Product constraints (all products must sum to zero)
-    let mut products = auction
-        .into_iter()
-        .flat_map(|(_, submission)| submission.portfolios.values())
-        .flat_map(|portfolio| portfolio.keys())
-        .collect::<HashSet<_>>();
-    products.sort_unstable();
-
-    for product_id in products {
+    for product_id in products.keys() {
         // Start the constraint
         write!(buffer, "  p_{product_id}: ")?;
 
@@ -231,15 +215,13 @@ where
         let mut first_term = true;
 
         // Collect all terms related to this product
-        for (bidder_id, submission) in auction.into_iter() {
-            for (portfolio_id, portfolio) in submission.portfolios.iter() {
-                if let Some(&weight) = portfolio.get(product_id) {
-                    if first_term {
-                        write!(buffer, "{weight} x_{bidder_id}_{portfolio_id}")?;
-                        first_term = false;
-                    } else {
-                        write!(buffer, " + {weight} x_{bidder_id}_{portfolio_id}",)?;
-                    }
+        for (portfolio_id, (_, product_weights)) in portfolios.iter() {
+            if let Some(&weight) = product_weights.get(product_id) {
+                if first_term {
+                    write!(buffer, "{weight} x_{portfolio_id}")?;
+                    first_term = false;
+                } else {
+                    write!(buffer, " + {weight} x_{portfolio_id}",)?;
                 }
             }
         }
@@ -254,77 +236,67 @@ where
     }
 
     // Demand curve constraints
-    for (bidder_id, submission) in auction.into_iter() {
-        for (offset, (group, curve)) in submission.demand_curves.iter().enumerate() {
-            // Start the constraint
-            write!(buffer, "  g_{bidder_id}_{offset}: ")?;
+    for demand_id in demand_curves.keys() {
+        // Start the constraint
+        write!(buffer, "  d_{demand_id}: ")?;
 
-            // Flag to track if we've written any terms
-            let mut first_term = true;
+        // Flag to track if we've written any terms
+        let mut first_term = true;
 
-            // Add terms for the x variables
-            for (portfolio_id, &weight) in group.iter() {
+        for (portfolio_id, (demand_weights, _)) in portfolios.iter() {
+            if let Some(&weight) = demand_weights.get(demand_id) {
                 if first_term {
-                    write!(buffer, "{weight} x_{bidder_id}_{portfolio_id}")?;
+                    write!(buffer, "{weight} x_{portfolio_id}")?;
                     first_term = false;
                 } else {
-                    write!(buffer, " + {weight} x_{bidder_id}_{portfolio_id}",)?;
+                    write!(buffer, " + {weight} x_{portfolio_id}",)?;
                 }
             }
-
-            // Assertion: first_term = false, since groups are non empty
-
-            // Add terms for the y variables (with negative coefficients)
-            for (idx, _) in curve.iter().enumerate() {
-                write!(buffer, " - y_{bidder_id}_{offset}_{idx}")?;
-            }
-
-            // Finish the constraint: = 0
-            writeln!(buffer, " = 0")?;
         }
+
+        // Assertion: first_term = false, since groups are non empty
+
+        let mut key = (demand_id.clone(), 0);
+        while all_segments.contains_key(&key) {
+            write!(buffer, " - y_{demand_id}_{idx}", idx = key.1)?;
+            key.1 += 1;
+        }
+
+        // Finish the constraint: = 0
+        writeln!(buffer, " = 0")?;
     }
 
     // Bounds section
     writeln!(buffer, "Bounds")?;
 
-    // The x variables are unconstrained (free)
-    for (bidder_id, submission) in auction.into_iter() {
-        for portfolio_id in submission.portfolios.keys() {
-            writeln!(buffer, "  x_{bidder_id}_{portfolio_id} free")?;
+    // The x variables are (typically) unconstrained (free)
+    for (portfolio_id, (a, b)) in portfolios.iter() {
+        if a.len() == 0 || b.len() == 0 {
+            writeln!(buffer, "  x_{portfolio_id} = 0")?;
+        } else {
+            writeln!(buffer, "  x_{portfolio_id} free")?;
         }
     }
 
     // The y variables have specific bounds
-    for (bidder_id, submission) in auction.into_iter() {
-        for (offset, (_, curve)) in submission.demand_curves.iter().enumerate() {
-            for (idx, segment) in curve.iter().enumerate() {
-                match (segment.q0.is_finite(), segment.q1.is_finite()) {
-                    (true, true) => {
-                        writeln!(
-                            buffer,
-                            "  {min} <= y_{bidder_id}_{offset}_{idx} <= {max}",
-                            min = segment.q0,
-                            max = segment.q1
-                        )?;
-                    }
-                    (true, false) => {
-                        writeln!(
-                            buffer,
-                            "  y_{bidder_id}_{offset}_{idx} >= {min}",
-                            min = segment.q0
-                        )?;
-                    }
-                    (false, true) => {
-                        writeln!(
-                            buffer,
-                            "  y_{bidder_id}_{offset}_{idx} <= {max}",
-                            max = segment.q1
-                        )?;
-                    }
-                    (false, false) => {
-                        writeln!(buffer, "  y_{bidder_id}_{offset}_{idx} free")?;
-                    }
-                }
+    for ((demand_id, idx), segment) in all_segments {
+        match (segment.q0.is_finite(), segment.q1.is_finite()) {
+            (true, true) => {
+                writeln!(
+                    buffer,
+                    "  {min} <= y_{demand_id}_{idx} <= {max}",
+                    min = segment.q0,
+                    max = segment.q1
+                )?;
+            }
+            (true, false) => {
+                writeln!(buffer, "  y_{demand_id}_{idx} >= {min}", min = segment.q0)?;
+            }
+            (false, true) => {
+                writeln!(buffer, "  y_{demand_id}_{idx} <= {max}", max = segment.q1)?;
+            }
+            (false, false) => {
+                writeln!(buffer, "  y_{demand_id}_{idx} free")?;
             }
         }
     }

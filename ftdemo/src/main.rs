@@ -1,17 +1,15 @@
-use clap::{Args, Parser};
-use fts_core::{models::Config, ports::MarketRepository};
-use fts_server::AppState;
-use fts_sqlite::db::{self, Database};
-use time::format_description::well_known::Rfc3339;
-use tokio::{task::JoinHandle, try_join};
-use tracing::{Level, event, span};
+use ftdemo::{AppConfig, Cli, impls::DemoApp};
+use fts_axum::start_server;
+use fts_core::ports::BatchRepository as _;
+use fts_solver::clarabel::ClarabelSolver;
+use fts_sqlite::Db;
+use jwt_simple::prelude::HS256Key;
+use time::OffsetDateTime;
+use tokio::select;
 use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
 
-#[cfg(feature = "testmode")]
-use fts_server::generate_jwt;
-
 #[tokio::main]
-async fn main() -> Result<(), db::Error> {
+async fn main() -> anyhow::Result<()> {
     // By convention, we leverage `tracing` to instrument and log various
     // operations throughout this project.
     // Accordingly, we likely want to subscribe to these events so we can
@@ -21,162 +19,49 @@ async fn main() -> Result<(), db::Error> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // We will need to collect whatever data is necessary to configure the API
-    // server. The `Args` struct, defined after this function, does this job for us.
-    let args = Cli::import();
+    // Parse CLI args and extract the JWT key
+    let cli = Cli::import()?;
+    let key = HS256Key::from_bytes(cli.secret.as_bytes());
 
-    match args {
-        Ok(args) => {
-            // We check (and store) the configuration into our database,
-            // so we're not in an inconsistent state.
-            let database = Database::open(
-                args.database.as_ref(),
-                Some(Config {
-                    trade_rate: args.trade_rate.into(),
-                }),
-            )?;
+    // Create config with proper layering of CLI args
+    let AppConfig {
+        server,
+        database,
+        schedule,
+    } = AppConfig::load(&cli)?;
 
-            // If the backend is launched in testing mode, we print the credentials for an admin and as many random users as requested
-            #[cfg(feature = "testmode")]
-            if let Some(n) = args.test {
-                let (jwt, id) = generate_jwt(&args.api_secret, 1, true).unwrap();
-                println!("Admin:\n\tUUID: {}\n\tJWT: {}\n", id, jwt);
-                for i in 1..=n {
-                    let (jwt, id) = generate_jwt(&args.api_secret, 1, false).unwrap();
-                    println!("User({}):\n\tUUID: {}\n\tJWT: {}\n", i, id, jwt);
+    // Open database with config
+    let db = Db::open(&database, OffsetDateTime::now_utc().into()).await?;
+    let db2 = db.clone();
+    let app = DemoApp { db, key };
+
+    // We always run the server task.
+    let server_task = tokio::spawn(async move { start_server(server, app).await });
+
+    // However, we may or may not also run a scheduled batch task
+    if schedule.every.is_some() {
+        let solver_task = tokio::spawn(async move {
+            let f = async move |now: OffsetDateTime| {
+                let batch = db2
+                    .run_batch(now.into(), ClarabelSolver::default(), ())
+                    .await;
+                match batch {
+                    Ok(Ok(())) => Ok(()),
+                    Ok(Err(e)) => Err(anyhow::Error::new(e)),
+                    Err(e) => Err(anyhow::Error::new(e)),
                 }
-            }
+            };
+            schedule.schedule(f).await
+        });
 
-            // Finally, we provide this data to the API module, which creates an HTTP
-            // server on the specified port.
-            let (server, state) =
-                fts_server::Server::new(args.api_port, args.api_secret, database).await;
-
-            // Spawn the (optional) batch execution scheduler
-            let scheduler = args.schedule.schedule(state);
-
-            // Run the tasks until we get an error
-            if let Some(scheduler) = scheduler {
-                let _ = try_join!(server.server, server.solver, scheduler);
-            } else {
-                let _ = try_join!(server.server, server.solver);
-            }
+        select! {
+            r = server_task => r??,
+            r = solver_task => r??,
         }
-        Err(e) => {
-            let _ = e.print();
-        }
+    } else {
+        // Otherwise, we just run the server task to completion
+        server_task.await??;
     }
 
     Ok(())
-}
-
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-pub struct Cli {
-    /// The port to listen on
-    #[arg(long, default_value_t = 8080, env = "API_PORT")]
-    pub api_port: u16,
-
-    /// The HMAC-secret for verification of JWT claims
-    #[arg(long, env = "API_SECRET")]
-    pub api_secret: String,
-
-    /// Set this flag to create N random bidders and print their tokens, for use in external tools.
-    #[cfg(feature = "testmode")]
-    #[arg(long)]
-    pub test: Option<u32>,
-
-    /// The location of the database (if omitted, use an in-memory db)
-    #[arg(long, env = "DATABASE")]
-    pub database: Option<std::path::PathBuf>,
-
-    /// The time unit of rate data
-    #[arg(long, env = "TRADE_RATE")]
-    pub trade_rate: humantime::Duration,
-
-    /// The args related to scheduling batch execution
-    #[command(flatten)]
-    pub schedule: Scheduler,
-}
-
-impl Cli {
-    pub fn import() -> Result<Self, clap::Error> {
-        // Attempt to load a .env file, but don't sweat it if one is not found.
-        let _ = dotenvy::dotenv();
-        Self::try_parse()
-    }
-}
-
-#[derive(Args, Clone, Debug)]
-pub struct Scheduler {
-    /// An RFC3339 timestamp to start the auction schedule from (if omitted or empty, defaults to now)
-    #[arg(long, requires = "schedule", env = "SCHEDULE_FROM", value_parser = parse_timestamp)]
-    pub schedule_from: Option<time::OffsetDateTime>,
-    /// How often to execute an auction
-    #[arg(long, group = "schedule", env = "SCHEDULE_EVERY")]
-    pub schedule_every: Option<humantime::Duration>,
-}
-
-impl Scheduler {
-    pub fn schedule<T: MarketRepository>(&self, state: AppState<T>) -> Option<JoinHandle<()>> {
-        // extract the duration into a std::time::Duration
-        let delta = self
-            .schedule_every
-            .map(<humantime::Duration as Into<std::time::Duration>>::into)?;
-
-        let now = time::OffsetDateTime::now_utc();
-
-        // adjust the anchor time to be >= now
-        let mut anchor = if let Some(mut dt) = self.schedule_from {
-            if dt < now {
-                let x = ((now - dt) / delta).ceil() as u32;
-                dt += delta * x;
-            }
-            dt
-        } else {
-            now
-        };
-
-        Some(tokio::spawn(async move {
-            // now we align the clocks as best we can
-            {
-                let sleepy: std::time::Duration = (anchor - now)
-                    .try_into()
-                    .expect("anchor too far in the future");
-
-                tokio::time::sleep(sleepy).await;
-            };
-
-            // Finally, we can loop over a timer
-            let mut interval = tokio::time::interval(delta);
-
-            loop {
-                interval.tick().await;
-                let next = anchor + delta;
-                let span = span!(Level::INFO, "running scheduled auction");
-
-                let _guard = span.enter();
-
-                event!(
-                    Level::INFO,
-                    from = anchor.format(&Rfc3339).unwrap(),
-                    thru = next.format(&Rfc3339).unwrap()
-                );
-
-                let action = state.solve(Some(anchor), next, None, anchor).await;
-
-                std::mem::drop(_guard);
-
-                anchor = next;
-
-                if action.is_err() {
-                    break;
-                }
-            }
-        }))
-    }
-}
-
-fn parse_timestamp(timestamp: &str) -> Result<time::OffsetDateTime, time::error::Parse> {
-    time::OffsetDateTime::parse(timestamp, &time::format_description::well_known::Rfc3339)
 }

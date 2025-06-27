@@ -1,8 +1,7 @@
-use super::Point;
+use fts_core::models::Point;
 
 /// A single line segment satisfying q0 ≤ 0 ≤ q1 and p1 ≤ p0
 #[derive(Debug)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct Segment {
     /// The supply associated to this segment (q0 ≤ 0)
@@ -22,11 +21,11 @@ impl Segment {
     /// Additionally returns the amount the points were translated.
     pub unsafe fn new_unchecked(a: Point, b: Point) -> (Self, f64) {
         let Point {
-            quantity: mut q0,
+            rate: mut q0,
             price: p0,
         } = a;
         let Point {
-            quantity: mut q1,
+            rate: mut q1,
             price: p1,
         } = b;
 
@@ -107,11 +106,11 @@ mod tests {
     #[test]
     fn supply_constructor() {
         let a = Point {
-            quantity: -2.0,
+            rate: -2.0,
             price: 10.0,
         };
         let b = Point {
-            quantity: -1.0,
+            rate: -1.0,
             price: 0.0,
         };
         let (Segment { q0, q1, p0, p1 }, t) = Segment::new(a, b).expect("valid interval");
@@ -126,11 +125,11 @@ mod tests {
     #[test]
     fn demand_constructor() {
         let a = Point {
-            quantity: 1.0,
+            rate: 1.0,
             price: 10.0,
         };
         let b = Point {
-            quantity: 2.0,
+            rate: 2.0,
             price: 0.0,
         };
         let (Segment { q0, q1, p0, p1 }, t) = Segment::new(a, b).expect("valid interval");
@@ -145,11 +144,11 @@ mod tests {
     #[test]
     fn arbitrage_constructor() {
         let a = Point {
-            quantity: -2.0,
+            rate: -2.0,
             price: 10.0,
         };
         let b = Point {
-            quantity: 3.0,
+            rate: 3.0,
             price: 0.0,
         };
         let (Segment { q0, q1, p0, p1 }, t) = Segment::new(a, b).expect("valid interval");
@@ -164,11 +163,11 @@ mod tests {
     #[test]
     fn bad_supply_constructor() {
         let a = Point {
-            quantity: -1.0,
+            rate: -1.0,
             price: 10.0,
         };
         let b = Point {
-            quantity: -2.0,
+            rate: -2.0,
             price: 0.0,
         };
 
@@ -178,11 +177,11 @@ mod tests {
     #[test]
     fn bad_demand_constructor() {
         let a = Point {
-            quantity: 2.0,
+            rate: 2.0,
             price: 10.0,
         };
         let b = Point {
-            quantity: 1.0,
+            rate: 1.0,
             price: 0.0,
         };
 
@@ -192,11 +191,11 @@ mod tests {
     #[test]
     fn bad_arbitrage_constructor() {
         let a = Point {
-            quantity: 3.0,
+            rate: 3.0,
             price: 10.0,
         };
         let b = Point {
-            quantity: -2.0,
+            rate: -2.0,
             price: 0.0,
         };
 
@@ -206,11 +205,11 @@ mod tests {
     #[test]
     fn finite_slope() {
         let a = Point {
-            quantity: -1.0,
+            rate: -1.0,
             price: 4.0,
         };
         let b = Point {
-            quantity: 1.0,
+            rate: 1.0,
             price: 0.0,
         };
 
@@ -226,11 +225,11 @@ mod tests {
     #[test]
     fn infinite_slope() {
         let a = Point {
-            quantity: -0.0,
+            rate: -0.0,
             price: 4.0,
         };
         let b = Point {
-            quantity: 0.0,
+            rate: 0.0,
             price: 0.0,
         };
 
@@ -246,11 +245,11 @@ mod tests {
     #[test]
     fn zero_slope_neg() {
         let a = Point {
-            quantity: f64::NEG_INFINITY,
+            rate: f64::NEG_INFINITY,
             price: 4.0,
         };
         let b = Point {
-            quantity: 1.0,
+            rate: 1.0,
             price: 0.0,
         };
 
@@ -266,11 +265,11 @@ mod tests {
     #[test]
     fn zero_slope_pos() {
         let a = Point {
-            quantity: -1.0,
+            rate: -1.0,
             price: 4.0,
         };
         let b = Point {
-            quantity: f64::INFINITY,
+            rate: f64::INFINITY,
             price: 0.0,
         };
 
@@ -286,11 +285,11 @@ mod tests {
     // Some simple data for the clip() tests
     fn finite_data() -> Segment {
         let a = Point {
-            quantity: -1.0,
+            rate: -1.0,
             price: 4.0,
         };
         let b = Point {
-            quantity: 1.0,
+            rate: 1.0,
             price: 0.0,
         };
 

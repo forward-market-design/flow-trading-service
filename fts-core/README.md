@@ -6,7 +6,7 @@
 
 # Flow Trading Service (FTS)
 
-This crate is part of a [collection of crates](https://github.com/forward-market-design/flow-trading-service) that together implement *flow trading* as proposed
+This crate is part of a [collection of crates](https://github.com/forward-market-design/flow-trading-service) that together implement _flow trading_ as proposed
 by [Budish, Cramton, et al](https://cramton.umd.edu/papers2020-2024/budish-cramton-kyle-lee-malec-flow-trading.pdf),
 in which trade occurs continuously over time via regularly-scheduled batch auctions.
 
@@ -14,81 +14,110 @@ The different crates in this workspace are as follows:
 
 - **[fts_core]**: Defines a set of data primitives and operations but defers the implementations of these operations, consistent with a so-called "hexagonal architecture" approach to separating responsibilities.
 - **[fts_solver]**: Provides a reference solver for the flow trading quadratic program.
-- **[fts_server]**: A REST API HTTP server for interacting with the solver and persisting state across auctions.
+- **[fts_axum]**: A REST API HTTP server for interacting with the solver and persisting state across auctions.
 - **[fts_sqlite]**: An implementation of the core data operations using SQLite, suitable for exploration of flow trading-based marketplaces such as a forward market.
 
 [fts_core]: ../fts-core/README.md
 [fts_solver]: ../fts-solver/README.md
-[fts_server]: ../fts-server/README.md
+[fts_axum]: ../fts-axum/README.md
 [fts_sqlite]: ../fts-sqlite/README.md
-
+[ftdemo]: ../ftdemo/README.md
 
 # FTS Core
 
 This crate defines a set of data primitives and operations but defers the implementations of these operations, consistent with a so-called "hexagonal architecture" approach to separating responsibilities.
 
-Broadly speaking, this core defines the notion of a *bidder*, whom may have at most one [*submission*](#submissions). This submission contains any number of [*auths*](#auths) and [*costs*](#costs). Periodically, every active submission is submitted into an [*auction*](#auctions); the submissions are collectively processed into an optimization program which is then solved. The results of this optimization are reported as the traded amounts of each auth and the prices for the underlying [*products*](#products).
+Broadly speaking, this core defines 4 objects as well as actions related to these objects. These are:
+1. Demand curves: weakly monotone decreasing functions that specify a marginal cost as a function of trade rate.
+1. Portfolios, which are
+    1. a vector in product space, defining a direction to trade in, and
+    1. a weighted collection of demand curves which this portfolio's trade contributes to.
 
-## Auths
+Furthermore, periodically the demand curves and portfolios are *batched* and submitted to an auction for execution. The results of this auction include the optimal rates of trade for each portfolio and the clearing prices for each product corresponding to that batch.
 
-An *auth*, short for authorization, is two things:
+## Demand Curves
 
-1. A definition of a *portfolio*, which is a weighted bundle of products.
-2. Constraints on how this portfolio can be traded.
+A _demand curve_ represents a bidder's interest in trading by expressing a price as a function of a net rate. This function must be (1) weakly monotone decreasing, and (2) include `rate=0` in its domain.
 
-Suppose a market contains products `A` and `B` (among others). The following are all examples of portfolios:
-```typescript
-// A "singleton" portfolio that trades only A
-P1 = { A: 1.0 }
-// A portfolio that trades both A and B **in equal amounts**
-P2 = { A: 1.0, B: 1.0 }
-// A portfolio that replaces A with B (or vice versa)
-P3 = { A: 0.5, B: -0.75 }
-```
+The demand curve can be specified in two ways:
 
-There are no restrictions on the signs or magnitudes of the "weights". Buying 1 unit of a portfolio will buy 1 times the associated weight for each underlying product; selling 1 unit will do the same. (Flow trading utilizes the convention of selling as negative trade and buying as positive trade, so buying 4 units of `P3` corresponds to buying 2 units of `A` and selling 3 units of `B`.)
+- **Piecewise-linear (PWL)**: A series of (rate, price) points defining a weakly monotone decreasing curve,
+- **Constant**: A fixed price over a rate interval, useful for expressing indifference to trade rates at a specific price.
 
-Unbounded trade (even when bound proportionally as above) is rarely desired. Thus, an auth also allows for specifying minimum and maximum rates of trade and total trade. These minima and maxima are specified with respect to the trade sign convention; coupling the portfolio `P1` to `min_rate = 0` restricts the auth to only the buying of `P1` (and in turn `A`): selling is forbidden. Conversely, setting `max_rate = 0` would restrict the auth to only the selling of `P1`. It is important to note that this is only a statement of what *this* auth is allowed to trade; if `A` is *also* involved in another auth's portfolio, the underlying product may still be bought or sold if that auth allows for it. The only restriction on these constraints is that `min_rate <= 0 <= max_rate`. (If omitted, they default to the appropriately signed infinity.)
+The sign convention follows flow trading standards:
 
-We also support minimum and maximum overall trade: as each submission is being prepared for an auction, an implementation will consider the overall total trade that has occurred across all previous auctions and additionally impose any further restriction on minimum and maximum rates such that the minimum and maximum trade amounts are respected. That is, at each auction the following calculation is performed for each auth:
+- Positive rates represent buying
+- Negative rates represent selling
+
+For example, a demand curve might express:
+
 ```text
-min_trade <- min(0, max(min_trade - current_trade, min_rate * duration))
-max_trade <- max(0, min(max_trade - current_trade, max_rate * duration))
+Rate: -100  -50   0   50   100
+Price:  10   9.5  9.0   8.5    7.5
 ```
 
-Note that each auction has an associated duration, e.g. if an auction is scheduled for every hour, the duration is 1 hour.
+This indicates the bidder is willing to sell at higher prices and buy at lower prices, with 9.0 as their neutral price.
 
-Once defined, an auth's portfolio is immutable. To adjust the portfolio, the auth must be stopped and a new auth created. However, the constraints ("auth data") can be updated at any time. The auth's most current data is included whenever a submission is compiled. To stop an auth, its data can simply be set to `null`. (If the desire is to temporarily suspend an auth, one might instead set `min_rate = max_rate = 0`).
+Demands can be updated by changing their curve data. Setting the curve data to `null` effectively deactivates the demand while preserving its history.
 
-## Costs
+## Portfolios
 
-The [flow trading paper](https://cramton.umd.edu/papers2020-2024/budish-cramton-kyle-lee-malec-flow-trading.pdf) does not explicitly consider what we have termed auths and costs; instead, a piecewise-linear demand curve is directly associated to a portfolio. We have added one layer of separation (into auths and costs) to support the ability for a bidder to express substitution preferences between portfolios. In our implementation, a cost is two things:
+A _portfolio_ acts as a container that groups together related demands and products for trading. It serves two key functions:
 
-1. A definition of a cost *group*, which is a linear combination of auths.
-2. A piecewise-linear demand *curve*.
+1. **Demand aggregation**: Groups multiple demands with weights, allowing complex trading strategies
+2. **Product association**: Specifies which products can be traded and their relative weights
 
-The latter is exactly as it is in the paper, with the positive/negative trade convention. Unlike the paper, there is no restriction on this curve being strictly monotone decreasing (though a marketplace implementation can certainly choose to reject "flat" demand curves). If flat curves are instead a desired feature, the curve may alternatively be specified as a `(min_rate, max_rate, price)` triplet. Notably the sibling crate `fts-solver` does not presently provide any explicit tie-breaking procedures (though that is intended, future functionality), so operators are discouraged from allowing flat curves if `fts-solver` is being used as the auction solver.
+### Product Weights
 
-The former requires some explanation. Suppose we have defined portfolios `P = { A: 1 }` and `Q = { B: 1 }`. Conflating the portfolio name with the auth id, suppose our group is defined as `G = { P: 1, Q: 1 }`. This expresses that `A` and `B` are perfect substitutes for one another. If the optimization decides that we should trade 2 units of `G`, then this could be achieved by trading 1 unit each of `P` and `Q`, or 2 units of `P` and 0 of `Q`, or 3 of `P` and -1 of `Q`, and so-forth -- subject to the auth constraints and market clearing, of course.
+Suppose a market contains products `A` and `B`. A portfolio's product group might be:
 
-As with portfolios, there are no restrictions on the magnitude or sign of the group weights, and multiple groups can refer to the same auths. Also as with portfolios, a cost group is immutable once defined: to change a group, the cost must be stopped (by setting its data to `null`) and a new cost created. A cost's data can be updated at any time.
+```typescript
+// Trade only product A
+product_group1 = { A: 1.0 };
+// Trade A and B in strictly equal amounts
+product_group2 = { A: 1.0, B: 1.0 };
+// Replace A with B (or vice versa) at some fixed ratio
+product_group3 = { A: 0.5, B: -0.75 };
+```
+There are no restrictions on the signs or magnitudes of the weights. Buying 1 unit of portfolio `product_group3` corresponds to buying 0.5 units of `A` and selling 0.75 units of `B`.
 
-## Submissions
+### Demand Weights
 
-A submission is merely the collection of a bidder's auths and costs, with one additional consideration: If an auth is not explicitly referenced by any cost, it is removed from the submission. Without an explicit cost, the auth would otherwise trade freely, which is typically undesirable. If it is, in fact, desired the bidder can simply construct a cost with a flat demand curve at `price = 0`.
+Similarly, a portfolio can aggregate multiple demands:
+
+```typescript
+// We expect most often that a portfolio is
+// associated to a single demand, and vice versa
+demand_group1 = { D1: 1.0 };
+// However, if portfolios are substitutes, multiple
+// portfolios may be associated to a single demand,
+// and a single portfolio may be associated to multiple
+// demands.
+demand_group2 = { D1: 1, D2: 1 };
+// As before, there are no restrictions
+// on the signs or magnitudes of these weights.
+demand_group3 = { D1: 0.8, D2: 0.2 };
+```
+
+This allows bidders to express substitution preferences between different pricing strategies while maintaining a unified trading interface.
+
+Once created, a portfolio's associations are updated through the `update_portfolio` method, which can modify either the demand group or product group independently.
 
 ## Auctions
 
-An integral component to flow trading is that of a regularly scheduled, batch auction. It is possible to clear submissions in terms of rates and execute a new auction on every submission update, but there are good reasons to prefer a fixed, recurring schedule. Namely, this prevents high-frequency traders from gaining an edge over "normal" participants and removes the incentives for otherwise-expensive low-latency networking and optimization.
+Neither `fts-core` nor any of the companion crates in this workspace impose any restrictions on the frequency of batched auctions, though it may desirable to post a public schedule execute the auctions on a recurring basis.
 
-Neither `fts-core` nor any of the companion crates in this workspace impose any restrictions on the frequency of auctions. They are executed "on-demand" by an external actor. We recommend this actor post a schedule and execute auctions accordingly, but they are free to dynamically change the batch duration, execute on every change, or whatever they wish. This works because auths and costs are defined with respect to *rates*, so adjusting to a new batch duration is as simple as scaling bids by a different number. All that is required is that the time of the *next* auction is known, so that any minimum/maximum trade restrictions from the auths can be enforced correctly.
+The output of an auction includes:
 
-The output of an auction are the quantities traded of each auth's portfolio (*not* the underlying products, though those can be easily constructed) and the prices of each product. The optimization requires that the net trade of each product is exactly zero. These are returned as raw 64 bit floats and are not suitable for financial applications as-is: likely some sort of "settlement" process should be built on top of this, which aggregates trades across multiple auctions and rounds them in an appropriate manner. This settlement scheme is left for the market operator to implement.
+- The quantities traded for each portfolio
+- The clearing prices for each product
+
+The trade of individual products can be computed from these outputs, as well as other statistics of interest.
+
+The optimization requires that the net trade of each product is exactly zero. These are returned as raw 64 bit floats and are not suitable for financial applications as-is: likely some sort of "settlement" process should be built on top of this, which aggregates trades across multiple auctions and rounds them in an appropriate manner. This settlement scheme is left for the market operator to implement.
 
 ## Products
 
-Flow trading by itself imposes no restrictions on the products actually being traded. They are simply "things" that are referenced by auth portfolios and constrained to net-zero trade in each auction. With that said, this project was built with forward markets in mind. The sibling crate `fts-sqlite` necessarily imposes a product structure, which happens to correspond to a forward market. Details are in [fts_sqlite], but the takeaway is that the requirements of a forward market led to an additional concept in the core implementation.
+Flow trading by itself imposes no restrictions on the products actually being traded. They are simply "things" that are referenced by portfolio product groups and constrained to net-zero trade in each auction. With that said, this project was built with forward markets in mind. The sibling crate `ftdemo` imposes a product structure characterized by a product `kind`, and an interval in time over which the product is delivered. Details are in [ftdemo], but the takeaway is that the requirements of a forward market led to an additional concept in the core implementation.
 
-This concept is that of a "product hierarchy", where an operator can decompose products over time. For example, a product corresponding to energy delivery for the month of June 2030 might, at a later time, be refined into products for each day of June 2030, and at an even later time, each day into its hours. A portfolio defined only in terms of the monthly product needs an ability to implicitly decompose into the child products when an auction is executed in order to properly clear the market. This is useful beyond forward markets: consider trading stocks pre- and post-split. Thus, when retrieving portfolios, `fts-core` provides implementers an affordance to control which portfolio is returned (the explicit portfolio, the implicit portfolio, or none at all).
-
-[fts_sqlite]: ../fts-sqlite/README.md
+This concept is that of a "product hierarchy", where a market operator can decompose products over time. For example, a product corresponding to energy delivery for the month of June 2030 might, at a later time, be refined into products for each day of June 2030, and at an even later time, each day into its hours. A portfolio defined only in terms of the monthly product needs an ability to implicitly decompose into the child products when an auction is executed in order to properly clear the market. This is useful beyond forward markets: consider trading stocks pre- and post-split. `fts-core` imposes a requirement that portfolios are always retrieved with respect to the "contemporary product basis."

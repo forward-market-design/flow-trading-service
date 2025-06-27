@@ -1,6 +1,5 @@
 use clap::Parser;
-use fts_solver::{Auction, io::AuctionDto};
-use std::ops::Deref as _;
+use fts_solver::io::Auction;
 
 mod io;
 pub use io::*;
@@ -17,20 +16,18 @@ pub struct BaseArgs {
 }
 
 impl BaseArgs {
-    pub fn evaluate(self) -> anyhow::Result<()> {
+    pub async fn evaluate(self) -> anyhow::Result<()> {
         match self.command {
             Commands::Solve { io, lib } => {
                 let input = io.read()?;
-                let auction: Auction<_, _, _> =
-                    serde_json::from_reader::<_, AuctionDto>(input)?.try_into()?;
-                let results = lib.solve(auction.deref());
+                let auction = serde_json::from_reader::<_, Auction>(input)?;
+                let results = lib.solve(auction).await;
                 let output = io.write()?;
                 serde_json::to_writer_pretty(output, &results)?;
             }
             Commands::Export { io, format } => {
                 let input = io.read()?;
-                let auction: Auction<_, _, _> =
-                    serde_json::from_reader::<_, AuctionDto>(input)?.try_into()?;
+                let auction = serde_json::from_reader::<_, Auction>(input)?;
 
                 let format = if let Some(format) = format {
                     format
@@ -41,7 +38,7 @@ impl BaseArgs {
                 };
 
                 let mut output = io.write()?;
-                format.export(auction.deref(), &mut output)?;
+                format.export(auction, &mut output)?;
             }
         }
 

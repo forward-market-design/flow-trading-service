@@ -1,0 +1,33 @@
+# Reference: https://github.com/quarylabs/sqruff/blob/main/crates/lib/src/core/default_config.cfg
+
+[sqruff]
+dialect = sqlite
+templater = placeholder
+max_line_length = 120
+
+[sqruff:templater:placeholder]
+# We need a custom setting for our templates for sqruff to be able to parse them correctly.
+# It looks ugly, but is only for linting and formatting. Sqlx will not use this and has its own
+# logic of runtime checking.
+# https://github.com/quarylabs/sqruff/blob/main/docs/templaters.md
+param_style = numeric_dollar
+1 = foo
+2 = foo
+3 = foo
+4 = foo
+5 = foo
+6 = foo
+7 = foo
+8 = foo
+9 = foo
+10 = foo
+11 = foo
+12 = foo
+13 = foo
+14 = foo
+15 = foo
+16 = foo
+17 = foo
+18 = foo
+19 = foo
+20 = foo

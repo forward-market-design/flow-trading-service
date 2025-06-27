@@ -11,36 +11,30 @@ The JSON format is very simple. Given the following type definitions:
 type ProductId = string;
 type PortfolioId = string;
 
-type Portfolio = Record<ProductId, number> | Array<ProductId> | ProductId;
-type Group = Record<PortfolioId, number> | Array<PortfolioId> | PortfolioId;
-// The canonical types in Portfolio and Group are Records, but we implicitly
+type DemandGroup = Record<DemandId, number> | Array<DemandId> | DemandId;
+type ProductGroup = Record<ProductId, number> | Array<ProductId> | ProductId;
+// The canonical types in DemandGroup and ProductGroup are Records, but we implicitly
 // transform arrays and values for convenience according to:
 //   X => { X: 1.0 },
 //   [X, Y, ...] => { X: 1.0, Y: 1.0, ...}
 
-interface Point {
-    quantity: number,
+type Portfolio = { demand_group: DemandGroup, product_group: ProductGroup };
+
+type Point = {
+    rate: number,
     price: number,
 }
 
-interface DemandCurve {
-    // If omitted, `domain` is computed from `points`.
-    // If provided, the curve will be interpolated or extrapolated accordingly.
-    // Use `null` as a stand-in for ±∞
-    domain?: [number | null, number | null];
+type DemandCurve = Array<Point> | { min_rate?: null | number, max_rate?: null | number, price: number };
 
-    group: Group,
-    points: Array<Point>,
-}
-
-interface Submission {
+type Auction = {
+    demand_curves: Record<DemandId, DemandCurve>,
     portfolios: Record<PortfolioId, Portfolio>,
-    demand_curves: Array<DemandCurve>,
 }
 ```
 
 The JSON input format is simply anything that deserializes as
-`Record<BidderId, Submission>`. Examples can be found in the [`fts-solver` test suite](https://github.com/forward-market-design/flow-trading-service/tree/main/fts-solver/tests/samples).
+`Auction`. Examples can be found in the [`fts-solver` test suite](https://github.com/forward-market-design/flow-trading-service/tree/main/fts-solver/tests/samples).
 
 ## Installation
 
