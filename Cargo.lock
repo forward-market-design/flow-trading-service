@@ -1251,7 +1251,7 @@ checksum = "42703706b716c37f96a77aea830392ad231f44c9e9a67872fa5548707e11b11c"
 
 [[package]]
 name = "ftauction"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -1263,7 +1263,7 @@ dependencies = [
 
 [[package]]
 name = "ftdemo"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "anyhow",
  "clap",
@@ -1327,7 +1327,7 @@ dependencies = [
 
 [[package]]
 name = "fts-solver"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "approx",
  "clarabel",

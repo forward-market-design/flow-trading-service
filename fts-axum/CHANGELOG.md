@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0](https://github.com/forward-market-design/flow-trading-service/releases/tag/fts-axum-v0.4.0) - 2025-06-27
+
+### Added
+
+- rewrite of core data model and architecture
+
 ## [0.3.0](https://github.com/forward-market-design/flow-trading-service/compare/fts-server-v0.2.3...fts-server-v0.3.0) - 2025-05-05
 
 ### Added
