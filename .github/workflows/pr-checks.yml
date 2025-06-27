@@ -1,16 +1,23 @@
 name: PR Checks
 on:
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   tests-and-validate:
     runs-on: ubuntu-latest
     name: Tests and Validations
+    env:
+      DATABASE_URL: "sqlite:dev.db"
     steps:
       - uses: actions/checkout@v2
       - uses: dtolnay/rust-toolchain@stable
+      - name: Prepare SQLx database bindings
+        run: |
+          cargo install sqlx-cli --no-default-features --features sqlite
+          sqlx database create
+          sqlx migrate run --source ./fts-sqlite/schema
       - name: Cache cargo dependencies
         uses: actions/cache@v4
         with:
@@ -33,4 +40,4 @@ jobs:
       # we can either optimize this with caching or do it directly as a nodejs script.
       - uses: swaggerexpert/apidom-validate@v1
         with:
-          definition-file: 'openapi.yaml'
+          definition-file: "openapi.yaml"
