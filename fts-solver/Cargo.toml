@@ -12,7 +12,7 @@ version = "0.5.0"
 fts-core = { workspace = true }
 
 # black-box solvers we can pull in
-clarabel = { version = "0.10", optional = true }
+clarabel = { version = "0.11", optional = true }
 osqp = { version = "1.0", optional = true }
 
 # provide the option for (de)serialization of the raw solver types
