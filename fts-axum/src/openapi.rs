@@ -14,6 +14,7 @@ use axum::{
     Extension, Json,
     response::{Html, IntoResponse},
 };
+use serde::Serialize;
 
 /// Serve the RapiDoc interactive API documentation interface.
 ///
@@ -45,12 +46,25 @@ pub(crate) fn docs_routes() -> ApiRouter {
     router
 }
 
+/// Wrapper to make Arc<OpenApi> serializable
+#[derive(Clone)]
+struct SerializableOpenApi(Arc<OpenApi>);
+
+impl Serialize for SerializableOpenApi {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.0.as_ref().serialize(serializer)
+    }
+}
+
 /// Serve the raw OpenAPI specification.
 ///
 /// Returns the complete OpenAPI specification as JSON, which can be used
 /// by API clients for code generation or other tooling.
 async fn serve_docs(Extension(api): Extension<Arc<OpenApi>>) -> impl IntoApiResponse {
-    Json(api).into_response()
+    Json(SerializableOpenApi(api)).into_response()
 }
 
 /// Configure the OpenAPI documentation metadata.
