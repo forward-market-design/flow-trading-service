@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                select\n                    valid_from as \"valid_from!: crate::types::DateTime\",\n                    valid_until as \"valid_until?: crate::types::DateTime\",\n                    json_group_object(demand_id, weight) as \"demand_group!: sqlx::types::Json<Map<DemandId>>\"\n                from\n                    demand_group\n                where\n                    portfolio_id = $1\n                and\n                    ($2 is null or valid_from >= $2)\n                and\n                    ($3 is null or valid_until is null or valid_until < $3)\n                group by\n                    valid_from\n                order by\n                    valid_from desc\n                limit $4\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "valid_from!: crate::types::DateTime",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "valid_until?: crate::types::DateTime",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "demand_group!: sqlx::types::Json<Map<DemandId>>",
+        "ordinal": 2,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "0dd61469568821b6ffc204ae3649d26db372a310b3bfa5d582e5f50c1d33a0e6"
+}

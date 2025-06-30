@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "-- fn(demand_id: DemandId, as_of: DateTime) -> DemandRow\nwith\napp_data_cte as (\n    select\n        id as portfolio_id,\n        bidder_id,\n        app_data as value\n    from\n        portfolio\n    where\n        id = $1\n),\n\ndemand_group_cte as (\n    select\n        portfolio_id,\n        jsonb_group_object(demand_id, weight) as value\n    from\n        demand_group\n    where\n        portfolio_id = $1\n        and\n        valid_from <= $2\n        and\n        ($2 < valid_until or valid_until is null)\n    group by\n        portfolio_id\n),\n\nproduct_group_cte as (\n    select\n        portfolio_id,\n        jsonb_group_object(product_id, weight) as value\n    from\n        product_group_view\n    where\n        portfolio_id = $1\n        and\n        valid_from <= $2\n        and\n        ($2 < valid_until or valid_until is null)\n    group by\n        portfolio_id\n)\n\nselect\n    app_data_cte.bidder_id as \"bidder_id!: BidderId\",\n    json(app_data_cte.value) as \"app_data!: sqlx::types::Json<PortfolioData>\",\n    json(demand_group_cte.value) as \"demand_group?: sqlx::types::Json<Map<DemandId>>\",\n    json(product_group_cte.value) as \"product_group?: sqlx::types::Json<Map<ProductId>>\"\nfrom\n    app_data_cte\nleft join\n    demand_group_cte\n    using\n        (portfolio_id)\nleft join\n    product_group_cte\n    using\n        (portfolio_id);\n",
+  "describe": {
+    "columns": [
+      {
+        "name": "bidder_id!: BidderId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "app_data!: sqlx::types::Json<PortfolioData>",
+        "ordinal": 1,
+        "type_info": "Null"
+      },
+      {
+        "name": "demand_group?: sqlx::types::Json<Map<DemandId>>",
+        "ordinal": 2,
+        "type_info": "Null"
+      },
+      {
+        "name": "product_group?: sqlx::types::Json<Map<ProductId>>",
+        "ordinal": 3,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "4d601056f15220744ae7a39862dd63593eff00235b7f46312e5a080d2188ce73"
+}

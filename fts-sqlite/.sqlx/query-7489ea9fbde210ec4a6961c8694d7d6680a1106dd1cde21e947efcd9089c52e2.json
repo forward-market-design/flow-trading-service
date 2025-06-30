@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                select\n                    valid_from as \"valid_from!: DateTime\",\n                    valid_until as \"valid_until?: DateTime\",\n                    json(value) as \"curve_data!: sqlx::types::Json<DemandCurveDto>\"\n                from\n                    curve_data\n                where\n                    demand_id = $1\n                and\n                    ($2 is null or valid_from >= $2)\n                and\n                    ($3 is null or valid_until is null or valid_until < $3)\n                and\n                    value is not null\n                order by\n                    valid_from desc\n                limit $4\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "valid_from!: DateTime",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "valid_until?: DateTime",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "curve_data!: sqlx::types::Json<DemandCurveDto>",
+        "ordinal": 2,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": [
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "7489ea9fbde210ec4a6961c8694d7d6680a1106dd1cde21e947efcd9089c52e2"
+}

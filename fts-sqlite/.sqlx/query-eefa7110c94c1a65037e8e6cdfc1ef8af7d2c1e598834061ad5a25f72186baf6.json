@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            update\n                demand\n            set\n                as_of = $2,\n                curve_data = jsonb($3)\n            where\n                id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "eefa7110c94c1a65037e8e6cdfc1ef8af7d2c1e598834061ad5a25f72186baf6"
+}

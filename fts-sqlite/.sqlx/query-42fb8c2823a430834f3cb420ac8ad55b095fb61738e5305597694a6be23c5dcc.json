@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            select\n                json(app_data) as \"data!: sqlx::types::Json::<ProductData>\"\n            from\n                product\n            where\n                id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "data!: sqlx::types::Json::<ProductData>",
+        "ordinal": 0,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "42fb8c2823a430834f3cb420ac8ad55b095fb61738e5305597694a6be23c5dcc"
+}

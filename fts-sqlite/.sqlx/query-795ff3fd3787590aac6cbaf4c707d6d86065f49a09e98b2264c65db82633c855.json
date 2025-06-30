@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                    update\n                        batch\n                    set\n                        as_of = $1,\n                        portfolio_outcomes = jsonb($2),\n                        product_outcomes = jsonb($3)\n                    ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "795ff3fd3787590aac6cbaf4c707d6d86065f49a09e98b2264c65db82633c855"
+}
