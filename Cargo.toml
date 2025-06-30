@@ -1,10 +1,10 @@
 [workspace]
 resolver = "2"
 members = [
-    "fts-axum",
     "fts-core",
     "fts-solver",
     "fts-sqlite",
+    "fts-axum",
     "ftauction",
     "ftdemo",
 ]
