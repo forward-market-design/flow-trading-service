@@ -13,7 +13,7 @@ fts-core = { workspace = true, features = ["schemars", "serde"] }
 
 aide = { workspace = true, features = ["axum", "axum-extra-headers", "axum-json", "axum-query"] }
 schemars = { workspace = true, features = ["derive", "preserve_order"] }
-serde = { workspace = true, features = ["derive"] }
+serde = { workspace = true, features = ["derive", "rc"] }
 tokio = { workspace = true, features = ["macros"] }
 tracing = { workspace = true }
 
