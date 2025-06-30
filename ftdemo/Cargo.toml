@@ -18,7 +18,8 @@ anyhow = { workspace = true }
 clap = { workspace = true, features = ["derive", "env", "string"] }
 headers = { workspace = true }
 schemars = { workspace = true, features = ["uuid1"] }
-serde = { workspace = true, features = ["derive"] }
+serde = { workspace = true, features = ["derive", "rc"] }
+serde_json = { workspace = true, features = ["std"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 uuid = { workspace = true, features = ["v4"] }
 time = { workspace = true, features = ["formatting", "parsing", "serde"] }

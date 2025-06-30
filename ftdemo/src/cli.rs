@@ -17,6 +17,10 @@ pub struct Cli {
     /// The HMAC secret for verification of JWT claims.
     #[arg(short, long, env = "APP_SECRET")]
     pub secret: String,
+
+    /// (Optional) Write the OpenAPI schema to the provided file and exit.
+    #[arg(long)]
+    pub schema: Option<PathBuf>,
 }
 
 impl Cli {

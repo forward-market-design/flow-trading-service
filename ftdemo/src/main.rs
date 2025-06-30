@@ -1,5 +1,7 @@
+use std::fs::File;
+
 use ftdemo::{AppConfig, Cli, impls::DemoApp};
-use fts_axum::start_server;
+use fts_axum::{router, start_server};
 use fts_core::ports::BatchRepository as _;
 use fts_solver::clarabel::ClarabelSolver;
 use fts_sqlite::Db;
@@ -34,6 +36,13 @@ async fn main() -> anyhow::Result<()> {
     let db = Db::open(&database, OffsetDateTime::now_utc().into()).await?;
     let db2 = db.clone();
     let app = DemoApp { db, key };
+
+    // If requested, dump the schema and exit.
+    if let Some(path) = cli.schema {
+        let schema = router(app, server).1;
+        serde_json::to_writer_pretty(File::create(path)?, &schema)?;
+        return Ok(());
+    }
 
     // We always run the server task.
     let server_task = tokio::spawn(async move { start_server(server, app).await });

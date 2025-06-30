@@ -1278,6 +1278,7 @@ dependencies = [
  "jwt-simple",
  "schemars",
  "serde",
+ "serde_json",
  "time",
  "tokio",
  "tokio-test",
