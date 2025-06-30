@@ -17,8 +17,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          save-if: "false"
-          shared-key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          # this can use its own cache - it is quite independent
+          workspaces: |
+            fts-sqlite
       - name: Prepare SQLx database bindings
         working-directory: fts-sqlite
         run: |
