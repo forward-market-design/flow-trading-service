@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            insert into\n                batch (id, as_of, portfolio_outcomes, product_outcomes)\n            values\n                (0, $1, jsonb('{}'), jsonb('{}'))\n            on conflict\n                do nothing\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "e6d54a3c3682d6e4628dd92492c391f54b2ede65cf1fbc6bd7d80c92afebf26e"
+}

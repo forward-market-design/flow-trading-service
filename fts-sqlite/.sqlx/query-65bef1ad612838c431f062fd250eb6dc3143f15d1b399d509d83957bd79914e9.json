@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            select\n                bidder_id as \"id!: BidderId\"\n            from\n                portfolio\n            where\n                id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: BidderId",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "65bef1ad612838c431f062fd250eb6dc3143f15d1b399d509d83957bd79914e9"
+}

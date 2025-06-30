@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            select\n                bidder_id as \"id!: BidderId\"\n            from\n                demand\n            where\n                id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: BidderId",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "b08e07d91bf43d2dccef66c717e919e6e89eac18ea6e08022de25a6b36f3e8c0"
+}

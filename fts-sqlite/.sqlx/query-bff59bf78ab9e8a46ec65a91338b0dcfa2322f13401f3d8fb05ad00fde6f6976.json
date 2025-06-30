@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                select\n                    demand.id as \"id!: DemandId\"\n                from\n                    demand\n                join\n                    curve_data\n                on\n                    demand.id = curve_data.demand_id\n                join\n                    json_each($1) as bidder_ids\n                on\n                    demand.bidder_id = bidder_ids.atom\n                where\n                    curve_data.value is not null\n                and\n                    valid_from <= $2\n                and\n                    ($2 < valid_until or valid_until is null) \n                ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: DemandId",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "bff59bf78ab9e8a46ec65a91338b0dcfa2322f13401f3d8fb05ad00fde6f6976"
+}

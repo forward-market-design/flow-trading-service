@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            insert into\n                product (id, as_of, app_data)\n            values\n                ($1, $2, jsonb($3))\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "9823d659fd8817db9b334c7b3d962fd63185a01f980fb8d6ab1ed87123c9c2cd"
+}

@@ -5,19 +5,41 @@ on:
   workflow_dispatch:
 
 jobs:
-  tests-and-validate:
+  check-sqlx-offline-mode:
     runs-on: ubuntu-latest
-    name: Tests and Validations
+    name: Check SQLx Offline Queries
     env:
-      DATABASE_URL: "sqlite:dev.db"
+      # absolute path works better
+      # https://github.com/launchbadge/sqlx/issues/3099
+      DATABASE_URL: "sqlite:/tmp/dev.db"
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
       - name: Prepare SQLx database bindings
         run: |
           cargo install sqlx-cli --no-default-features --features sqlite
-          sqlx database create
-          sqlx migrate run --source ./fts-sqlite/schema
+          cargo sqlx database create
+          cargo sqlx migrate run --source ./fts-sqlite/schema
+          cargo sqlx prepare --check
+
+  tests-and-validate:
+    needs:
+      - check-sqlx-offline-mode
+    runs-on: ubuntu-latest
+    name: Tests and Validations
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
       - name: Cache cargo dependencies
         uses: actions/cache@v4
         with:
@@ -32,6 +54,8 @@ jobs:
         run: cargo build --release
       - name: Run tests
         run: cargo test --release
+      - name: Check formatting
+        run: cargo fmt --check
       # - name: Generate OpenAPI Spec
       #   run: cargo run --bin generate-openapi --release > openapi.yaml
       # # https://github.com/swagger-api/apidom is the modern way of validating OpenAPI specs
