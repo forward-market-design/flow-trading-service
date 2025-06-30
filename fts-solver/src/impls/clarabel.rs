@@ -181,7 +181,8 @@ impl<
         };
 
         // Now we can solve!
-        let mut solver = DefaultSolver::new(&p_matrix, &q, &a_matrix, &b, &s, settings);
+        let mut solver = DefaultSolver::new(&p_matrix, &q, &a_matrix, &b, &s, settings)
+            .expect("valid solver config");
         solver.solve();
         match solver.solution.status {
             SolverStatus::Solved => {}
