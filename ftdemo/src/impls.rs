@@ -33,19 +33,13 @@ pub struct PortfolioData;
 /// Defines a product characterized by a "kind" and an interval of time ("from", "thru").
 #[derive(Serialize, Deserialize, JsonSchema)]
 pub struct ProductData {
-    kind: ProductKind,
+    kind: String,
     #[schemars(schema_with = "time_schema")]
+    #[serde(with = "time::serde::rfc3339")]
     from: time::OffsetDateTime,
     #[schemars(schema_with = "time_schema")]
+    #[serde(with = "time::serde::rfc3339")]
     thru: time::OffsetDateTime,
-}
-
-/// The various kinds of valid products
-#[derive(Serialize, Deserialize, JsonSchema)]
-#[serde(rename_all = "UPPERCASE")]
-enum ProductKind {
-    Forward,
-    Option,
 }
 
 /// Main application implementation combining all system components.
@@ -97,20 +91,21 @@ impl Application for DemoApp {
         uuid::Uuid::new_v4().into()
     }
 
-    fn generate_product_id(&self, data: &ProductData) -> ProductId {
-        // The other id generators make random ids, but this one creates
-        // a deterministic id based on the content of the product data, roughly
-        // (FROM)(THRU)(KIND)
-        // so that "nearby" products are sorted together.
-        let pattern = ((data.from.unix_timestamp() as u128) << 65)
-            | ((data.thru.unix_timestamp() << 2) as u128)
-            | match data.kind {
-                ProductKind::Forward => 1u128,
-                ProductKind::Option => 2u128,
-            };
+    fn generate_product_id(&self, _data: &ProductData) -> ProductId {
+        uuid::Uuid::new_v4().into()
+        // // The other id generators make random ids, but this one creates
+        // // a deterministic id based on the content of the product data, roughly
+        // // (FROM)(THRU)(KIND)
+        // // so that "nearby" products are sorted together.
+        // let pattern = ((data.from.unix_timestamp() as u128) << 65)
+        //     | ((data.thru.unix_timestamp() << 2) as u128)
+        //     | match data.kind {
+        //         ProductKind::Forward => 1u128,
+        //         ProductKind::Option => 2u128,
+        //     };
 
-        // TODO: this is wrong, (v8 will overwrite a few bytes)
-        uuid::Uuid::new_v8(pattern.to_le_bytes()).into()
+        // // TODO: this is wrong, (v8 will overwrite a few bytes)
+        // uuid::Uuid::new_v8(pattern.to_le_bytes()).into()
     }
 
     async fn can_create_bid(&self, context: &Self::Context) -> Option<BidderId> {
