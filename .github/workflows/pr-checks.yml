@@ -46,12 +46,12 @@ jobs:
         run: cargo test --release --locked
       - name: Check formatting
         run: cargo fmt --check
-      # - name: Generate OpenAPI Spec
-      #   run: cargo run --bin generate-openapi --release > openapi.yaml
-      # # https://github.com/swagger-api/apidom is the modern way of validating OpenAPI specs
-      # # https://github.com/swaggerexpert/apidom-validate is a simple way of doing so via GitHub Action.
-      # # However, it builds every time, so it's not ideal;
-      # # we can either optimize this with caching or do it directly as a nodejs script.
-      # - uses: swaggerexpert/apidom-validate@v1
-      #   with:
-      #     definition-file: "openapi.yaml"
+      - name: Generate OpenAPI Spec
+        run: cargo run --bin ftdemo --release -- --secret SECRET --schema openapi.json
+      # https://github.com/swagger-api/apidom is the modern way of validating OpenAPI specs
+      # https://github.com/swaggerexpert/apidom-validate is a simple way of doing so via GitHub Action.
+      # However, it builds every time, so it's not ideal;
+      # we can either optimize this with caching or do it directly as a nodejs script.
+      - uses: swaggerexpert/apidom-validate@v1
+        with:
+          definition-file: "openapi.json"
