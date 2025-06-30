@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0](https://github.com/forward-market-design/flow-trading-service/compare/fts-core-v0.2.0...fts-core-v0.3.0) - 2025-06-27
+
+### Added
+
+- rewrite of core data model and architecture
+
 ## [0.2.0](https://github.com/forward-market-design/flow-trading-service/compare/fts-core-v0.1.5...fts-core-v0.2.0) - 2025-04-28
 
 ### Added
@@ -38,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- *(api)* replace per-auth outcome stream with per-submission outcome stream
+- _(api)_ replace per-auth outcome stream with per-submission outcome stream
 
 ### Fixed
 

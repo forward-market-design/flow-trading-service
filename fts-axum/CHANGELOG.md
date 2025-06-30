@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.4.0](https://github.com/forward-market-design/flow-trading-service/releases/tag/fts-axum-v0.4.0) - 2025-06-27
+## [0.4.0](https://github.com/forward-market-design/flow-trading-service/compare/fts-server-v0.3.0...fts-axum-v0.4.0) - 2025-06-27
 
 ### Added
 
 - rewrite of core data model and architecture
+- renamed crate from `fts-server` to `fts-axum`
 
 ## [0.3.0](https://github.com/forward-market-design/flow-trading-service/compare/fts-server-v0.2.3...fts-server-v0.3.0) - 2025-05-05
 
@@ -52,7 +53,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - health endpoint
 - binary for displaying the openapi spec, github action to validate
-- *(api)* replace per-auth outcome stream with per-submission outcome stream
+- _(api)_ replace per-auth outcome stream with per-submission outcome stream
 
 ### Fixed
 
@@ -65,7 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Other
 
 - update READMEs with workspace & crate information
-- *(deps)* bump axum-test from 17.2.0 to 17.3.0
+- _(deps)_ bump axum-test from 17.2.0 to 17.3.0
 
 ## [0.1.2](https://github.com/forward-market-design/flow-trading-service/compare/fts-server-v0.1.1...fts-server-v0.1.2) - 2025-03-21
 

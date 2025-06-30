@@ -18,9 +18,9 @@ rust-version = "1.85"
 
 [workspace.dependencies]
 fts-axum = { path = "./fts-axum", version = "0.4.0" }
-fts-core = { path = "./fts-core", version = "0.4.0" }
+fts-core = { path = "./fts-core", version = "0.3.0" }
 fts-solver = { path = "./fts-solver", version = "0.5.0" }
-fts-sqlite = { path = "./fts-sqlite", version = "0.4.0" }
+fts-sqlite = { path = "./fts-sqlite", version = "0.2.0" }
 
 aide = "0.15"
 anyhow = "1.0"
