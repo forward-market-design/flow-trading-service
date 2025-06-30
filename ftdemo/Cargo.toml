@@ -17,11 +17,11 @@ fts-sqlite = { workspace = true, features = ["schemars"] }
 anyhow = { workspace = true }
 clap = { workspace = true, features = ["derive", "env", "string"] }
 headers = { workspace = true }
-serde = { workspace = true }
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
-uuid = { workspace = true, features = ["v4", "v8"] }
 schemars = { workspace = true, features = ["uuid1"] }
-time = { workspace = true, features = ["formatting", "parsing"] }
+serde = { workspace = true, features = ["derive"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
+uuid = { workspace = true, features = ["v4"] }
+time = { workspace = true, features = ["formatting", "parsing", "serde"] }
 tracing = { workspace = true }
 
 config = { version = "0.15", features = ["toml"] }
