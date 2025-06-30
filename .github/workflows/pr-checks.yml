@@ -26,10 +26,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-
       - name: Prepare SQLx database bindings
+        working-directory: fts-sqlite
         run: |
           cargo install sqlx-cli --no-default-features --features sqlite
           cargo sqlx database create
-          cargo sqlx migrate run --source ./fts-sqlite/schema
+          cargo sqlx migrate run --source ./schema/
           cargo sqlx prepare --check
 
   tests-and-validate:
