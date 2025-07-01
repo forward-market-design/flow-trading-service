@@ -8,7 +8,7 @@ It is recommended to pair this binary with a frontend client, such as [this one]
 
 The binary can be installed as simply as `cargo install ftdemo`. Once installed, running the server looks like this:
 ```bash
-APP_SECRET=SECRET ftdemo --config ./path/to/config.toml
+APP_SECRET=SECRET ftdemo serve --config ./path/to/config.toml
 ```
 
 The two key things are setting the HMAC secret for JWT authentication, and the configuration file `./path/to/config.toml`. This file looks like:

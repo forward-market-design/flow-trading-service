@@ -29,7 +29,7 @@ wait_timeout = "1m"
   APP_SERVER__BIND_ADDRESS = "0.0.0.0:8080"
 
 [processes]
-  app = "--secret ${DEMO_API_SECRET}"
+  app = "serve --secret ${DEMO_API_SECRET}"
 
 [[vm]]
   memory = '1gb'

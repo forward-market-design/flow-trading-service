@@ -7,7 +7,7 @@ mod schedule;
 pub use schedule::Scheduler;
 
 mod cli;
-pub use cli::Cli;
+pub use cli::{Cli, Commands};
 
 mod config;
 pub use config::AppConfig;

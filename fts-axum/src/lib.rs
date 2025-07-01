@@ -42,25 +42,34 @@ async fn health_check() -> Json<HealthResponse> {
     })
 }
 
-/// Construct a full API router with the given state and config
-pub fn router<T: ApiApplication>(state: T, config: AxumConfig) -> (axum::Router, Arc<OpenApi>) {
+/// Extract the OpenAPI documentation for the server
+pub fn schema<T: ApiApplication>() -> OpenApi {
     let mut api = OpenApi::default();
-    let router = ApiRouter::new()
+    let _ = ApiRouter::new()
+        .api_route("/health", get(health_check))
+        .nest("/product", product_routes::router::<T>())
+        .nest("/demand", demand_routes::router::<T>())
+        .nest("/portfolio", portfolio_routes::router::<T>())
+        .nest("/batch", batch_routes::router::<T>())
+        .nest_api_service("/docs", docs_routes())
+        .finish_api_with(&mut api, api_docs);
+    api
+}
+
+/// Construct a full API router with the given state and config
+pub fn router<T: ApiApplication>(state: T, config: AxumConfig) -> axum::Router {
+    let mut api = OpenApi::default();
+    ApiRouter::new()
         .api_route("/health", get(health_check))
         .nest("/product", product_routes::router())
         .nest("/demand", demand_routes::router())
         .nest("/portfolio", portfolio_routes::router())
         .nest("/batch", batch_routes::router())
         .nest_api_service("/docs", docs_routes())
-        .finish_api_with(&mut api, api_docs);
-    let schema = Arc::new(api);
-    (
-        router
-            .layer(Extension(schema.clone())) // Arc is very important here or you will face massive memory and performance issues
-            .layer(Extension(Arc::new(config)))
-            .with_state(state),
-        schema,
-    )
+        .finish_api_with(&mut api, api_docs)
+        .layer(Extension(Arc::new(api))) // Arc is very important here or you will face massive memory and performance issues
+        .layer(Extension(Arc::new(config)))
+        .with_state(state)
 }
 
 /// Starts the HTTP server with the provided configuration
@@ -78,7 +87,7 @@ pub async fn start_server<T: ApiApplication>(
     );
 
     // Here, we could apply additional config like timeouts, CORS, etc.
-    let service = router(app, config).0;
+    let service = router(app, config);
     axum::serve(listener, service).await
 }
 

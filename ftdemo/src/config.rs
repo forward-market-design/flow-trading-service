@@ -4,8 +4,9 @@
 //! with a clear precedence order. Configuration can come from default values,
 //! configuration files, and environment variables.
 
-use crate::{Cli, schedule::Scheduler};
+use crate::schedule::Scheduler;
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 /// The main application configuration that composes all component configs
 #[derive(Debug, Clone, Deserialize, Serialize, Default)]
@@ -44,14 +45,14 @@ impl AppConfig {
     /// # Set scheduling interval
     /// export APP_SCHEDULE__EVERY="1h"
     /// ```
-    pub fn load(cli: &Cli) -> anyhow::Result<Self> {
+    pub fn load(file: Option<PathBuf>) -> anyhow::Result<Self> {
         let mut config = config::Config::builder();
 
         // Start with default values
         config = config.add_source(config::Config::try_from(&Self::default())?);
 
         // Layer on config file if it is specified and exists
-        if let Some(path) = &cli.config {
+        if let Some(path) = file {
             if path.exists() {
                 config = config.add_source(config::File::from(path.as_path()))
             } else {

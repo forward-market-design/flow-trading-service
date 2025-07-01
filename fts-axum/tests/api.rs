@@ -23,7 +23,7 @@ async fn test_api(#[files("tests/api/**/*.hurl")] test: PathBuf) {
         TestApp(db)
     };
 
-    let router = router(app, AxumConfig::default()).0;
+    let router = router(app, AxumConfig::default());
 
     // Run the test server on a local TCP port
     let server = TestServer::new_with_config(
