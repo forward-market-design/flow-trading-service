@@ -1,5 +1,5 @@
-use ftdemo::{AppConfig, Cli, impls::DemoApp};
-use fts_axum::start_server;
+use ftdemo::{AppConfig, Cli, Commands, impls::DemoApp};
+use fts_axum::{schema, start_server};
 use fts_core::ports::BatchRepository as _;
 use fts_solver::clarabel::ClarabelSolver;
 use fts_sqlite::Db;
@@ -21,46 +21,55 @@ async fn main() -> anyhow::Result<()> {
 
     // Parse CLI args and extract the JWT key
     let cli = Cli::import()?;
-    let key = HS256Key::from_bytes(cli.secret.as_bytes());
 
-    // Create config with proper layering of CLI args
-    let AppConfig {
-        server,
-        database,
-        schedule,
-    } = AppConfig::load(&cli)?;
-
-    // Open database with config
-    let db = Db::open(&database, OffsetDateTime::now_utc().into()).await?;
-    let db2 = db.clone();
-    let app = DemoApp { db, key };
-
-    // We always run the server task.
-    let server_task = tokio::spawn(async move { start_server(server, app).await });
-
-    // However, we may or may not also run a scheduled batch task
-    if schedule.every.is_some() {
-        let solver_task = tokio::spawn(async move {
-            let f = async move |now: OffsetDateTime| {
-                let batch = db2
-                    .run_batch(now.into(), ClarabelSolver::default(), ())
-                    .await;
-                match batch {
-                    Ok(Ok(())) => Ok(()),
-                    Ok(Err(e)) => Err(anyhow::Error::new(e)),
-                    Err(e) => Err(anyhow::Error::new(e)),
-                }
-            };
-            schedule.schedule(f).await
-        });
-
-        select! {
-            r = server_task => r??,
-            r = solver_task => r??,
+    match cli.command {
+        Commands::Schema { output } => {
+            let schema = schema::<DemoApp>();
+            serde_json::to_writer_pretty(output.write()?, &schema)?;
         }
-    } else {
-        // Otherwise, we just run the server task to completion
-        server_task.await??;
+        Commands::Serve { config, secret } => {
+            let key = HS256Key::from_bytes(secret.as_bytes());
+
+            // Create config with proper layering of CLI args
+            let AppConfig {
+                server,
+                database,
+                schedule,
+            } = AppConfig::load(config)?;
+
+            // Open database with config
+            let db = Db::open(&database, OffsetDateTime::now_utc().into()).await?;
+            let db2 = db.clone();
+            let app = DemoApp { db, key };
+
+            // We always run the server task.
+            let server_task = tokio::spawn(async move { start_server(server, app).await });
+
+            // However, we may or may not also run a scheduled batch task
+            if schedule.every.is_some() {
+                let solver_task = tokio::spawn(async move {
+                    let f = async move |now: OffsetDateTime| {
+                        let batch = db2
+                            .run_batch(now.into(), ClarabelSolver::default(), ())
+                            .await;
+                        match batch {
+                            Ok(Ok(())) => Ok(()),
+                            Ok(Err(e)) => Err(anyhow::Error::new(e)),
+                            Err(e) => Err(anyhow::Error::new(e)),
+                        }
+                    };
+                    schedule.schedule(f).await
+                });
+
+                select! {
+                    r = server_task => r??,
+                    r = solver_task => r??,
+                }
+            } else {
+                // Otherwise, we just run the server task to completion
+                server_task.await??;
+            }
+        }
     }
 
     Ok(())

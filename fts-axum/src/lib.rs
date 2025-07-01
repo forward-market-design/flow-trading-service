@@ -42,6 +42,20 @@ async fn health_check() -> Json<HealthResponse> {
     })
 }
 
+/// Extract the OpenAPI documentation for the server
+pub fn schema<T: ApiApplication>() -> OpenApi {
+    let mut api = OpenApi::default();
+    let _ = ApiRouter::new()
+        .api_route("/health", get(health_check))
+        .nest("/product", product_routes::router::<T>())
+        .nest("/demand", demand_routes::router::<T>())
+        .nest("/portfolio", portfolio_routes::router::<T>())
+        .nest("/batch", batch_routes::router::<T>())
+        .nest_api_service("/docs", docs_routes())
+        .finish_api_with(&mut api, api_docs);
+    api
+}
+
 /// Construct a full API router with the given state and config
 pub fn router<T: ApiApplication>(state: T, config: AxumConfig) -> axum::Router {
     let mut api = OpenApi::default();

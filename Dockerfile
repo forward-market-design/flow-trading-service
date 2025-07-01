@@ -43,4 +43,4 @@ EXPOSE 8080
 
 # TODO: Add healthcheck?
 
-ENTRYPOINT ["/usr/local/bin/ftdemo"]
+ENTRYPOINT ["/usr/local/bin/ftdemo serve"]
