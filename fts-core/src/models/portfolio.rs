@@ -14,9 +14,13 @@ use std::hash::Hash;
 /// - **Bidder**: Each portfolio is owned by exactly one bidder
 /// - **Demands**: Multiple demands can be associated to a portfolio, each with individual weights
 /// - **Products**: Multiple products can be associated to a portfolio, each with individual weights
-#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(
+    feature = "schemars",
+    derive(schemars::JsonSchema),
+    schemars(rename = "PortfolioRecord")
+)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Portfolio<
+pub struct PortfolioRecord<
     DateTime,
     BidderId: Eq,
     PortfolioId: Eq + Hash,

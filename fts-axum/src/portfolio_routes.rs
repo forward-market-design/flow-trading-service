@@ -20,7 +20,7 @@ use axum::{
 use axum_extra::TypedHeader;
 use fts_core::{
     models::{
-        DateTimeRangeQuery, DateTimeRangeResponse, Map, OutcomeRecord, Portfolio, ValueRecord,
+        DateTimeRangeQuery, DateTimeRangeResponse, Map, OutcomeRecord, PortfolioRecord, ValueRecord,
     },
     ports::{BatchRepository, PortfolioRepository as _, Repository, Solver},
 };
@@ -216,7 +216,7 @@ async fn get_portfolio<T: ApiApplication>(
     Path(Id { portfolio_id }): Path<Id<<T::Repository as Repository>::PortfolioId>>,
 ) -> Result<
     Json<
-        Portfolio<
+        PortfolioRecord<
             <T::Repository as Repository>::DateTime,
             <T::Repository as Repository>::BidderId,
             <T::Repository as Repository>::PortfolioId,

@@ -6,7 +6,7 @@ use crate::{
     },
 };
 use fts_core::{
-    models::{DateTimeRangeQuery, DateTimeRangeResponse, Map, Portfolio, ValueRecord},
+    models::{DateTimeRangeQuery, DateTimeRangeResponse, Map, PortfolioRecord, ValueRecord},
     ports::PortfolioRepository,
 };
 
@@ -182,7 +182,7 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
         as_of: Self::DateTime,
     ) -> Result<
         Option<
-            Portfolio<
+            PortfolioRecord<
                 Self::DateTime,
                 Self::BidderId,
                 Self::PortfolioId,
@@ -202,7 +202,7 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
         .fetch_optional(&self.reader)
         .await?;
 
-        Ok(query.map(|row| Portfolio {
+        Ok(query.map(|row| PortfolioRecord {
             id: portfolio_id,
             as_of,
             bidder_id: row.bidder_id,

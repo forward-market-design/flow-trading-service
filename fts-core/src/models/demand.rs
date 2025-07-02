@@ -7,9 +7,13 @@ use std::hash::Hash;
 /// Each demand is owned by a single bidder and can optionally include:
 /// - A demand curve that defines pricing preferences
 /// - A portfolio group that links this demand to one or more portfolios
-#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(
+    feature = "schemars",
+    derive(schemars::JsonSchema),
+    schemars(rename = "DemandRecord")
+)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Demand<
+pub struct DemandRecord<
     DateTime,
     BidderId: Eq + Hash,
     DemandId: Eq + Hash,

@@ -4,7 +4,7 @@ use crate::{
 };
 use fts_core::{
     models::{
-        DateTimeRangeQuery, DateTimeRangeResponse, Demand, DemandCurve, DemandCurveDto, Map,
+        DateTimeRangeQuery, DateTimeRangeResponse, DemandRecord, DemandCurve, DemandCurveDto, Map,
         ValueRecord,
     },
     ports::DemandRepository,
@@ -133,7 +133,7 @@ impl<DemandData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwned>
         as_of: Self::DateTime,
     ) -> Result<
         Option<
-            Demand<Self::DateTime, Self::BidderId, Self::DemandId, Self::PortfolioId, DemandData>,
+            DemandRecord<Self::DateTime, Self::BidderId, Self::DemandId, Self::PortfolioId, DemandData>,
         >,
         Self::Error,
     > {
@@ -142,7 +142,7 @@ impl<DemandData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwned>
                 .fetch_optional(&self.reader)
                 .await?;
 
-        Ok(query.map(|row| Demand {
+        Ok(query.map(|row| DemandRecord {
             id: demand_id,
             as_of,
             bidder_id: row.bidder_id,

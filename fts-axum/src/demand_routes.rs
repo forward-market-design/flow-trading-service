@@ -15,7 +15,7 @@ use axum::{
 };
 use axum_extra::TypedHeader;
 use fts_core::{
-    models::{DateTimeRangeQuery, DateTimeRangeResponse, Demand, DemandCurve, ValueRecord},
+    models::{DateTimeRangeQuery, DateTimeRangeResponse, DemandCurve, DemandRecord, ValueRecord},
     ports::{DemandRepository as _, Repository},
 };
 use headers::{Authorization, authorization::Bearer};
@@ -171,7 +171,7 @@ async fn get_demand<T: ApiApplication>(
     Path(Id { demand_id }): Path<Id<<T::Repository as Repository>::DemandId>>,
 ) -> Result<
     Json<
-        Demand<
+        DemandRecord<
             <T::Repository as Repository>::DateTime,
             <T::Repository as Repository>::BidderId,
             <T::Repository as Repository>::DemandId,

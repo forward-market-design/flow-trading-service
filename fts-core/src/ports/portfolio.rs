@@ -1,4 +1,4 @@
-use crate::models::{DateTimeRangeQuery, DateTimeRangeResponse, Map, Portfolio, ValueRecord};
+use crate::models::{DateTimeRangeQuery, DateTimeRangeResponse, Map, PortfolioRecord, ValueRecord};
 
 /// Repository interface for portfolio CRUD operations and history tracking.
 ///
@@ -56,7 +56,7 @@ pub trait PortfolioRepository<PortfolioData>: super::Repository {
     ) -> impl Future<
         Output = Result<
             Option<
-                Portfolio<
+                PortfolioRecord<
                     Self::DateTime,
                     Self::BidderId,
                     Self::PortfolioId,

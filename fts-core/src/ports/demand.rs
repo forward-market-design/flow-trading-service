@@ -1,4 +1,4 @@
-use crate::models::{DateTimeRangeQuery, DateTimeRangeResponse, Demand, DemandCurve, ValueRecord};
+use crate::models::{DateTimeRangeQuery, DateTimeRangeResponse, DemandRecord, DemandCurve, ValueRecord};
 
 /// Repository interface for demand curve submission and retrieval.
 ///
@@ -52,7 +52,7 @@ pub trait DemandRepository<DemandData>: super::Repository {
     ) -> impl Future<
         Output = Result<
             Option<
-                Demand<
+                DemandRecord<
                     Self::DateTime,
                     Self::BidderId,
                     Self::DemandId,

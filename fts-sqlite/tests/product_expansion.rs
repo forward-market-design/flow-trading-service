@@ -2,7 +2,7 @@ mod common;
 
 use common::TestApp;
 use fts_core::{
-    models::Portfolio,
+    models::PortfolioRecord,
     ports::{Application, PortfolioRepository, ProductRepository as _},
 };
 use fts_sqlite::{
@@ -67,7 +67,7 @@ async fn test_product_expansion() -> anyhow::Result<()> {
     // Test at different time points
     for i in 0u64..=7 {
         let as_of = DateTime::from(now + std::time::Duration::from_secs(i));
-        let Portfolio { product_group, .. } =
+        let PortfolioRecord { product_group, .. } =
             <Db as PortfolioRepository<()>>::get_portfolio(db, portfolio_id, as_of)
                 .await?
                 .unwrap();
