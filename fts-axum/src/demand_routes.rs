@@ -50,6 +50,7 @@ pub fn router<T: ApiApplication>() -> ApiRouter<T> {
 
 /// Path parameter for demand-specific endpoints.
 #[derive(serde::Deserialize, schemars::JsonSchema)]
+#[schemars(inline)]
 struct Id<T> {
     /// The unique identifier of the demand
     demand_id: T,
@@ -412,6 +413,7 @@ async fn get_demand_history<T: ApiApplication>(
 
 /// Request body for creating a new demand.
 #[derive(serde::Deserialize, schemars::JsonSchema)]
+#[schemars(inline)]
 struct CreateDemandRequestBody<D> {
     /// Application-specific data to associate with the demand
     app_data: D,
@@ -421,6 +423,7 @@ struct CreateDemandRequestBody<D> {
 
 /// Response body for creating a new demand.
 #[derive(serde::Serialize, schemars::JsonSchema)]
+#[schemars(inline)]
 struct CreateDemandResponseBody<T, U> {
     /// The effective timestamp of the demand
     as_of: T,

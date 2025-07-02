@@ -30,6 +30,7 @@ use tracing::{Level, event};
 
 /// Path parameter for portfolio-specific endpoints.
 #[derive(serde::Deserialize, schemars::JsonSchema)]
+#[schemars(inline)]
 struct Id<T> {
     /// The unique identifier of the portfolio
     portfolio_id: T,
@@ -611,6 +612,7 @@ async fn get_portfolio_outcomes<T: ApiApplication>(
 
 /// Request body for updating a portfolio's groups.
 #[derive(schemars::JsonSchema, serde::Deserialize)]
+#[schemars(inline)]
 struct UpdatePortfolioDto<DemandId: Eq + Hash, ProductId: Eq + Hash> {
     /// New demand group weights (None to keep existing)
     demand_group: Option<Map<DemandId>>,
@@ -620,6 +622,7 @@ struct UpdatePortfolioDto<DemandId: Eq + Hash, ProductId: Eq + Hash> {
 
 /// Request body for creating a new portfolio.
 #[derive(schemars::JsonSchema, serde::Deserialize)]
+#[schemars(inline)]
 struct CreatePortfolioRequestBody<PortfolioData, DemandId: Eq + Hash, ProductId: Eq + Hash> {
     /// Application-specific data to associate with the portfolio
     app_data: PortfolioData,
@@ -631,6 +634,7 @@ struct CreatePortfolioRequestBody<PortfolioData, DemandId: Eq + Hash, ProductId:
 
 /// Response body for creating a new portfolio
 #[derive(serde::Serialize, schemars::JsonSchema)]
+#[schemars(inline)]
 struct CreatePortfolioResponseBody<T, U> {
     /// The effective timestamp of the portfolio
     as_of: T,

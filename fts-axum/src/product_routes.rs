@@ -26,6 +26,7 @@ use tracing::{Level, event};
 
 /// Path parameter for product-specific endpoints.
 #[derive(serde::Deserialize, schemars::JsonSchema)]
+#[schemars(inline)]
 struct Id<T> {
     /// The unique identifier of the product
     product_id: T,
@@ -302,6 +303,7 @@ async fn get_product_outcomes<T: ApiApplication>(
 
 /// Request body item for partitioning a product.
 #[derive(serde::Serialize, serde::Deserialize, schemars::JsonSchema)]
+#[schemars(inline)]
 struct PartitionItem<D> {
     /// Application-specific data for the child product
     data: D,
