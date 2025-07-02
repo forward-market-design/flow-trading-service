@@ -24,14 +24,28 @@ use tracing::{Level, event};
 /// Creates a router with demand-related endpoints.
 pub fn router<T: ApiApplication>() -> ApiRouter<T> {
     ApiRouter::new()
-        .api_route("/", get(query_demands::<T>).post(create_demand::<T>))
-        .api_route(
+        .api_route_with(
+            "/",
+            get(query_demands::<T>).post(create_demand::<T>),
+            |route| route.security_requirement("jwt").tag("demand"),
+        )
+        .api_route_with(
             "/{demand_id}",
             get(get_demand::<T>)
                 .put(update_demand::<T>)
                 .delete(delete_demand::<T>),
+            |route| route.security_requirement("jwt").tag("demand"),
         )
-        .api_route("/{demand_id}/history", get(get_demand_history::<T>))
+        .api_route_with(
+            "/{demand_id}/history",
+            get(get_demand_history::<T>),
+            |route| {
+                route
+                    .security_requirement("jwt")
+                    .tag("demand")
+                    .tag("history")
+            },
+        )
 }
 
 /// Path parameter for demand-specific endpoints.

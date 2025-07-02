@@ -9,7 +9,7 @@ use std::sync::Arc;
 use crate::{ApiApplication, config::AxumConfig};
 use aide::axum::{
     ApiRouter,
-    routing::{get, post},
+    routing::{get, get_with, post},
 };
 use axum::{
     Extension, Json,
@@ -35,10 +35,34 @@ struct Id<T> {
 pub fn router<T: ApiApplication>() -> ApiRouter<T> {
     ApiRouter::new()
         // TODO: figure out approach to querying!
-        .api_route("/", post(create_product::<T>))
-        .api_route("/{product_id}", get(get_product::<T>))
-        .api_route("/{product_id}/partition", post(partition_product::<T>))
-        .api_route("/{product_id}/outcomes", get(get_product_outcomes::<T>))
+        .api_route_with("/", post(create_product::<T>), |route| {
+            route
+                .security_requirement("jwt")
+                .tag("product")
+                .tag("admin")
+        })
+        .api_route(
+            "/{product_id}",
+            get_with(get_product::<T>, |route| {
+                route.security_requirement("jwt").tag("product")
+            })
+            .post_with(partition_product::<T>, |route| {
+                route
+                    .security_requirement("jwt")
+                    .tag("product")
+                    .tag("admin")
+            }),
+        )
+        .api_route_with(
+            "/{product_id}/outcomes",
+            get(get_product_outcomes::<T>),
+            |route| {
+                route
+                    .security_requirement("jwt")
+                    .tag("product")
+                    .tag("outcome")
+            },
+        )
 }
 
 /// Retrieve a product's data.

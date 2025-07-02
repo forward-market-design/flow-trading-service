@@ -32,22 +32,48 @@ struct Id<T> {
 /// Creates a router with portfolio-related endpoints.
 pub fn router<T: ApiApplication>() -> ApiRouter<T> {
     ApiRouter::new()
-        .api_route("/", get(query_portfolios::<T>).post(create_portfolio::<T>))
-        .api_route(
+        .api_route_with(
+            "/",
+            get(query_portfolios::<T>).post(create_portfolio::<T>),
+            |route| route.security_requirement("jwt").tag("portfolio"),
+        )
+        .api_route_with(
             "/{portfolio_id}",
             get(get_portfolio::<T>)
                 .patch(update_portfolio::<T>)
                 .delete(delete_portfolio::<T>),
+            |route| route.security_requirement("jwt").tag("portfolio"),
         )
-        .api_route(
+        .api_route_with(
             "/{portfolio_id}/demand-history",
             get(get_portfolio_demand_history::<T>),
+            |route| {
+                route
+                    .security_requirement("jwt")
+                    .tag("portfolio")
+                    .tag("history")
+            },
         )
-        .api_route(
+        .api_route_with(
             "/{portfolio_id}/product-history",
             get(get_portfolio_product_history::<T>),
+            |route| {
+                route
+                    .security_requirement("jwt")
+                    .tag("portfolio")
+                    .tag("history")
+            },
         )
-        .api_route("/{portfolio_id}/outcomes", get(get_portfolio_outcomes::<T>))
+        .api_route_with(
+            "/{portfolio_id}/outcomes",
+            get(get_portfolio_outcomes::<T>),
+            |route| {
+                route
+                    .security_requirement("jwt")
+                    .tag("portfolio")
+                    .tag("outcome")
+            },
+        )
 }
 
 /// Query all portfolios for bidders the requester is authorized to view.
