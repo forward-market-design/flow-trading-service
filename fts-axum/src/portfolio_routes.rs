@@ -5,7 +5,13 @@
 //! strategies by allowing weighted combinations of demands and products.
 
 use crate::{ApiApplication, config::AxumConfig};
-use aide::axum::{ApiRouter, routing::get};
+use aide::{
+    axum::{
+        ApiRouter,
+        routing::{get, get_with},
+    },
+    transform::TransformOperation,
+};
 use axum::{
     Extension, Json,
     extract::{Path, Query, State},
@@ -34,7 +40,8 @@ pub fn router<T: ApiApplication>() -> ApiRouter<T> {
     ApiRouter::new()
         .api_route_with(
             "/",
-            get(query_portfolios::<T>).post(create_portfolio::<T>),
+            get_with(query_portfolios::<T>, query_portfolios_docs)
+                .post_with(create_portfolio::<T>, create_portfolio_docs),
             |route| route.security_requirement("jwt").tag("portfolio"),
         )
         .api_route_with(
@@ -76,20 +83,21 @@ pub fn router<T: ApiApplication>() -> ApiRouter<T> {
         )
 }
 
-/// Query all portfolios for bidders the requester is authorized to view.
-///
-/// Returns only portfolios with non-empty demand or product groups.
-///
-/// # Authorization
-///
-/// Returns portfolios only for bidders that the context has query access to
-/// (`can_query_bid` permission).
-///
-/// # Returns
-///
-/// - `200 OK`: List of portfolio IDs
-/// - `401 Unauthorized`: No query permissions for any bidder
-/// - `500 Internal Server Error`: Database query failed
+fn query_portfolios_docs(op: TransformOperation) -> TransformOperation<'_> {
+    op.summary("List portfolios")
+        .description(
+            r#"
+            Query all portfolios for bidders the requester is authorized to view.
+            Returns only portfolios with non-empty demand or product groups.
+
+            Requires `can_query_bid` permission.
+            "#,
+        )
+        //.response_with::<200, _, _>(|res| res.description("List of portfolio IDs"))
+        .response_with::<401, String, _>(|res| res.description("Unauthorized"))
+        .response_with::<500, String, _>(|res| res.description("Database query failed"))
+}
+
 async fn query_portfolios<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
@@ -113,18 +121,21 @@ async fn query_portfolios<T: ApiApplication>(
     }
 }
 
-/// Create a new portfolio with initial demand and product associations.
-///
-/// # Authorization
-///
-/// Requires `can_create_bid` permission. The portfolio will be
-/// associated with the bidder determined by the authorization context.
-///
-/// # Returns
-///
-/// - `201 Created`: Portfolio created successfully, returns the portfolio ID
-/// - `401 Unauthorized`: Missing create permissions
-/// - `500 Internal Server Error`: Database operation failed
+fn create_portfolio_docs(op: TransformOperation) -> TransformOperation<'_> {
+    op.summary("Create Portfolio")
+        .description(
+            r#"
+        Create a new portfolio with initial demand and product associations.
+
+        Requires `can_create_bid` permission. The portfolio will be
+        associated with the bidder determined by the authorization context. 
+        "#,
+        )
+        // FIXME: The 201 is not automatically generated, but manually documenting it here is... not nice.
+        .response_with::<401, String, _>(|res| res.description("Missing create permissions"))
+        .response_with::<500, String, _>(|res| res.description("Database operation failed"))
+}
+
 async fn create_portfolio<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
