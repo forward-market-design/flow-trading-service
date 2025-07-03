@@ -4,7 +4,7 @@
 //! types used for database row mapping. The public types include strongly-typed
 //! IDs and datetime representations that ensure type safety across the system.
 
-use fts_core::models::{DemandCurve, DemandCurveDto, Map, ValueRecord};
+use fts_core::models::{DemandCurve, DemandCurveDto, DemandGroup, Map, ProductGroup, ValueRecord};
 
 mod datetime;
 pub use datetime::DateTime;
@@ -13,9 +13,10 @@ mod ids;
 pub use ids::{BidderId, DemandId, PortfolioId, ProductId};
 
 pub(crate) struct BatchData {
-    pub demand_curves: Option<sqlx::types::Json<Map<DemandId, DemandCurveDto>>>,
-    pub demand_groups: Option<sqlx::types::Json<Map<PortfolioId, Map<DemandId>>>>,
-    pub product_groups: Option<sqlx::types::Json<Map<PortfolioId, Map<ProductId>>>>,
+    pub demands: Option<sqlx::types::Json<Map<DemandId, DemandCurveDto>>>,
+    pub portfolios: Option<
+        sqlx::types::Json<Map<PortfolioId, (DemandGroup<DemandId>, ProductGroup<ProductId>)>>,
+    >,
 }
 
 pub(crate) struct DemandRow<AppData> {
@@ -46,11 +47,11 @@ impl Into<ValueRecord<DateTime, DemandCurve>> for DemandHistoryRow {
 pub(crate) struct PortfolioDemandHistoryRow {
     pub valid_from: DateTime,
     pub valid_until: Option<DateTime>,
-    pub demand_group: sqlx::types::Json<Map<DemandId>>,
+    pub demand_group: sqlx::types::Json<DemandGroup<DemandId>>,
 }
 
-impl Into<ValueRecord<DateTime, Map<DemandId>>> for PortfolioDemandHistoryRow {
-    fn into(self) -> ValueRecord<DateTime, Map<DemandId>> {
+impl Into<ValueRecord<DateTime, DemandGroup<DemandId>>> for PortfolioDemandHistoryRow {
+    fn into(self) -> ValueRecord<DateTime, DemandGroup<DemandId>> {
         ValueRecord {
             valid_from: self.valid_from,
             valid_until: self.valid_until,
@@ -62,11 +63,11 @@ impl Into<ValueRecord<DateTime, Map<DemandId>>> for PortfolioDemandHistoryRow {
 pub(crate) struct PortfolioProductHistoryRow {
     pub valid_from: DateTime,
     pub valid_until: Option<DateTime>,
-    pub product_group: sqlx::types::Json<Map<ProductId>>,
+    pub product_group: sqlx::types::Json<ProductGroup<ProductId>>,
 }
 
-impl Into<ValueRecord<DateTime, Map<ProductId>>> for PortfolioProductHistoryRow {
-    fn into(self) -> ValueRecord<DateTime, Map<ProductId>> {
+impl Into<ValueRecord<DateTime, ProductGroup<ProductId>>> for PortfolioProductHistoryRow {
+    fn into(self) -> ValueRecord<DateTime, ProductGroup<ProductId>> {
         ValueRecord {
             valid_from: self.valid_from,
             valid_until: self.valid_until,
@@ -78,8 +79,8 @@ impl Into<ValueRecord<DateTime, Map<ProductId>>> for PortfolioProductHistoryRow 
 pub(crate) struct PortfolioRow<AppData> {
     pub bidder_id: BidderId,
     pub app_data: sqlx::types::Json<AppData>,
-    pub demand_group: Option<sqlx::types::Json<Map<DemandId>>>,
-    pub product_group: Option<sqlx::types::Json<Map<ProductId>>>,
+    pub demand_group: Option<sqlx::types::Json<DemandGroup<DemandId>>>,
+    pub product_group: Option<sqlx::types::Json<ProductGroup<ProductId>>>,
 }
 
 pub(crate) struct OutcomeRow<Outcome> {

@@ -5,7 +5,13 @@
 //! strategies by allowing weighted combinations of demands and products.
 
 use crate::{ApiApplication, config::AxumConfig};
-use aide::axum::{ApiRouter, routing::get};
+use aide::{
+    axum::{
+        ApiRouter,
+        routing::{get, get_with},
+    },
+    transform::TransformOperation,
+};
 use axum::{
     Extension, Json,
     extract::{Path, Query, State},
@@ -14,7 +20,8 @@ use axum::{
 use axum_extra::TypedHeader;
 use fts_core::{
     models::{
-        DateTimeRangeQuery, DateTimeRangeResponse, Map, OutcomeRecord, Portfolio, ValueRecord,
+        DateTimeRangeQuery, DateTimeRangeResponse, DemandGroup, OutcomeRecord, PortfolioRecord,
+        ProductGroup, ValueRecord,
     },
     ports::{BatchRepository, PortfolioRepository as _, Repository, Solver},
 };
@@ -24,6 +31,7 @@ use tracing::{Level, event};
 
 /// Path parameter for portfolio-specific endpoints.
 #[derive(serde::Deserialize, schemars::JsonSchema)]
+#[schemars(inline)]
 struct Id<T> {
     /// The unique identifier of the portfolio
     portfolio_id: T,
@@ -32,38 +40,66 @@ struct Id<T> {
 /// Creates a router with portfolio-related endpoints.
 pub fn router<T: ApiApplication>() -> ApiRouter<T> {
     ApiRouter::new()
-        .api_route("/", get(query_portfolios::<T>).post(create_portfolio::<T>))
-        .api_route(
+        .api_route_with(
+            "/",
+            get_with(query_portfolios::<T>, query_portfolios_docs)
+                .post_with(create_portfolio::<T>, create_portfolio_docs),
+            |route| route.security_requirement("jwt").tag("portfolio"),
+        )
+        .api_route_with(
             "/{portfolio_id}",
             get(get_portfolio::<T>)
                 .patch(update_portfolio::<T>)
                 .delete(delete_portfolio::<T>),
+            |route| route.security_requirement("jwt").tag("portfolio"),
         )
-        .api_route(
+        .api_route_with(
             "/{portfolio_id}/demand-history",
             get(get_portfolio_demand_history::<T>),
+            |route| {
+                route
+                    .security_requirement("jwt")
+                    .tag("portfolio")
+                    .tag("history")
+            },
         )
-        .api_route(
+        .api_route_with(
             "/{portfolio_id}/product-history",
             get(get_portfolio_product_history::<T>),
+            |route| {
+                route
+                    .security_requirement("jwt")
+                    .tag("portfolio")
+                    .tag("history")
+            },
         )
-        .api_route("/{portfolio_id}/outcomes", get(get_portfolio_outcomes::<T>))
+        .api_route_with(
+            "/{portfolio_id}/outcomes",
+            get(get_portfolio_outcomes::<T>),
+            |route| {
+                route
+                    .security_requirement("jwt")
+                    .tag("portfolio")
+                    .tag("outcome")
+            },
+        )
 }
 
-/// Query all portfolios for bidders the requester is authorized to view.
-///
-/// Returns only portfolios with non-empty demand or product groups.
-///
-/// # Authorization
-///
-/// Returns portfolios only for bidders that the context has query access to
-/// (`can_query_bid` permission).
-///
-/// # Returns
-///
-/// - `200 OK`: List of portfolio IDs
-/// - `401 Unauthorized`: No query permissions for any bidder
-/// - `500 Internal Server Error`: Database query failed
+fn query_portfolios_docs(op: TransformOperation) -> TransformOperation<'_> {
+    op.summary("List portfolios")
+        .description(
+            r#"
+            Query all portfolios for bidders the requester is authorized to view.
+            Returns only portfolios with non-empty demand or product groups.
+
+            Requires `can_query_bid` permission.
+            "#,
+        )
+        //.response_with::<200, _, _>(|res| res.description("List of portfolio IDs"))
+        .response_with::<401, String, _>(|res| res.description("Unauthorized"))
+        .response_with::<500, String, _>(|res| res.description("Database query failed"))
+}
+
 async fn query_portfolios<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
@@ -87,18 +123,21 @@ async fn query_portfolios<T: ApiApplication>(
     }
 }
 
-/// Create a new portfolio with initial demand and product associations.
-///
-/// # Authorization
-///
-/// Requires `can_create_bid` permission. The portfolio will be
-/// associated with the bidder determined by the authorization context.
-///
-/// # Returns
-///
-/// - `201 Created`: Portfolio created successfully, returns the portfolio ID
-/// - `401 Unauthorized`: Missing create permissions
-/// - `500 Internal Server Error`: Database operation failed
+fn create_portfolio_docs(op: TransformOperation) -> TransformOperation<'_> {
+    op.summary("Create Portfolio")
+        .description(
+            r#"
+        Create a new portfolio with initial demand and product associations.
+
+        Requires `can_create_bid` permission. The portfolio will be
+        associated with the bidder determined by the authorization context. 
+        "#,
+        )
+        // FIXME: The 201 is not automatically generated, but manually documenting it here is... not nice.
+        .response_with::<401, String, _>(|res| res.description("Missing create permissions"))
+        .response_with::<500, String, _>(|res| res.description("Database operation failed"))
+}
+
 async fn create_portfolio<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
@@ -178,7 +217,7 @@ async fn get_portfolio<T: ApiApplication>(
     Path(Id { portfolio_id }): Path<Id<<T::Repository as Repository>::PortfolioId>>,
 ) -> Result<
     Json<
-        Portfolio<
+        PortfolioRecord<
             <T::Repository as Repository>::DateTime,
             <T::Repository as Repository>::BidderId,
             <T::Repository as Repository>::PortfolioId,
@@ -387,7 +426,7 @@ async fn get_portfolio_demand_history<T: ApiApplication>(
         DateTimeRangeResponse<
             ValueRecord<
                 <T::Repository as Repository>::DateTime,
-                Map<<T::Repository as Repository>::DemandId, f64>,
+                DemandGroup<<T::Repository as Repository>::DemandId>,
             >,
             <T::Repository as Repository>::DateTime,
         >,
@@ -456,7 +495,7 @@ async fn get_portfolio_product_history<T: ApiApplication>(
         DateTimeRangeResponse<
             ValueRecord<
                 <T::Repository as Repository>::DateTime,
-                Map<<T::Repository as Repository>::ProductId, f64>,
+                ProductGroup<<T::Repository as Repository>::ProductId>,
             >,
             <T::Repository as Repository>::DateTime,
         >,
@@ -574,26 +613,29 @@ async fn get_portfolio_outcomes<T: ApiApplication>(
 
 /// Request body for updating a portfolio's groups.
 #[derive(schemars::JsonSchema, serde::Deserialize)]
+#[schemars(inline)]
 struct UpdatePortfolioDto<DemandId: Eq + Hash, ProductId: Eq + Hash> {
     /// New demand group weights (None to keep existing)
-    demand_group: Option<Map<DemandId>>,
+    demand_group: Option<DemandGroup<DemandId>>,
     /// New product group weights (None to keep existing)
-    product_group: Option<Map<ProductId>>,
+    product_group: Option<ProductGroup<ProductId>>,
 }
 
 /// Request body for creating a new portfolio.
 #[derive(schemars::JsonSchema, serde::Deserialize)]
+#[schemars(inline)]
 struct CreatePortfolioRequestBody<PortfolioData, DemandId: Eq + Hash, ProductId: Eq + Hash> {
     /// Application-specific data to associate with the portfolio
     app_data: PortfolioData,
     /// Initial demand weights
-    demand_group: Map<DemandId>,
+    demand_group: DemandGroup<DemandId>,
     /// Initial product weights
-    product_group: Map<ProductId>,
+    product_group: ProductGroup<ProductId>,
 }
 
 /// Response body for creating a new portfolio
 #[derive(serde::Serialize, schemars::JsonSchema)]
+#[schemars(inline)]
 struct CreatePortfolioResponseBody<T, U> {
     /// The effective timestamp of the portfolio
     as_of: T,

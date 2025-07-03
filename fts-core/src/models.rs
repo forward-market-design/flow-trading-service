@@ -21,11 +21,18 @@ pub use map::*;
 mod datetime;
 pub use datetime::*;
 
+mod group;
+pub use group::*;
+
 /// A timestamped record of a component of a user's bid.
 ///
 /// The interval for which the component has this value is provided alongside
 /// the value itself.
-#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(
+    feature = "schemars",
+    derive(schemars::JsonSchema),
+    schemars(rename = "{Value}Record")
+)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ValueRecord<DateTime, Value> {
     /// The timestamp when this change occurred
@@ -41,7 +48,11 @@ pub struct ValueRecord<DateTime, Value> {
 /// This generic structure is used to store results from the solver,
 /// such as portfolio allocations or product clearing prices, along with
 /// the timestamp of the batch they were computed in.
-#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
+#[cfg_attr(
+    feature = "schemars",
+    derive(schemars::JsonSchema),
+    schemars(rename = "{Outcome}Record")
+)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct OutcomeRecord<DateTime, Outcome> {
     /// The timestamp when this outcome was computed

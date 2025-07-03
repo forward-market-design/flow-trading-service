@@ -1317,6 +1317,7 @@ dependencies = [
 name = "fts-core"
 version = "0.3.0"
 dependencies = [
+ "fts-core",
  "indexmap",
  "rustc-hash",
  "schemars",

@@ -8,9 +8,6 @@ with dc as (
 ),
 
 dg as (
-    select
-        jsonb_group_object(portfolio_id, demand_group) as demand_groups
-    from (
         select
             portfolio_id,
             jsonb_group_object(demand_id, weight) as demand_group
@@ -22,13 +19,9 @@ dg as (
             portfolio_id
         having
             count(*) > 0
-    )
 ),
 
 pg as (
-    select
-        jsonb_group_object(portfolio_id, product_group) as product_groups
-    from (
         select
             portfolio_id,
             jsonb_group_object(product_id, weight) as product_group
@@ -40,13 +33,23 @@ pg as (
             portfolio_id
         having
             count(*) > 0
-    )
+),
+
+portfolios as (
+    select
+        jsonb_group_object(pg.portfolio_id, jsonb_array(coalesce(demand_group, jsonb_object()), product_group)) as portfolios
+    from
+        pg
+    left join
+        dg
+    on
+        dg.portfolio_id = pg.portfolio_id 
 )
 
 select
-    json(demand_curves) as "demand_curves?: sqlx::types::Json<Map<DemandId, DemandCurveDto>>",
-    json(demand_groups) as "demand_groups?: sqlx::types::Json<Map<PortfolioId, Map<DemandId>>>",
-    json(product_groups) as "product_groups?: sqlx::types::Json<Map<PortfolioId, Map<ProductId>>>"
+    json(demand_curves) as "demands?: sqlx::types::Json<Map<DemandId, DemandCurveDto>>",
+    json(portfolios) as "portfolios?: sqlx::types::Json<Map<PortfolioId, (DemandGroup<DemandId>, ProductGroup<ProductId>)>>"
 from
     dc
-full join dg full join pg
+full join
+    portfolios

@@ -2,7 +2,9 @@ mod common;
 
 use common::TestApp;
 use fts_core::{
-    models::{ConstantCurve, DateTimeRangeQuery, DemandCurve, Map, Point, PwlCurve},
+    models::{
+        ConstantCurve, DateTimeRangeQuery, DemandCurve, DemandGroup, Point, ProductGroup, PwlCurve,
+    },
     ports::{Application, DemandRepository, PortfolioRepository, ProductRepository},
 };
 use fts_sqlite::{Db, config::SqliteConfig, types::BidderId};
@@ -119,8 +121,8 @@ async fn test_portfolio_triggers_empty_groups() -> anyhow::Result<()> {
         portfolio_id,
         bidder_id,
         (),
-        Map::default(), // empty demand group
-        Map::default(), // empty product group
+        DemandGroup::default(),  // empty demand group
+        ProductGroup::default(), // empty product group
         now.into(),
     )
     .await?;
@@ -155,9 +157,9 @@ async fn test_portfolio_triggers_partial_updates() -> anyhow::Result<()> {
     db.create_product(product_id, (), now.into()).await?;
 
     // Create portfolio with initial groups
-    let mut initial_demand_group = Map::default();
+    let mut initial_demand_group = DemandGroup::default();
     initial_demand_group.insert(demand_id, 1.0);
-    let mut initial_product_group = Map::default();
+    let mut initial_product_group = ProductGroup::default();
     initial_product_group.insert(product_id, 2.0);
 
     db.create_portfolio(
@@ -179,7 +181,7 @@ async fn test_portfolio_triggers_partial_updates() -> anyhow::Result<()> {
     assert_eq!(initial_portfolio.product_group.get(&product_id), Some(&2.0));
 
     // Update only demand group
-    let mut updated_demand_group = Map::default();
+    let mut updated_demand_group = DemandGroup::default();
     updated_demand_group.insert(demand_id, 1.5);
     let update_time = now + std::time::Duration::from_secs(5);
 
@@ -237,7 +239,7 @@ async fn test_portfolio_triggers_partial_updates() -> anyhow::Result<()> {
     );
 
     // Now update only product group
-    let mut updated_product_group = Map::default();
+    let mut updated_product_group = ProductGroup::default();
     updated_product_group.insert(product_id, 3.0);
     let product_update_time = now + std::time::Duration::from_secs(10);
     let updated_product = <Db as PortfolioRepository<()>>::update_portfolio(
@@ -333,12 +335,12 @@ async fn test_portfolio_triggers_multiple_items() -> anyhow::Result<()> {
     }
 
     // Create portfolio with multiple items in each group
-    let mut demand_group = Map::default();
+    let mut demand_group = DemandGroup::default();
     demand_group.insert(demand1, 1.0);
     demand_group.insert(demand2, 2.0);
     demand_group.insert(demand3, 3.0);
 
-    let mut product_group = Map::default();
+    let mut product_group = ProductGroup::default();
     product_group.insert(product1, 4.0);
     product_group.insert(product2, 5.0);
 
@@ -366,12 +368,12 @@ async fn test_portfolio_triggers_multiple_items() -> anyhow::Result<()> {
     assert_eq!(portfolio.product_group.get(&product2), Some(&5.0));
 
     // Update to remove some items and modify others
-    let mut updated_demand_group = Map::default();
+    let mut updated_demand_group = DemandGroup::default();
     updated_demand_group.insert(demand1, 1.5); // modified
     updated_demand_group.insert(demand3, 3.5); // modified
     // demand2 removed
 
-    let mut updated_product_group = Map::default();
+    let mut updated_product_group = ProductGroup::default();
     updated_product_group.insert(product1, 4.5); // modified
     // product2 removed
 
@@ -557,14 +559,14 @@ async fn test_product_tree_trigger_zero_ratio() -> anyhow::Result<()> {
     let bidder_id = BidderId(uuid::Uuid::new_v4());
     let portfolio_id = app.generate_portfolio_id(&());
 
-    let mut product_group = Map::default();
+    let mut product_group = ProductGroup::default();
     product_group.insert(parent, 1.0);
 
     db.create_portfolio(
         portfolio_id,
         bidder_id,
         (),
-        Map::default(),
+        DemandGroup::default(),
         product_group,
         (now + std::time::Duration::from_secs(2)).into(),
     )

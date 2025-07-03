@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use aide::{
     axum::{ApiRouter, IntoApiResponse, routing::get},
-    openapi::{OpenApi, Tag},
+    openapi::{OpenApi, SecurityScheme, Tag},
     transform::TransformOpenApi,
 };
 use axum::{
@@ -55,27 +55,39 @@ async fn serve_docs(Extension(api): Extension<Arc<OpenApi>>) -> impl IntoApiResp
 
 /// Configure the OpenAPI documentation metadata.
 pub(crate) fn api_docs(api: TransformOpenApi) -> TransformOpenApi {
-    api.title("Flow Trading Service API")
-        .summary("REST API for flow trading operations")
-        .description("This API provides endpoints for managing demands, portfolios, products, and executing batch auctions in a flow trading system.")
+    api.title("Flow Trading API")
+        .summary("A REST API for managing and operating a marketplace using flow-trading methodology.")
+        .description("This API provides endpoints for managing demand curves, portfolios, and products, as well as executing batch auctions.")
+        .version("0.1")
+        .security_scheme("jwt", SecurityScheme::Http { scheme: "bearer".into(), bearer_format: Some("JWT".into()), description: None, extensions: Default::default() })
         .tag(Tag {
-            name: "demands".into(),
-            description: Some("Operations on demand curves".into()),
+            name: "demand".into(),
+            description: Some("CRUD operations on demand curves".into()),
             ..Default::default()
         })
         .tag(Tag {
-            name: "portfolios".into(),
-            description: Some("Operations on portfolios".into()),
+            name: "portfolio".into(),
+            description: Some("CRUD operations on portfolios".into()),
             ..Default::default()
         })
         .tag(Tag {
             name: "products".into(),
-            description: Some("Operations on tradeable products".into()),
+            description: Some("CRUD operations on products".into()),
             ..Default::default()
         })
         .tag(Tag {
-            name: "batch".into(),
-            description: Some("Batch auction execution".into()),
+            name: "history".into(),
+            description: Some("Historical querying of bid data".into()),
+            ..Default::default()
+        })
+        .tag(Tag {
+            name: "outcome".into(),
+            description: Some("Outcomes associated to a batch auction".into()),
+            ..Default::default()
+        })
+        .tag(Tag {
+            name: "admin".into(),
+            description: Some("Operations requiring `admin: true` claim in JWT".into()),
             ..Default::default()
         })
 }

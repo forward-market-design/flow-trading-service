@@ -1,8 +1,8 @@
 use crate::Db;
 use crate::types::{BatchData, DemandId, OutcomeRow, PortfolioId, ProductId};
-use fts_core::models::{DateTimeRangeQuery, DateTimeRangeResponse, OutcomeRecord};
+use fts_core::models::{DateTimeRangeQuery, DateTimeRangeResponse, Map, OutcomeRecord};
 use fts_core::{
-    models::{DemandCurve, DemandCurveDto, Map},
+    models::{DemandCurve, DemandCurveDto, DemandGroup, ProductGroup},
     ports::{BatchRepository, Solver},
 };
 
@@ -28,43 +28,26 @@ where
             .fetch_optional(&self.reader)
             .await?;
 
-        let (demand_curves, portfolios) = if let Some(BatchData {
-            demand_curves,
-            demand_groups,
-            product_groups,
+        let (demands, portfolios) = if let Some(BatchData {
+            demands,
+            portfolios,
         }) = data
         {
-            let demand_curves = demand_curves
+            let demands = demands
                 .map(|x| x.0)
                 .unwrap_or_default()
                 .into_iter()
                 .map(|(key, value)| (key, unsafe { DemandCurve::new_unchecked(value) }))
                 .collect();
 
-            let demand_groups = demand_groups.map(|x| x.0).unwrap_or_default();
-            let mut product_groups = product_groups.map(|x| x.0).unwrap_or_default();
+            let portfolios = portfolios.map(|x| x.0).unwrap_or_default();
 
-            // We unify the groups by taking the demand groups and trying to steal a corresponding product group.
-            let mut portfolios = demand_groups
-                .into_iter()
-                .map(|(portfolio_id, demand_group)| {
-                    let product_group = product_groups
-                        .swap_remove(&portfolio_id)
-                        .unwrap_or_default();
-                    (portfolio_id, (demand_group, product_group))
-                })
-                .collect::<Map<_, _>>();
-            // Probably there are no product groups left, but if there are we know there was no associated demand group.
-            for (portfolio_id, product_group) in product_groups.into_iter() {
-                portfolios.insert(portfolio_id, (Default::default(), product_group));
-            }
-
-            (demand_curves, portfolios)
+            (demands, portfolios)
         } else {
             Default::default()
         };
 
-        let outcome = solver.solve(demand_curves, portfolios, state).await;
+        let outcome = solver.solve(demands, portfolios, state).await;
 
         match outcome {
             Ok((portfolio_outcomes, product_outcomes)) => {

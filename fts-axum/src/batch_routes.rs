@@ -15,7 +15,9 @@ use crate::ApiApplication;
 
 /// Creates a router with batch-related endpoints.
 pub fn router<T: ApiApplication>() -> ApiRouter<T> {
-    ApiRouter::new().api_route("/", post(batch_solve::<T>))
+    ApiRouter::new().api_route_with("/", post(batch_solve::<T>), |route| {
+        route.security_requirement("jwt").tag("admin")
+    })
 }
 
 /// Execute a batch auction at the current timestamp.

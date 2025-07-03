@@ -1,7 +1,7 @@
 use crate::{PortfolioOutcome, ProductOutcome, disaggregate};
 use clarabel::{algebra::*, solver::*};
 use fts_core::{
-    models::{DemandCurve, Map},
+    models::{DemandCurve, DemandGroup, Map, ProductGroup},
     ports::Solver,
 };
 use std::{hash::Hash, marker::PhantomData};
@@ -40,7 +40,7 @@ impl<
     fn solve(
         settings: DefaultSettings<f64>,
         demand_curves: Map<DemandId, DemandCurve>,
-        portfolios: Map<PortfolioId, (Map<DemandId>, Map<ProductId>)>,
+        portfolios: Map<PortfolioId, (DemandGroup<DemandId>, ProductGroup<ProductId>)>,
     ) -> Result<
         (
             Map<PortfolioId, PortfolioOutcome>,
@@ -236,7 +236,7 @@ impl<
     async fn solve(
         &self,
         demand_curves: Map<DemandId, DemandCurve>,
-        portfolios: Map<PortfolioId, (Map<DemandId>, Map<ProductId>)>,
+        portfolios: Map<PortfolioId, (DemandGroup<DemandId>, ProductGroup<ProductId>)>,
         _state: Self::State,
     ) -> Result<
         (

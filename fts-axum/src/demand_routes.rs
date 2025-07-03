@@ -15,7 +15,7 @@ use axum::{
 };
 use axum_extra::TypedHeader;
 use fts_core::{
-    models::{DateTimeRangeQuery, DateTimeRangeResponse, Demand, DemandCurve, ValueRecord},
+    models::{DateTimeRangeQuery, DateTimeRangeResponse, DemandCurve, DemandRecord, ValueRecord},
     ports::{DemandRepository as _, Repository},
 };
 use headers::{Authorization, authorization::Bearer};
@@ -24,18 +24,33 @@ use tracing::{Level, event};
 /// Creates a router with demand-related endpoints.
 pub fn router<T: ApiApplication>() -> ApiRouter<T> {
     ApiRouter::new()
-        .api_route("/", get(query_demands::<T>).post(create_demand::<T>))
-        .api_route(
+        .api_route_with(
+            "/",
+            get(query_demands::<T>).post(create_demand::<T>),
+            |route| route.security_requirement("jwt").tag("demand"),
+        )
+        .api_route_with(
             "/{demand_id}",
             get(get_demand::<T>)
                 .put(update_demand::<T>)
                 .delete(delete_demand::<T>),
+            |route| route.security_requirement("jwt").tag("demand"),
         )
-        .api_route("/{demand_id}/history", get(get_demand_history::<T>))
+        .api_route_with(
+            "/{demand_id}/history",
+            get(get_demand_history::<T>),
+            |route| {
+                route
+                    .security_requirement("jwt")
+                    .tag("demand")
+                    .tag("history")
+            },
+        )
 }
 
 /// Path parameter for demand-specific endpoints.
 #[derive(serde::Deserialize, schemars::JsonSchema)]
+#[schemars(inline)]
 struct Id<T> {
     /// The unique identifier of the demand
     demand_id: T,
@@ -156,7 +171,7 @@ async fn get_demand<T: ApiApplication>(
     Path(Id { demand_id }): Path<Id<<T::Repository as Repository>::DemandId>>,
 ) -> Result<
     Json<
-        Demand<
+        DemandRecord<
             <T::Repository as Repository>::DateTime,
             <T::Repository as Repository>::BidderId,
             <T::Repository as Repository>::DemandId,
@@ -398,6 +413,7 @@ async fn get_demand_history<T: ApiApplication>(
 
 /// Request body for creating a new demand.
 #[derive(serde::Deserialize, schemars::JsonSchema)]
+#[schemars(inline)]
 struct CreateDemandRequestBody<D> {
     /// Application-specific data to associate with the demand
     app_data: D,
@@ -407,6 +423,7 @@ struct CreateDemandRequestBody<D> {
 
 /// Response body for creating a new demand.
 #[derive(serde::Serialize, schemars::JsonSchema)]
+#[schemars(inline)]
 struct CreateDemandResponseBody<T, U> {
     /// The effective timestamp of the demand
     as_of: T,

@@ -1,4 +1,4 @@
-use crate::models::Map;
+use crate::models::{DemandGroup, ProductGroup};
 use std::hash::Hash;
 
 /// Represents a portfolio entity in the flow trading system.
@@ -14,9 +14,24 @@ use std::hash::Hash;
 /// - **Bidder**: Each portfolio is owned by exactly one bidder
 /// - **Demands**: Multiple demands can be associated to a portfolio, each with individual weights
 /// - **Products**: Multiple products can be associated to a portfolio, each with individual weights
-#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema))]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct Portfolio<
+#[cfg_attr(
+    feature = "schemars",
+    derive(schemars::JsonSchema),
+    schemars(rename = "PortfolioRecord")
+)]
+#[cfg_attr(
+    feature = "serde",
+    derive(serde::Serialize, serde::Deserialize),
+    serde(bound(serialize = "
+            DateTime: serde::Serialize,
+            BidderId: serde::Serialize,
+            PortfolioId: serde::Serialize + Clone,
+            DemandId: serde::Serialize + Clone,
+            ProductId: serde::Serialize + Clone,
+            AppData: serde::Serialize
+        "))
+)]
+pub struct PortfolioRecord<
     DateTime,
     BidderId: Eq,
     PortfolioId: Eq + Hash,
@@ -42,8 +57,8 @@ pub struct Portfolio<
     pub bidder_id: BidderId,
 
     /// Map of demands associated with this portfolio and their weights.
-    pub demand_group: Map<DemandId>,
+    pub demand_group: DemandGroup<DemandId>,
 
     /// Map of products this portfolio can trade and their weights.
-    pub product_group: Map<ProductId>,
+    pub product_group: ProductGroup<ProductId>,
 }

@@ -2,7 +2,7 @@ mod common;
 
 use common::TestApp;
 use fts_core::{
-    models::{DateTimeRangeQuery, Map},
+    models::{DateTimeRangeQuery, DemandGroup, ProductGroup},
     ports::{Application, DemandRepository as _, PortfolioRepository, ProductRepository as _},
 };
 use fts_sqlite::{Db, config::SqliteConfig, types::BidderId};
@@ -46,10 +46,10 @@ async fn test_portfolio_history() -> anyhow::Result<()> {
     .await?;
 
     // Create initial portfolio
-    let mut initial_product_group = Map::default();
+    let mut initial_product_group = ProductGroup::default();
     initial_product_group.insert(product1, 1.0);
 
-    let mut initial_demand_group = Map::default();
+    let mut initial_demand_group = DemandGroup::default();
     initial_demand_group.insert(demand1, 0.5);
 
     db.create_portfolio(
@@ -63,11 +63,11 @@ async fn test_portfolio_history() -> anyhow::Result<()> {
     .await?;
 
     // Update portfolio to include more products and demands
-    let mut updated_product_group = Map::default();
+    let mut updated_product_group = ProductGroup::default();
     updated_product_group.insert(product1, 0.7);
     updated_product_group.insert(product2, 1.5);
 
-    let mut updated_demand_group = Map::default();
+    let mut updated_demand_group = DemandGroup::default();
     updated_demand_group.insert(demand1, 0.3);
     updated_demand_group.insert(demand2, 0.8);
 

@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "with dc as (\n    select\n        jsonb_group_object(demand_id, value) as demand_curves\n    from\n        curve_data\n    where\n        valid_from <= $1 and ($1 < valid_until or valid_until is null) and value is not null\n),\n\ndg as (\n        select\n            portfolio_id,\n            jsonb_group_object(demand_id, weight) as demand_group\n        from\n            demand_group\n        where\n            valid_from <= $1 and ($1 < valid_until or valid_until is null)\n        group by\n            portfolio_id\n        having\n            count(*) > 0\n),\n\npg as (\n        select\n            portfolio_id,\n            jsonb_group_object(product_id, weight) as product_group\n        from\n            product_group_view\n        where\n            valid_from <= $1 and ($1 < valid_until or valid_until is null)\n        group by\n            portfolio_id\n        having\n            count(*) > 0\n),\n\nportfolios as (\n    select\n        jsonb_group_object(pg.portfolio_id, jsonb_array(coalesce(demand_group, jsonb_object()), product_group)) as portfolios\n    from\n        pg\n    left join\n        dg\n    on\n        dg.portfolio_id = pg.portfolio_id \n)\n\nselect\n    json(demand_curves) as \"demands?: sqlx::types::Json<Map<DemandId, DemandCurveDto>>\",\n    json(portfolios) as \"portfolios?: sqlx::types::Json<Map<PortfolioId, (DemandGroup<DemandId>, ProductGroup<ProductId>)>>\"\nfrom\n    dc\nfull join\n    portfolios\n",
+  "describe": {
+    "columns": [
+      {
+        "name": "demands?: sqlx::types::Json<Map<DemandId, DemandCurveDto>>",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "portfolios?: sqlx::types::Json<Map<PortfolioId, (DemandGroup<DemandId>, ProductGroup<ProductId>)>>",
+        "ordinal": 1,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      null,
+      null
+    ]
+  },
+  "hash": "576fb17e209d6b5c947e85432eb26b5fe6e1cd77ed3cbd9a97ac5c6c9895d44f"
+}
