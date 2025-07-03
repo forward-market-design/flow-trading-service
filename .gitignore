@@ -28,7 +28,7 @@
 /build/
 **/build/
 
-/.env
-/*.db
-/*.db-shm
-/*.db-wal
+**/.env
+**/*.db
+**/*.db-shm
+**/*.db-wal

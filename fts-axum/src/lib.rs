@@ -58,6 +58,14 @@ pub fn schema<T: ApiApplication>() -> OpenApi {
 
 /// Construct a full API router with the given state and config
 pub fn router<T: ApiApplication>(state: T, config: AxumConfig) -> axum::Router {
+    let policy = tower_http::cors::CorsLayer::new()
+        .allow_origin(tower_http::cors::Any)
+        .allow_methods(tower_http::cors::Any)
+        .allow_headers([
+            axum::http::header::AUTHORIZATION,
+            axum::http::header::CONTENT_TYPE,
+        ]);
+
     let mut api = OpenApi::default();
     ApiRouter::new()
         .api_route("/health", get(health_check))
@@ -69,6 +77,7 @@ pub fn router<T: ApiApplication>(state: T, config: AxumConfig) -> axum::Router {
         .finish_api_with(&mut api, api_docs)
         .layer(Extension(Arc::new(api))) // Arc is very important here or you will face massive memory and performance issues
         .layer(Extension(Arc::new(config)))
+        .layer(policy)
         .with_state(state)
 }
 

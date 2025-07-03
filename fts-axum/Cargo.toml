@@ -20,6 +20,7 @@ tracing = { workspace = true }
 axum = { version = "0.8" }
 axum-extra = { version = "0.10", features = ["typed-header"] }
 headers = { version = "0.4" }
+tower-http = { version = "0.6", features = ["cors"] }
 
 [dev-dependencies]
 fts-core = { workspace = true, features = ["schemars", "serde"] }
