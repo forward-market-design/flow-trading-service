@@ -17,7 +17,7 @@ publish = true
 rust-version = "1.85"
 
 [workspace.dependencies]
-fts-axum = { path = "./fts-axum", version = "0.4.1" }
+fts-axum = { path = "./fts-axum", version = "0.4.2" }
 fts-core = { path = "./fts-core", version = "0.4.0" }
 fts-solver = { path = "./fts-solver", version = "0.5.1" }
 fts-sqlite = { path = "./fts-sqlite", version = "0.2.1" }
