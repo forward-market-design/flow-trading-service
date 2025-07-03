@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1](https://github.com/forward-market-design/flow-trading-service/compare/fts-sqlite-v0.2.0...fts-sqlite-v0.2.1) - 2025-07-03
+
+### Added
+
+- dedicated types for demand and product groups
+
+### Other
+
+- *(wip)* improved schema names
+
 ## [0.1.6](https://github.com/forward-market-design/flow-trading-service/compare/fts-sqlite-v0.1.5...fts-sqlite-v0.1.6) - 2025-05-05
 
 ### Other

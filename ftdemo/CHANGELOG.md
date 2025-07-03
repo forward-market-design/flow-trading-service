@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0](https://github.com/forward-market-design/flow-trading-service/compare/ftdemo-v0.2.0...ftdemo-v0.3.0) - 2025-07-03
+
+### Added
+
+- introduce commands to ftdemo
+- extract openapi schema to file
+
+### Fixed
+
+- ftdemo productdata to properly take rfc3339 timestamps
+
 ## [0.2.0](https://github.com/forward-market-design/flow-trading-service/compare/ftdemo-v0.1.1...ftdemo-v0.2.0) - 2025-06-27
 
 ### Added

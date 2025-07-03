@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1](https://github.com/forward-market-design/flow-trading-service/compare/fts-solver-v0.5.0...fts-solver-v0.5.1) - 2025-07-03
+
+### Added
+
+- dedicated types for demand and product groups
+
+### Other
+
+- update clarabel construction to new api
+- *(deps)* bump clarabel from 0.10.0 to 0.11.1
+
 ## [0.5.0](https://github.com/forward-market-design/flow-trading-service/compare/fts-solver-v0.4.0...fts-solver-v0.5.0) - 2025-06-27
 
 ### Added

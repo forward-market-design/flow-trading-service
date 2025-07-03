@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1](https://github.com/forward-market-design/flow-trading-service/compare/fts-axum-v0.4.0...fts-axum-v0.4.1) - 2025-07-03
+
+### Added
+
+- dedicated types for demand and product groups
+- introduce commands to ftdemo
+- extract openapi schema to file
+
+### Fixed
+
+- add openapi security info to routes
+- add explicit feature for serde/rc
+
+### Other
+
+- *(wip)* improved schema names
+- inline one-off structs to reduce generics noise in
+- some experiments on openapi docs
+
 ## [0.4.0](https://github.com/forward-market-design/flow-trading-service/compare/fts-server-v0.3.0...fts-axum-v0.4.0) - 2025-06-27
 
 ### Added
