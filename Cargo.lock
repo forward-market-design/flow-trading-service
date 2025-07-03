@@ -1264,7 +1264,7 @@ dependencies = [
 
 [[package]]
 name = "ftdemo"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -1289,7 +1289,7 @@ dependencies = [
 
 [[package]]
 name = "fts-axum"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "aide",
  "axum",
