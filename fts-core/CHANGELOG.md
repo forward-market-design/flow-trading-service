@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0](https://github.com/forward-market-design/flow-trading-service/compare/fts-core-v0.3.0...fts-core-v0.4.0) - 2025-07-03
+
+### Added
+
+- dedicated types for demand and product groups
+
+### Other
+
+- *(wip)* improved schema names
+
 ## [0.3.0](https://github.com/forward-market-design/flow-trading-service/compare/fts-core-v0.2.0...fts-core-v0.3.0) - 2025-06-27
 
 ### Added
