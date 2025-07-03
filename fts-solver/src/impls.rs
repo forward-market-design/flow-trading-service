@@ -1,5 +1,5 @@
 use crate::{HashSet, PortfolioOutcome, ProductOutcome};
-use fts_core::models::{DemandCurve, Map};
+use fts_core::models::{DemandCurve, DemandGroup, Map, ProductGroup};
 use std::hash::Hash;
 
 /// Implementation using the Clarabel interior point solver
@@ -18,10 +18,10 @@ pub(crate) fn prepare<
     ProductId: Clone + Eq + Hash + Ord,
 >(
     mut demand_curves: Map<DemandId, DemandCurve>,
-    mut portfolios: Map<PortfolioId, (Map<DemandId>, Map<ProductId>)>,
+    mut portfolios: Map<PortfolioId, (DemandGroup<DemandId>, ProductGroup<ProductId>)>,
 ) -> (
     Map<DemandId, DemandCurve>,
-    Map<PortfolioId, (Map<DemandId>, Map<ProductId>)>,
+    Map<PortfolioId, (DemandGroup<DemandId>, ProductGroup<ProductId>)>,
     Map<PortfolioId, PortfolioOutcome>,
     Map<ProductId, ProductOutcome>,
 ) {
@@ -83,7 +83,7 @@ pub(crate) fn finalize<
 >(
     mut primal: impl Iterator<Item = &'a f64>,
     dual: impl Iterator<Item = &'b f64>,
-    portfolios: &Map<PortfolioId, (Map<DemandId>, Map<ProductId>)>,
+    portfolios: &Map<PortfolioId, (DemandGroup<DemandId>, ProductGroup<ProductId>)>,
     portfolio_outcomes: &mut Map<PortfolioId, PortfolioOutcome>,
     product_outcomes: &mut Map<ProductId, ProductOutcome>,
 ) {

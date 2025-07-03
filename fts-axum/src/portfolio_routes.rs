@@ -20,7 +20,8 @@ use axum::{
 use axum_extra::TypedHeader;
 use fts_core::{
     models::{
-        DateTimeRangeQuery, DateTimeRangeResponse, Map, OutcomeRecord, PortfolioRecord, ValueRecord,
+        DateTimeRangeQuery, DateTimeRangeResponse, DemandGroup, OutcomeRecord, PortfolioRecord,
+        ProductGroup, ValueRecord,
     },
     ports::{BatchRepository, PortfolioRepository as _, Repository, Solver},
 };
@@ -425,7 +426,7 @@ async fn get_portfolio_demand_history<T: ApiApplication>(
         DateTimeRangeResponse<
             ValueRecord<
                 <T::Repository as Repository>::DateTime,
-                Map<<T::Repository as Repository>::DemandId, f64>,
+                DemandGroup<<T::Repository as Repository>::DemandId>,
             >,
             <T::Repository as Repository>::DateTime,
         >,
@@ -494,7 +495,7 @@ async fn get_portfolio_product_history<T: ApiApplication>(
         DateTimeRangeResponse<
             ValueRecord<
                 <T::Repository as Repository>::DateTime,
-                Map<<T::Repository as Repository>::ProductId, f64>,
+                ProductGroup<<T::Repository as Repository>::ProductId>,
             >,
             <T::Repository as Repository>::DateTime,
         >,
@@ -615,9 +616,9 @@ async fn get_portfolio_outcomes<T: ApiApplication>(
 #[schemars(inline)]
 struct UpdatePortfolioDto<DemandId: Eq + Hash, ProductId: Eq + Hash> {
     /// New demand group weights (None to keep existing)
-    demand_group: Option<Map<DemandId>>,
+    demand_group: Option<DemandGroup<DemandId>>,
     /// New product group weights (None to keep existing)
-    product_group: Option<Map<ProductId>>,
+    product_group: Option<ProductGroup<ProductId>>,
 }
 
 /// Request body for creating a new portfolio.
@@ -627,9 +628,9 @@ struct CreatePortfolioRequestBody<PortfolioData, DemandId: Eq + Hash, ProductId:
     /// Application-specific data to associate with the portfolio
     app_data: PortfolioData,
     /// Initial demand weights
-    demand_group: Map<DemandId>,
+    demand_group: DemandGroup<DemandId>,
     /// Initial product weights
-    product_group: Map<ProductId>,
+    product_group: ProductGroup<ProductId>,
 }
 
 /// Response body for creating a new portfolio

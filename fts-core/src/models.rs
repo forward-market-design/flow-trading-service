@@ -21,6 +21,9 @@ pub use map::*;
 mod datetime;
 pub use datetime::*;
 
+mod group;
+pub use group::*;
+
 /// A timestamped record of a component of a user's bid.
 ///
 /// The interval for which the component has this value is provided alongside

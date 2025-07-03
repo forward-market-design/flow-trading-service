@@ -4,7 +4,7 @@ use crate::{
 };
 use fts_core::{
     models::{
-        DateTimeRangeQuery, DateTimeRangeResponse, DemandRecord, DemandCurve, DemandCurveDto, Map,
+        DateTimeRangeQuery, DateTimeRangeResponse, DemandCurve, DemandCurveDto, DemandRecord, Map,
         ValueRecord,
     },
     ports::DemandRepository,
@@ -133,7 +133,13 @@ impl<DemandData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwned>
         as_of: Self::DateTime,
     ) -> Result<
         Option<
-            DemandRecord<Self::DateTime, Self::BidderId, Self::DemandId, Self::PortfolioId, DemandData>,
+            DemandRecord<
+                Self::DateTime,
+                Self::BidderId,
+                Self::DemandId,
+                Self::PortfolioId,
+                DemandData,
+            >,
         >,
         Self::Error,
     > {

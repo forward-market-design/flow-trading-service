@@ -6,7 +6,10 @@ use crate::{
     },
 };
 use fts_core::{
-    models::{DateTimeRangeQuery, DateTimeRangeResponse, Map, PortfolioRecord, ValueRecord},
+    models::{
+        DateTimeRangeQuery, DateTimeRangeResponse, DemandGroup, PortfolioRecord, ProductGroup,
+        ValueRecord,
+    },
     ports::PortfolioRepository,
 };
 
@@ -73,8 +76,8 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
         portfolio_id: Self::PortfolioId,
         bidder_id: Self::BidderId,
         app_data: PortfolioData,
-        demand_group: Map<Self::DemandId>,
-        product_group: Map<Self::ProductId>,
+        demand_group: DemandGroup<Self::DemandId>,
+        product_group: ProductGroup<Self::ProductId>,
         as_of: Self::DateTime,
     ) -> Result<(), Self::Error> {
         let app_data = sqlx::types::Json(app_data);
@@ -102,8 +105,8 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
     async fn update_portfolio(
         &self,
         portfolio_id: Self::PortfolioId,
-        demand_group: Option<Map<Self::DemandId>>,
-        product_group: Option<Map<Self::ProductId>>,
+        demand_group: Option<DemandGroup<Self::DemandId>>,
+        product_group: Option<ProductGroup<Self::ProductId>>,
         as_of: Self::DateTime,
     ) -> Result<bool, Self::Error> {
         let updated = match (demand_group, product_group) {
@@ -225,7 +228,7 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
         limit: usize,
     ) -> Result<
         DateTimeRangeResponse<
-            ValueRecord<Self::DateTime, Map<Self::DemandId, f64>>,
+            ValueRecord<Self::DateTime, DemandGroup<Self::DemandId>>,
             Self::DateTime,
         >,
         Self::Error,
@@ -237,7 +240,7 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
                 select
                     valid_from as "valid_from!: crate::types::DateTime",
                     valid_until as "valid_until?: crate::types::DateTime",
-                    json_group_object(demand_id, weight) as "demand_group!: sqlx::types::Json<Map<DemandId>>"
+                    json_group_object(demand_id, weight) as "demand_group!: sqlx::types::Json<DemandGroup<DemandId>>"
                 from
                     demand_group
                 where
@@ -289,7 +292,7 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
         limit: usize,
     ) -> Result<
         DateTimeRangeResponse<
-            ValueRecord<Self::DateTime, Map<Self::ProductId, f64>>,
+            ValueRecord<Self::DateTime, ProductGroup<Self::ProductId>>,
             Self::DateTime,
         >,
         Self::Error,
@@ -301,7 +304,7 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
                 select
                     valid_from as "valid_from!: crate::types::DateTime",
                     valid_until as "valid_until?: crate::types::DateTime",
-                    json_group_object(product_id, weight) as "product_group!: sqlx::types::Json<Map<ProductId>>"
+                    json_group_object(product_id, weight) as "product_group!: sqlx::types::Json<ProductGroup<ProductId>>"
                 from
                     product_group
                 where

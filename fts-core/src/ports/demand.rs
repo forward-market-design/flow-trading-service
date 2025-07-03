@@ -1,4 +1,6 @@
-use crate::models::{DateTimeRangeQuery, DateTimeRangeResponse, DemandRecord, DemandCurve, ValueRecord};
+use crate::models::{
+    DateTimeRangeQuery, DateTimeRangeResponse, DemandCurve, DemandRecord, ValueRecord,
+};
 
 /// Repository interface for demand curve submission and retrieval.
 ///

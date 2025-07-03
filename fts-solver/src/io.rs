@@ -1,11 +1,11 @@
 use crate::export::{export_lp, export_mps};
 use fts_core::{
-    models::{DemandCurve, Map},
+    models::{DemandCurve, DemandGroup, Map, ProductGroup},
     ports::Solver,
 };
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use std::io::Write;
-use std::{fmt, hash::Hash, iter};
+use std::{fmt, hash::Hash};
 
 // First order of business: create some newtype wrappers for the various primitives.
 
@@ -28,44 +28,13 @@ string_wrapper!(DemandId);
 string_wrapper!(PortfolioId);
 string_wrapper!(ProductId);
 
-// Second order of business: create one layer of indirection to allow for "simplified"
-// group and portfolio definition in the source file.
-
-fn collection2map<'de, D: Deserializer<'de>, T: Eq + Hash + Deserialize<'de>>(
-    data: D,
-) -> Result<Map<T>, D::Error> {
-    Collection::<T>::deserialize(data).map(Into::into)
-}
-
-// This type spells out the 3 ways to define a collection
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(untagged)]
-enum Collection<T: Eq + Hash> {
-    OneOf(T),
-    SumOf(Vec<T>),
-    MapOf(Map<T>),
-}
-
-impl<T: Eq + Hash> Into<Map<T>> for Collection<T> {
-    fn into(self) -> Map<T> {
-        match self {
-            Collection::OneOf(entry) => iter::once((entry, 1.0)).collect(),
-            Collection::SumOf(entries) => entries.into_iter().zip(iter::repeat(1.0)).collect(),
-            Collection::MapOf(entries) => entries,
-        }
-    }
-}
-
 /// a representation of a portfolio
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Portfolio {
     /// the demand curves
-    #[serde(deserialize_with = "collection2map")]
-    demand_group: Map<DemandId>,
+    demand_group: DemandGroup<DemandId>,
     /// the products
-    #[serde(deserialize_with = "collection2map")]
-    product_group: Map<ProductId>,
+    product_group: ProductGroup<ProductId>,
 }
 
 /// a representation of an auction
