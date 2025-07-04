@@ -1,6 +1,5 @@
 use crate::models::{
     DateTimeRangeQuery, DateTimeRangeResponse, DemandGroup, PortfolioRecord, ProductGroup,
-    ValueRecord,
 };
 
 /// Repository interface for portfolio CRUD operations and history tracking.
@@ -96,10 +95,7 @@ pub trait PortfolioRepository<PortfolioData>: super::Repository {
         limit: usize,
     ) -> impl Future<
         Output = Result<
-            DateTimeRangeResponse<
-                ValueRecord<Self::DateTime, DemandGroup<Self::DemandId>>,
-                Self::DateTime,
-            >,
+            DateTimeRangeResponse<DemandGroup<Self::DemandId>, Self::DateTime>,
             Self::Error,
         >,
     > + Send;
@@ -116,10 +112,7 @@ pub trait PortfolioRepository<PortfolioData>: super::Repository {
         limit: usize,
     ) -> impl Future<
         Output = Result<
-            DateTimeRangeResponse<
-                ValueRecord<Self::DateTime, ProductGroup<Self::ProductId>>,
-                Self::DateTime,
-            >,
+            DateTimeRangeResponse<ProductGroup<Self::ProductId>, Self::DateTime>,
             Self::Error,
         >,
     > + Send;

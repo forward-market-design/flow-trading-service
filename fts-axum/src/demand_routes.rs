@@ -15,7 +15,7 @@ use axum::{
 };
 use axum_extra::TypedHeader;
 use fts_core::{
-    models::{DateTimeRangeQuery, DateTimeRangeResponse, DemandCurve, DemandRecord, ValueRecord},
+    models::{DateTimeRangeQuery, DateTimeRangeResponse, DemandCurve, DemandRecord},
     ports::{DemandRepository as _, Repository},
 };
 use headers::{Authorization, authorization::Bearer};
@@ -368,12 +368,7 @@ async fn get_demand_history<T: ApiApplication>(
     Extension(config): Extension<Arc<config::AxumConfig>>,
     Query(query): Query<DateTimeRangeQuery<<T::Repository as Repository>::DateTime>>,
 ) -> Result<
-    Json<
-        DateTimeRangeResponse<
-            ValueRecord<<T::Repository as Repository>::DateTime, DemandCurve>,
-            <T::Repository as Repository>::DateTime,
-        >,
-    >,
+    Json<DateTimeRangeResponse<DemandCurve, <T::Repository as Repository>::DateTime>>,
     (StatusCode, String),
 > {
     let db = app.database();

@@ -21,7 +21,6 @@ use axum_extra::TypedHeader;
 use fts_core::{
     models::{
         DateTimeRangeQuery, DateTimeRangeResponse, DemandGroup, PortfolioRecord, ProductGroup,
-        ValueRecord,
     },
     ports::{BatchRepository, PortfolioRepository as _, Repository, Solver},
 };
@@ -424,10 +423,7 @@ async fn get_portfolio_demand_history<T: ApiApplication>(
 ) -> Result<
     Json<
         DateTimeRangeResponse<
-            ValueRecord<
-                <T::Repository as Repository>::DateTime,
-                DemandGroup<<T::Repository as Repository>::DemandId>,
-            >,
+            DemandGroup<<T::Repository as Repository>::DemandId>,
             <T::Repository as Repository>::DateTime,
         >,
     >,
@@ -493,10 +489,7 @@ async fn get_portfolio_product_history<T: ApiApplication>(
 ) -> Result<
     Json<
         DateTimeRangeResponse<
-            ValueRecord<
-                <T::Repository as Repository>::DateTime,
-                ProductGroup<<T::Repository as Repository>::ProductId>,
-            >,
+            ProductGroup<<T::Repository as Repository>::ProductId>,
             <T::Repository as Repository>::DateTime,
         >,
     >,
@@ -562,14 +555,11 @@ async fn get_portfolio_outcomes<T: ApiApplication>(
 ) -> Result<
     Json<
         DateTimeRangeResponse<
-            ValueRecord<
-                <T::Repository as Repository>::DateTime,
-                <T::Solver as Solver<
-                    <T::Repository as Repository>::DemandId,
-                    <T::Repository as Repository>::PortfolioId,
-                    <T::Repository as Repository>::ProductId,
-                >>::PortfolioOutcome,
-            >,
+            <T::Solver as Solver<
+                <T::Repository as Repository>::DemandId,
+                <T::Repository as Repository>::PortfolioId,
+                <T::Repository as Repository>::ProductId,
+            >>::PortfolioOutcome,
             <T::Repository as Repository>::DateTime,
         >,
     >,

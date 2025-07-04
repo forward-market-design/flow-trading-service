@@ -5,7 +5,6 @@ use crate::{
 use fts_core::{
     models::{
         DateTimeRangeQuery, DateTimeRangeResponse, DemandGroup, PortfolioRecord, ProductGroup,
-        ValueRecord,
     },
     ports::PortfolioRepository,
 };
@@ -223,13 +222,8 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
         portfolio_id: Self::PortfolioId,
         query: DateTimeRangeQuery<Self::DateTime>,
         limit: usize,
-    ) -> Result<
-        DateTimeRangeResponse<
-            ValueRecord<Self::DateTime, DemandGroup<Self::DemandId>>,
-            Self::DateTime,
-        >,
-        Self::Error,
-    > {
+    ) -> Result<DateTimeRangeResponse<DemandGroup<Self::DemandId>, Self::DateTime>, Self::Error>
+    {
         let limit_p1 = (limit + 1) as i64;
         let mut rows = sqlx::query_as!(
             ValueRow::<DemandGroup<DemandId>>,
@@ -287,13 +281,8 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
         portfolio_id: Self::PortfolioId,
         query: DateTimeRangeQuery<Self::DateTime>,
         limit: usize,
-    ) -> Result<
-        DateTimeRangeResponse<
-            ValueRecord<Self::DateTime, ProductGroup<Self::ProductId>>,
-            Self::DateTime,
-        >,
-        Self::Error,
-    > {
+    ) -> Result<DateTimeRangeResponse<ProductGroup<Self::ProductId>, Self::DateTime>, Self::Error>
+    {
         let limit_p1 = (limit + 1) as i64;
         let mut rows = sqlx::query_as!(
             ValueRow::<ProductGroup<ProductId>>,

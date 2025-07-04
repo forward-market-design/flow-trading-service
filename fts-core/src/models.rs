@@ -26,22 +26,3 @@ pub use datetime::*;
 
 mod group;
 pub use group::*;
-
-/// A timestamped record of a component of a user's bid.
-///
-/// The interval for which the component has this value is provided alongside
-/// the value itself.
-#[cfg_attr(
-    feature = "schemars",
-    derive(schemars::JsonSchema),
-    schemars(rename = "{Value}Record")
-)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct ValueRecord<DateTime, Value> {
-    /// The timestamp when this change occurred
-    pub valid_from: DateTime,
-    /// The timestamp when this change was superceded
-    pub valid_until: Option<DateTime>,
-    /// The component value
-    pub value: Value,
-}

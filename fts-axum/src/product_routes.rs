@@ -18,7 +18,7 @@ use axum::{
 };
 use axum_extra::TypedHeader;
 use fts_core::{
-    models::{DateTimeRangeQuery, DateTimeRangeResponse, ProductRecord, ValueRecord},
+    models::{DateTimeRangeQuery, DateTimeRangeResponse, ProductRecord},
     ports::{BatchRepository as _, ProductRepository as _, Repository, Solver},
 };
 use headers::{Authorization, authorization::Bearer};
@@ -254,14 +254,11 @@ async fn get_product_outcomes<T: ApiApplication>(
 ) -> Result<
     Json<
         DateTimeRangeResponse<
-            ValueRecord<
-                <T::Repository as Repository>::DateTime,
-                <T::Solver as Solver<
-                    <T::Repository as Repository>::DemandId,
-                    <T::Repository as Repository>::PortfolioId,
-                    <T::Repository as Repository>::ProductId,
-                >>::ProductOutcome,
-            >,
+            <T::Solver as Solver<
+                <T::Repository as Repository>::DemandId,
+                <T::Repository as Repository>::PortfolioId,
+                <T::Repository as Repository>::ProductId,
+            >>::ProductOutcome,
             <T::Repository as Repository>::DateTime,
         >,
     >,

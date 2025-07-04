@@ -1,6 +1,6 @@
 use crate::Db;
 use crate::types::{BatchData, DemandId, PortfolioId, ProductId, ValueRow};
-use fts_core::models::{DateTimeRangeQuery, DateTimeRangeResponse, Map, ValueRecord};
+use fts_core::models::{DateTimeRangeQuery, DateTimeRangeResponse, Map};
 use fts_core::{
     models::{DemandCurve, DemandCurveDto, DemandGroup, ProductGroup},
     ports::{BatchRepository, Solver},
@@ -84,10 +84,7 @@ where
         portfolio_id: Self::PortfolioId,
         query: DateTimeRangeQuery<Self::DateTime>,
         limit: usize,
-    ) -> Result<
-        DateTimeRangeResponse<ValueRecord<Self::DateTime, T::PortfolioOutcome>, Self::DateTime>,
-        Self::Error,
-    > {
+    ) -> Result<DateTimeRangeResponse<T::PortfolioOutcome, Self::DateTime>, Self::Error> {
         let limit_p1 = (limit + 1) as i64;
         let mut rows = sqlx::query_as!(
             ValueRow::<T::PortfolioOutcome>,
@@ -144,10 +141,7 @@ where
         product_id: Self::ProductId,
         query: DateTimeRangeQuery<Self::DateTime>,
         limit: usize,
-    ) -> Result<
-        DateTimeRangeResponse<ValueRecord<Self::DateTime, T::ProductOutcome>, Self::DateTime>,
-        Self::Error,
-    > {
+    ) -> Result<DateTimeRangeResponse<T::ProductOutcome, Self::DateTime>, Self::Error> {
         let limit_p1 = (limit + 1) as i64;
         let mut rows = sqlx::query_as!(
             ValueRow::<T::ProductOutcome>,
