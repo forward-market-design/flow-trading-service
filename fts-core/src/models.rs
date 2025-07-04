@@ -15,6 +15,9 @@ pub use portfolio::*;
 mod demand;
 pub use demand::*;
 
+mod product;
+pub use product::*;
+
 mod map;
 pub use map::*;
 

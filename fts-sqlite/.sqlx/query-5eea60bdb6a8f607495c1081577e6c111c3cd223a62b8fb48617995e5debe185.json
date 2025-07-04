@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            select\n                src_id as \"parent_id!: ProductId\",\n                ratio as \"ratio!: f64\"\n            from\n                product_tree\n            where\n                dst_id = $1\n            and\n                depth = 1\n            and\n                valid_from <= $2\n            and\n                ($2 < valid_until or valid_until is null)\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "parent_id!: ProductId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "ratio!: f64",
+        "ordinal": 1,
+        "type_info": "Float"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "5eea60bdb6a8f607495c1081577e6c111c3cd223a62b8fb48617995e5debe185"
+}

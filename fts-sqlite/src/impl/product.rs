@@ -1,5 +1,6 @@
 use crate::Db;
-use fts_core::ports::ProductRepository;
+use crate::types::ProductId;
+use fts_core::{models::ProductRecord, ports::ProductRepository};
 
 impl<ProductData: Send + Unpin + 'static + serde::Serialize + serde::de::DeserializeOwned>
     ProductRepository<ProductData> for Db
@@ -68,8 +69,8 @@ impl<ProductData: Send + Unpin + 'static + serde::Serialize + serde::de::Deseria
     async fn get_product(
         &self,
         product_id: Self::ProductId,
-        _as_of: Self::DateTime,
-    ) -> Result<Option<ProductData>, Self::Error> {
+        as_of: Self::DateTime,
+    ) -> Result<Option<ProductRecord<Self::ProductId, ProductData>>, Self::Error> {
         let product_data = sqlx::query_scalar!(
             r#"
             select
@@ -82,16 +83,64 @@ impl<ProductData: Send + Unpin + 'static + serde::Serialize + serde::de::Deseria
             product_id
         )
         .fetch_optional(&self.reader)
-        .await?;
+        .await?
+        .map(|x| x.0);
 
-        // TODO: We're not presently using as_of, but it should be used
-        //       to gather some sort of tree-relationships.
-        // To research:
-        // Either as part of this function or as a dedicated, separate function,
-        // we want all paths ending in self and starting at self.
-        // The former is linear, the latter is a tree -- maybe there is a
-        // nice infix traversal that, coupled with `depth`, can be used to (de)serialize the trees uniquely?
+        let parent = sqlx::query!(
+            r#"
+            select
+                src_id as "parent_id!: ProductId",
+                ratio as "ratio!: f64"
+            from
+                product_tree
+            where
+                dst_id = $1
+            and
+                depth = 1
+            and
+                valid_from <= $2
+            and
+                ($2 < valid_until or valid_until is null)
+            "#,
+            product_id,
+            as_of,
+        )
+        .fetch_optional(&self.reader)
+        .await?
+        .map(|record| (record.parent_id, record.ratio));
 
-        Ok(product_data.map(|x| x.0))
+        let children = sqlx::query!(
+            r#"
+            select
+                dst_id as "child_id!: ProductId",
+                ratio as "ratio!: f64"
+            from
+                product_tree
+            where
+                src_id = $1
+            and
+                depth = 1
+            and
+                valid_from <= $2
+            and
+                ($2 < valid_until or valid_until is null)
+            "#,
+            product_id,
+            as_of
+        )
+        .fetch_all(&self.reader)
+        .await?
+        .iter()
+        .map(|record| (record.child_id, record.ratio))
+        .collect();
+
+        // TODO: Chaining these queries is probably okay in SQLite,
+        //       but we should be better.
+        Ok(product_data.map(|app_data| ProductRecord {
+            id: product_id,
+            app_data,
+            parent,
+            children,
+        }))
     }
 }

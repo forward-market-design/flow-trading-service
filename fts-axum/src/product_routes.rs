@@ -18,7 +18,7 @@ use axum::{
 };
 use axum_extra::TypedHeader;
 use fts_core::{
-    models::{DateTimeRangeQuery, DateTimeRangeResponse, OutcomeRecord},
+    models::{DateTimeRangeQuery, DateTimeRangeResponse, OutcomeRecord, ProductRecord},
     ports::{BatchRepository as _, ProductRepository as _, Repository, Solver},
 };
 use headers::{Authorization, authorization::Bearer};
@@ -84,12 +84,15 @@ async fn get_product<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
     Path(Id { product_id }): Path<Id<<T::Repository as Repository>::ProductId>>,
-) -> Result<Json<T::ProductData>, (StatusCode, String)> {
+) -> Result<
+    Json<ProductRecord<<T::Repository as Repository>::ProductId, T::ProductData>>,
+    (StatusCode, String),
+> {
     let as_of = app.now();
     let db = app.database();
 
     if app.can_view_products(&auth).await {
-        let product_data = db
+        let product_record = db
             .get_product(product_id.clone(), as_of)
             .await
             .map_err(|err| {
@@ -103,7 +106,7 @@ async fn get_product<T: ApiApplication>(
                 StatusCode::NOT_FOUND,
                 format!("unknown product {}", product_id),
             ))?;
-        Ok(Json(product_data))
+        Ok(Json(product_record))
     } else {
         Err((StatusCode::UNAUTHORIZED, "not authorized".to_string()))
     }

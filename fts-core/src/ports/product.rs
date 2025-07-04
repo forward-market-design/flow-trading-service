@@ -1,3 +1,5 @@
+use crate::models::ProductRecord;
+
 /// Repository interface for product hierarchy management.
 ///
 /// This trait encapsulates the functionality related to defining and maintaining
@@ -49,5 +51,7 @@ pub trait ProductRepository<ProductData>: super::Repository {
         &self,
         product_id: Self::ProductId,
         as_of: Self::DateTime,
-    ) -> impl Future<Output = Result<Option<ProductData>, Self::Error>> + Send;
+    ) -> impl Future<
+        Output = Result<Option<ProductRecord<Self::ProductId, ProductData>>, Self::Error>,
+    > + Send;
 }
