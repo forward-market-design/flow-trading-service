@@ -84,6 +84,7 @@ macro_rules! hashmap_newtype {
 // tables.)
 
 hashmap_newtype!(DemandGroup, "DemandGroup");
+hashmap_newtype!(PortfolioGroup, "PortfolioGroup");
 hashmap_newtype!(ProductGroup, "ProductGroup");
 
 // This type spells out the 3 ways to define a collection

@@ -1,6 +1,6 @@
 use crate::{
     Db,
-    types::{BidderId, DemandId, PortfolioId, PortfolioRow, ProductId, ValueRow},
+    types::{BidderId, DateTime, DemandId, PortfolioId, PortfolioRow, ProductId, ValueRow},
 };
 use fts_core::{
     models::{
@@ -201,14 +201,7 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
         .fetch_optional(&self.reader)
         .await?;
 
-        Ok(query.map(|row| PortfolioRecord {
-            id: portfolio_id,
-            as_of,
-            bidder_id: row.bidder_id,
-            app_data: row.app_data.0,
-            demand_group: row.demand_group.map(|data| data.0).unwrap_or_default(),
-            product_group: row.product_group.map(|data| data.0).unwrap_or_default(),
-        }))
+        Ok(query.map(Into::into))
     }
 
     /// Get the history of this portfolio's demands

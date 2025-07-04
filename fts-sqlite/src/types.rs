@@ -4,7 +4,10 @@
 //! types used for database row mapping. The public types include strongly-typed
 //! IDs and datetime representations that ensure type safety across the system.
 
-use fts_core::models::{DemandCurveDto, DemandGroup, Map, ProductGroup, ValueRecord};
+use fts_core::models::{
+    DemandCurve, DemandCurveDto, DemandGroup, DemandRecord, Map, PortfolioGroup, PortfolioRecord,
+    ProductGroup, ValueRecord,
+};
 
 mod datetime;
 pub use datetime::DateTime;
@@ -20,17 +23,60 @@ pub(crate) struct BatchData {
 }
 
 pub(crate) struct DemandRow<AppData> {
+    pub id: DemandId,
+    pub valid_from: DateTime,
+    pub valid_until: Option<DateTime>,
     pub bidder_id: BidderId,
     pub app_data: sqlx::types::Json<AppData>,
     pub curve_data: Option<sqlx::types::Json<DemandCurveDto>>,
-    pub portfolio_group: Option<sqlx::types::Json<Map<PortfolioId>>>,
+    pub portfolio_group: Option<sqlx::types::Json<PortfolioGroup<PortfolioId>>>,
+}
+
+impl<AppData> Into<DemandRecord<DateTime, BidderId, DemandId, PortfolioId, AppData>>
+    for DemandRow<AppData>
+{
+    fn into(self) -> DemandRecord<DateTime, BidderId, DemandId, PortfolioId, AppData> {
+        DemandRecord {
+            id: self.id,
+            valid_from: self.valid_from,
+            valid_until: self.valid_until,
+            bidder_id: self.bidder_id,
+            app_data: self.app_data.0,
+            curve_data: self
+                .curve_data
+                // SAFETY: we are deserialized from the database, and we ensure we only save valid demand curves
+                .map(|x| unsafe { DemandCurve::new_unchecked(x.0) }),
+            portfolio_group: self.portfolio_group.map(|x| x.0).unwrap_or_default(),
+        }
+    }
 }
 
 pub(crate) struct PortfolioRow<AppData> {
+    pub id: PortfolioId,
+    pub valid_from: DateTime,
+    pub valid_until: Option<DateTime>,
     pub bidder_id: BidderId,
     pub app_data: sqlx::types::Json<AppData>,
     pub demand_group: Option<sqlx::types::Json<DemandGroup<DemandId>>>,
     pub product_group: Option<sqlx::types::Json<ProductGroup<ProductId>>>,
+}
+
+impl<AppData> Into<PortfolioRecord<DateTime, BidderId, PortfolioId, DemandId, ProductId, AppData>>
+    for PortfolioRow<AppData>
+{
+    fn into(
+        self,
+    ) -> PortfolioRecord<DateTime, BidderId, PortfolioId, DemandId, ProductId, AppData> {
+        PortfolioRecord {
+            id: self.id,
+            valid_from: self.valid_from,
+            valid_until: self.valid_until,
+            bidder_id: self.bidder_id,
+            app_data: self.app_data.0,
+            demand_group: self.demand_group.map(|x| x.0).unwrap_or_default(),
+            product_group: self.product_group.map(|x| x.0).unwrap_or_default(),
+        }
+    }
 }
 
 pub(crate) struct ValueRow<Value> {

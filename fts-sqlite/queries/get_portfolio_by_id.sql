@@ -4,7 +4,8 @@ app_data_cte as (
     select
         id as portfolio_id,
         bidder_id,
-        app_data as value
+        app_data as value,
+        as_of
     from
         portfolio
     where
@@ -14,6 +15,8 @@ app_data_cte as (
 demand_group_cte as (
     select
         portfolio_id,
+        max(valid_from) as valid_from,
+        min(valid_until) as valid_until,
         jsonb_group_object(demand_id, weight) as value
     from
         demand_group
@@ -30,6 +33,8 @@ demand_group_cte as (
 product_group_cte as (
     select
         portfolio_id,
+        max(valid_from) as valid_from,
+        min(valid_until) as valid_until,
         jsonb_group_object(product_id, weight) as value
     from
         product_group_view
@@ -44,6 +49,15 @@ product_group_cte as (
 )
 
 select
+    portfolio_id as "id!: PortfolioId",
+    max(
+        coalesce(demand_group_cte.valid_from, product_group_cte.valid_from, app_data_cte.as_of),
+        coalesce(product_group_cte.valid_from, demand_group_cte.valid_from, app_data_cte.as_of)
+    ) as "valid_from!: DateTime",
+    min(
+        coalesce(demand_group_cte.valid_until, product_group_cte.valid_until),
+        coalesce(product_group_cte.valid_until, demand_group_cte.valid_until)
+    ) as "valid_until?: DateTime",
     app_data_cte.bidder_id as "bidder_id!: BidderId",
     json(app_data_cte.value) as "app_data!: sqlx::types::Json<PortfolioData>",
     json(demand_group_cte.value) as "demand_group?: sqlx::types::Json<DemandGroup<DemandId>>",

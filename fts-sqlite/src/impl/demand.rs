@@ -4,8 +4,8 @@ use crate::{
 };
 use fts_core::{
     models::{
-        DateTimeRangeQuery, DateTimeRangeResponse, DemandCurve, DemandCurveDto, DemandRecord, Map,
-        ValueRecord,
+        DateTimeRangeQuery, DateTimeRangeResponse, DemandCurve, DemandCurveDto, DemandRecord,
+        PortfolioGroup, ValueRecord,
     },
     ports::DemandRepository,
 };
@@ -148,17 +148,7 @@ impl<DemandData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwned>
                 .fetch_optional(&self.reader)
                 .await?;
 
-        Ok(query.map(|row| DemandRecord {
-            id: demand_id,
-            as_of,
-            bidder_id: row.bidder_id,
-            app_data: row.app_data.0,
-            curve_data: row
-                .curve_data
-                // SAFETY: `curve_data` was necessarily serialized from a valid curve, so we can safely skip the validation
-                .map(|data| unsafe { DemandCurve::new_unchecked(data.0) }),
-            portfolio_group: row.portfolio_group.map(|data| data.0).unwrap_or_default(),
-        }))
+        Ok(query.map(Into::into))
     }
 
     async fn get_demand_history(
