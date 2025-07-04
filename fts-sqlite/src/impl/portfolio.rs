@@ -1,9 +1,6 @@
 use crate::{
     Db,
-    types::{
-        BidderId, DemandId, PortfolioDemandHistoryRow, PortfolioId, PortfolioProductHistoryRow,
-        PortfolioRow, ProductId,
-    },
+    types::{BidderId, DemandId, PortfolioId, PortfolioRow, ProductId, ValueRow},
 };
 use fts_core::{
     models::{
@@ -235,12 +232,12 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
     > {
         let limit_p1 = (limit + 1) as i64;
         let mut rows = sqlx::query_as!(
-            PortfolioDemandHistoryRow,
+            ValueRow::<DemandGroup<DemandId>>,
             r#"
                 select
                     valid_from as "valid_from!: crate::types::DateTime",
                     valid_until as "valid_until?: crate::types::DateTime",
-                    json_group_object(demand_id, weight) as "demand_group!: sqlx::types::Json<DemandGroup<DemandId>>"
+                    json_group_object(demand_id, weight) as "value!: sqlx::types::Json<DemandGroup<DemandId>>"
                 from
                     demand_group
                 where
@@ -299,12 +296,12 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
     > {
         let limit_p1 = (limit + 1) as i64;
         let mut rows = sqlx::query_as!(
-            PortfolioProductHistoryRow,
+            ValueRow::<ProductGroup<ProductId>>,
             r#"
                 select
                     valid_from as "valid_from!: crate::types::DateTime",
                     valid_until as "valid_until?: crate::types::DateTime",
-                    json_group_object(product_id, weight) as "product_group!: sqlx::types::Json<ProductGroup<ProductId>>"
+                    json_group_object(product_id, weight) as "value!: sqlx::types::Json<ProductGroup<ProductId>>"
                 from
                     product_group
                 where

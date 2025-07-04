@@ -1,6 +1,6 @@
 use crate::Db;
-use crate::types::{BatchData, DemandId, OutcomeRow, PortfolioId, ProductId};
-use fts_core::models::{DateTimeRangeQuery, DateTimeRangeResponse, Map, OutcomeRecord};
+use crate::types::{BatchData, DemandId, PortfolioId, ProductId, ValueRow};
+use fts_core::models::{DateTimeRangeQuery, DateTimeRangeResponse, Map, ValueRecord};
 use fts_core::{
     models::{DemandCurve, DemandCurveDto, DemandGroup, ProductGroup},
     ports::{BatchRepository, Solver},
@@ -85,16 +85,17 @@ where
         query: DateTimeRangeQuery<Self::DateTime>,
         limit: usize,
     ) -> Result<
-        DateTimeRangeResponse<OutcomeRecord<Self::DateTime, T::PortfolioOutcome>, Self::DateTime>,
+        DateTimeRangeResponse<ValueRecord<Self::DateTime, T::PortfolioOutcome>, Self::DateTime>,
         Self::Error,
     > {
         let limit_p1 = (limit + 1) as i64;
         let mut rows = sqlx::query_as!(
-            OutcomeRow::<T::PortfolioOutcome>,
+            ValueRow::<T::PortfolioOutcome>,
             r#"
                 select
-                    valid_from as "as_of!: crate::types::DateTime",
-                    json(value) as "outcome!: sqlx::types::Json<T::PortfolioOutcome>"
+                    valid_from as "valid_from!: crate::types::DateTime",
+                    valid_until as "valid_until?: crate::types::DateTime",
+                    json(value) as "value!: sqlx::types::Json<T::PortfolioOutcome>"
                 from
                     portfolio_outcome
                 where
@@ -120,7 +121,7 @@ where
         let more = if rows.len() == limit + 1 {
             let extra = rows.pop().unwrap();
             Some(DateTimeRangeQuery {
-                before: Some(extra.as_of),
+                before: Some(extra.valid_from),
                 after: query.after,
             })
         } else {
@@ -128,13 +129,7 @@ where
         };
 
         Ok(DateTimeRangeResponse {
-            results: rows
-                .into_iter()
-                .map(|row| OutcomeRecord {
-                    as_of: row.as_of,
-                    outcome: row.outcome.0,
-                })
-                .collect(),
+            results: rows.into_iter().map(Into::into).collect(),
             more,
         })
     }
@@ -150,16 +145,17 @@ where
         query: DateTimeRangeQuery<Self::DateTime>,
         limit: usize,
     ) -> Result<
-        DateTimeRangeResponse<OutcomeRecord<Self::DateTime, T::ProductOutcome>, Self::DateTime>,
+        DateTimeRangeResponse<ValueRecord<Self::DateTime, T::ProductOutcome>, Self::DateTime>,
         Self::Error,
     > {
         let limit_p1 = (limit + 1) as i64;
         let mut rows = sqlx::query_as!(
-            OutcomeRow::<T::ProductOutcome>,
+            ValueRow::<T::ProductOutcome>,
             r#"
                 select
-                    valid_from as "as_of!: crate::types::DateTime",
-                    json(value) as "outcome!: sqlx::types::Json<T::ProductOutcome>"
+                    valid_from as "valid_from!: crate::types::DateTime",
+                    valid_until as "valid_until?: crate::types::DateTime",
+                    json(value) as "value!: sqlx::types::Json<T::ProductOutcome>"
                 from
                     product_outcome
                 where
@@ -185,7 +181,7 @@ where
         let more = if rows.len() == limit + 1 {
             let extra = rows.pop().unwrap();
             Some(DateTimeRangeQuery {
-                before: Some(extra.as_of),
+                before: Some(extra.valid_from),
                 after: query.after,
             })
         } else {
@@ -193,13 +189,7 @@ where
         };
 
         Ok(DateTimeRangeResponse {
-            results: rows
-                .into_iter()
-                .map(|row| OutcomeRecord {
-                    as_of: row.as_of,
-                    outcome: row.outcome.0,
-                })
-                .collect(),
+            results: rows.into_iter().map(Into::into).collect(),
             more,
         })
     }

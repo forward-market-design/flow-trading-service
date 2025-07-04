@@ -1,4 +1,4 @@
-use crate::models::{DateTimeRangeQuery, DateTimeRangeResponse, OutcomeRecord};
+use crate::models::{DateTimeRangeQuery, DateTimeRangeResponse, ValueRecord};
 
 /// Repository interface for batch auction execution and outcome retrieval.
 ///
@@ -36,10 +36,7 @@ pub trait BatchRepository<T: super::Solver<Self::DemandId, Self::PortfolioId, Se
         limit: usize,
     ) -> impl Future<
         Output = Result<
-            DateTimeRangeResponse<
-                OutcomeRecord<Self::DateTime, T::PortfolioOutcome>,
-                Self::DateTime,
-            >,
+            DateTimeRangeResponse<ValueRecord<Self::DateTime, T::PortfolioOutcome>, Self::DateTime>,
             Self::Error,
         >,
     > + Send;
@@ -56,7 +53,7 @@ pub trait BatchRepository<T: super::Solver<Self::DemandId, Self::PortfolioId, Se
         limit: usize,
     ) -> impl Future<
         Output = Result<
-            DateTimeRangeResponse<OutcomeRecord<Self::DateTime, T::ProductOutcome>, Self::DateTime>,
+            DateTimeRangeResponse<ValueRecord<Self::DateTime, T::ProductOutcome>, Self::DateTime>,
             Self::Error,
         >,
     > + Send;

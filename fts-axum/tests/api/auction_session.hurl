@@ -80,9 +80,9 @@ Authorization: Bearer bidder_id={{bidder1}}&can_view_products=true
 HTTP 200
 [Asserts]
 jsonpath "$.results" count == 1
-jsonpath "$.results[0].outcome.price" == 10
-jsonpath "$.results[0].outcome.rate" < 5.0001
-jsonpath "$.results[0].outcome.rate" > 4.9999
+jsonpath "$.results[0].value.price" == 10
+jsonpath "$.results[0].value.rate" < 5.0001
+jsonpath "$.results[0].value.rate" > 4.9999
 
 # We expect the rate to be approximately 5, but I am not clear how to do "approximately equal" comparisons in Hurl yet
 
@@ -98,9 +98,9 @@ Authorization: Bearer bidder_id={{bidder1}}&can_read_bid=true
 HTTP 200
 [Asserts]
 jsonpath "$.results" count == 1
-jsonpath "$.results[0].outcome.price" == 10
-jsonpath "$.results[0].outcome.rate" > -5.0001
-jsonpath "$.results[0].outcome.rate" < -4.9999
+jsonpath "$.results[0].value.price" == 10
+jsonpath "$.results[0].value.rate" > -5.0001
+jsonpath "$.results[0].value.rate" < -4.9999
 
 GET {{baseurl}}/portfolio/{{portfolio1}}/outcomes
 Authorization: Bearer bidder_id={{bidder2}}&can_read_bid=true
@@ -111,6 +111,6 @@ Authorization: Bearer bidder_id={{bidder2}}&can_read_bid=true
 HTTP 200
 [Asserts]
 jsonpath "$.results" count == 1
-jsonpath "$.results[0].outcome.price" == 10
-jsonpath "$.results[0].outcome.rate" < 5.0001
-jsonpath "$.results[0].outcome.rate" > 4.9999
+jsonpath "$.results[0].value.price" == 10
+jsonpath "$.results[0].value.rate" < 5.0001
+jsonpath "$.results[0].value.rate" > 4.9999

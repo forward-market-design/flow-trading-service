@@ -1,6 +1,6 @@
 use crate::{
     Db,
-    types::{BidderId, DateTime, DemandHistoryRow, DemandId, DemandRow, PortfolioId},
+    types::{BidderId, DateTime, DemandId, DemandRow, PortfolioId, ValueRow},
 };
 use fts_core::{
     models::{
@@ -172,12 +172,12 @@ impl<DemandData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwned>
     > {
         let limit_p1 = (limit + 1) as i64;
         let mut rows = sqlx::query_as!(
-            DemandHistoryRow,
+            ValueRow::<DemandCurveDto>,
             r#"
                 select
                     valid_from as "valid_from!: DateTime",
                     valid_until as "valid_until?: DateTime",
-                    json(value) as "curve_data!: sqlx::types::Json<DemandCurveDto>"
+                    json(value) as "value!: sqlx::types::Json<DemandCurveDto>"
                 from
                     curve_data
                 where
@@ -213,7 +213,22 @@ impl<DemandData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwned>
         };
 
         Ok(DateTimeRangeResponse {
-            results: rows.into_iter().map(Into::into).collect(),
+            results: rows
+                .into_iter()
+                .map(
+                    |ValueRow {
+                         valid_from,
+                         valid_until,
+                         value,
+                     }| ValueRecord {
+                        valid_from,
+                        valid_until,
+                        value: unsafe { DemandCurve::new_unchecked(value.0) },
+                        // SAFETY: this is only being called when deserializing a SQL query, and we ensure curves
+                        //         are valid going into the database.
+                    },
+                )
+                .collect(),
             more,
         })
     }
