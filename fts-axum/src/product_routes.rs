@@ -209,7 +209,12 @@ async fn partition_product<T: ApiApplication>(
         // compile the specified data and the ids into the appropriate format for the partition function
         let child_data = children
             .into_iter()
-            .map(|PartitionItem { data, ratio }| (app.generate_product_id(&data), data, ratio))
+            .map(
+                |PartitionItem {
+                     app_data: data,
+                     ratio,
+                 }| (app.generate_product_id(&data), data, ratio),
+            )
             .collect::<Vec<_>>();
 
         let ids = child_data.iter().map(|(id, _, _)| id.clone()).collect();
@@ -306,7 +311,7 @@ async fn get_product_outcomes<T: ApiApplication>(
 #[schemars(inline)]
 struct PartitionItem<D> {
     /// Application-specific data for the child product
-    data: D,
+    app_data: D,
     /// Weight of this child relative to the parent
     ratio: f64,
 }
