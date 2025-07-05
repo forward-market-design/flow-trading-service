@@ -35,35 +35,21 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
         &self,
         bidder_ids: &[Self::BidderId],
         as_of: Self::DateTime,
-    ) -> Result<Vec<Self::PortfolioId>, Self::Error> {
+    ) -> Result<Vec<PortfolioRecord<Self, PortfolioData>>, Self::Error> {
         if bidder_ids.len() == 0 {
             Ok(Vec::new())
         } else {
             let bidder_ids = sqlx::types::Json(bidder_ids);
-            sqlx::query_scalar!(
-                r#"
-                select distinct
-                    portfolio.id as "id!: PortfolioId"
-                from
-                    portfolio
-                join
-                    demand_group
-                on
-                    portfolio.id = demand_group.portfolio_id
-                join
-                    json_each($1) as bidder_ids
-                on
-                    portfolio.bidder_id = bidder_ids.atom
-                where
-                    valid_from <= $2
-                and
-                    ($2 < valid_until or valid_until is null) 
-                "#,
+            let query = sqlx::query_file_as!(
+                PortfolioRow,
+                "queries/active_portfolios.sql",
                 bidder_ids,
                 as_of,
             )
             .fetch_all(&self.reader)
-            .await
+            .await?;
+
+            Ok(query.into_iter().map(Into::into).collect())
         }
     }
 
@@ -179,19 +165,7 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
         &self,
         portfolio_id: Self::PortfolioId,
         as_of: Self::DateTime,
-    ) -> Result<
-        Option<
-            PortfolioRecord<
-                Self::DateTime,
-                Self::BidderId,
-                Self::PortfolioId,
-                Self::DemandId,
-                Self::ProductId,
-                PortfolioData,
-            >,
-        >,
-        Self::Error,
-    > {
+    ) -> Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error> {
         let query = sqlx::query_file_as!(
             PortfolioRow,
             "queries/get_portfolio_by_id.sql",

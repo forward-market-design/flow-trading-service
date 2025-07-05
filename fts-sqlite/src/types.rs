@@ -4,9 +4,12 @@
 //! types used for database row mapping. The public types include strongly-typed
 //! IDs and datetime representations that ensure type safety across the system.
 
-use fts_core::models::{
-    DemandCurve, DemandCurveDto, DemandGroup, DemandRecord, Map, PortfolioGroup, PortfolioRecord,
-    ProductGroup, ValueRecord,
+use fts_core::{
+    models::{
+        DemandCurve, DemandCurveDto, DemandGroup, DemandRecord, Map, PortfolioGroup,
+        PortfolioRecord, ProductGroup, ValueRecord,
+    },
+    ports::Repository,
 };
 
 mod datetime;
@@ -32,10 +35,17 @@ pub(crate) struct DemandRow<AppData> {
     pub portfolio_group: Option<sqlx::types::Json<PortfolioGroup<PortfolioId>>>,
 }
 
-impl<AppData> Into<DemandRecord<DateTime, BidderId, DemandId, PortfolioId, AppData>>
-    for DemandRow<AppData>
+impl<T, AppData> Into<DemandRecord<T, AppData>> for DemandRow<AppData>
+where
+    T: Repository<
+            DateTime = DateTime,
+            BidderId = BidderId,
+            DemandId = DemandId,
+            PortfolioId = PortfolioId,
+            ProductId = ProductId,
+        >,
 {
-    fn into(self) -> DemandRecord<DateTime, BidderId, DemandId, PortfolioId, AppData> {
+    fn into(self) -> DemandRecord<T, AppData> {
         DemandRecord {
             id: self.id,
             valid_from: self.valid_from,
@@ -61,12 +71,17 @@ pub(crate) struct PortfolioRow<AppData> {
     pub product_group: Option<sqlx::types::Json<ProductGroup<ProductId>>>,
 }
 
-impl<AppData> Into<PortfolioRecord<DateTime, BidderId, PortfolioId, DemandId, ProductId, AppData>>
-    for PortfolioRow<AppData>
+impl<T, AppData> Into<PortfolioRecord<T, AppData>> for PortfolioRow<AppData>
+where
+    T: Repository<
+            DateTime = DateTime,
+            BidderId = BidderId,
+            DemandId = DemandId,
+            PortfolioId = PortfolioId,
+            ProductId = ProductId,
+        >,
 {
-    fn into(
-        self,
-    ) -> PortfolioRecord<DateTime, BidderId, PortfolioId, DemandId, ProductId, AppData> {
+    fn into(self) -> PortfolioRecord<T, AppData> {
         PortfolioRecord {
             id: self.id,
             valid_from: self.valid_from,

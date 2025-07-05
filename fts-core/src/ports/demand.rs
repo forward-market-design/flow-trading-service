@@ -49,20 +49,7 @@ pub trait DemandRepository<DemandData>: super::Repository {
         &self,
         demand_id: Self::DemandId,
         as_of: Self::DateTime,
-    ) -> impl Future<
-        Output = Result<
-            Option<
-                DemandRecord<
-                    Self::DateTime,
-                    Self::BidderId,
-                    Self::DemandId,
-                    Self::PortfolioId,
-                    DemandData,
-                >,
-            >,
-            Self::Error,
-        >,
-    > + Send;
+    ) -> impl Future<Output = Result<Option<DemandRecord<Self, DemandData>>, Self::Error>> + Send;
 
     /// Query all the demand curves with non-null data associated to any of `bidder_ids`
     /// as-of the specified time.
@@ -74,7 +61,7 @@ pub trait DemandRepository<DemandData>: super::Repository {
         &self,
         bidder_ids: &[Self::BidderId],
         as_of: Self::DateTime,
-    ) -> impl Future<Output = Result<Vec<Self::DemandId>, Self::Error>> + Send;
+    ) -> impl Future<Output = Result<Vec<DemandRecord<Self, DemandData>>, Self::Error>> + Send;
 
     /// Retrieve the history of curve changes for a demand.
     ///

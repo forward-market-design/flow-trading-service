@@ -35,7 +35,7 @@ pub use solver::Solver;
 /// implementing a trait across multiple files. By breaking this trait apart,
 /// this allows an implementation to keep the logic separated and ease
 /// development.
-pub trait Repository {
+pub trait Repository: Sized {
     /// The error type for underlying operations
     type Error: std::error::Error;
 

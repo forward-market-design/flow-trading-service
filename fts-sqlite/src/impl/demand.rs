@@ -36,37 +36,17 @@ impl<DemandData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwned>
         &self,
         bidder_ids: &[Self::BidderId],
         as_of: Self::DateTime,
-    ) -> Result<Vec<Self::DemandId>, Self::Error> {
+    ) -> Result<Vec<DemandRecord<Self, DemandData>>, Self::Error> {
         if bidder_ids.len() == 0 {
             Ok(Vec::new())
         } else {
             let bidder_ids = sqlx::types::Json(bidder_ids);
-            sqlx::query_scalar!(
-                r#"
-                select
-                    demand.id as "id!: DemandId"
-                from
-                    demand
-                join
-                    curve_data
-                on
-                    demand.id = curve_data.demand_id
-                join
-                    json_each($1) as bidder_ids
-                on
-                    demand.bidder_id = bidder_ids.atom
-                where
-                    curve_data.value is not null
-                and
-                    valid_from <= $2
-                and
-                    ($2 < valid_until or valid_until is null) 
-                "#,
-                bidder_ids,
-                as_of,
-            )
-            .fetch_all(&self.reader)
-            .await
+            let query =
+                sqlx::query_file_as!(DemandRow, "queries/active_demands.sql", bidder_ids, as_of,)
+                    .fetch_all(&self.reader)
+                    .await?;
+
+            Ok(query.into_iter().map(Into::into).collect())
         }
     }
 
@@ -131,18 +111,7 @@ impl<DemandData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwned>
         &self,
         demand_id: Self::DemandId,
         as_of: Self::DateTime,
-    ) -> Result<
-        Option<
-            DemandRecord<
-                Self::DateTime,
-                Self::BidderId,
-                Self::DemandId,
-                Self::PortfolioId,
-                DemandData,
-            >,
-        >,
-        Self::Error,
-    > {
+    ) -> Result<Option<DemandRecord<Self, DemandData>>, Self::Error> {
         let query =
             sqlx::query_file_as!(DemandRow, "queries/get_demand_by_id.sql", demand_id, as_of)
                 .fetch_optional(&self.reader)

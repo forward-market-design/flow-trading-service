@@ -53,7 +53,7 @@ HTTP 200
 Content-Type: application/json
 [Asserts]
 jsonpath "$" count == 1
-jsonpath "$[0]" == "{{demand_id}}"
+jsonpath "$[0].id" == "{{demand_id}}"
 
 
 # Ensure we have a history entry

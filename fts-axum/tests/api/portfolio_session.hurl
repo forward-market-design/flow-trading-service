@@ -109,8 +109,8 @@ Authorization: Bearer bidder_id={{bidder1}}&can_query_bid=true
 HTTP 200
 [Asserts]
 jsonpath "$" count == 2
-jsonpath "$" contains "{{portfolio1}}"
-jsonpath "$" contains "{{portfolio2}}"
+jsonpath "$[*].id" contains "{{portfolio1}}"
+jsonpath "$[*].id" contains "{{portfolio2}}"
 
 
 # Let's make sure the portfolios are associated to the demand curves
@@ -242,4 +242,4 @@ HTTP 200
 Content-Type: application/json
 [Asserts]
 jsonpath "$" count == 1
-jsonpath "$[0]" == "{{portfolio1}}"
+jsonpath "$[0].id" == "{{portfolio1}}"

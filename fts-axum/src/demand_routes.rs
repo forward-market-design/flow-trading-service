@@ -71,7 +71,7 @@ struct Id<T> {
 async fn query_demands<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
-) -> Result<Json<Vec<<T::Repository as Repository>::DemandId>>, (StatusCode, String)> {
+) -> Result<Json<Vec<DemandRecord<T::Repository, T::DemandData>>>, (StatusCode, String)> {
     let as_of = app.now();
     let db = app.database();
     let bidder_ids = app.can_query_bid(&auth).await;
@@ -169,18 +169,7 @@ async fn get_demand<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
     Path(Id { demand_id }): Path<Id<<T::Repository as Repository>::DemandId>>,
-) -> Result<
-    Json<
-        DemandRecord<
-            <T::Repository as Repository>::DateTime,
-            <T::Repository as Repository>::BidderId,
-            <T::Repository as Repository>::DemandId,
-            <T::Repository as Repository>::PortfolioId,
-            T::DemandData,
-        >,
-    >,
-    (StatusCode, String),
-> {
+) -> Result<Json<DemandRecord<T::Repository, T::DemandData>>, (StatusCode, String)> {
     let as_of = app.now();
     let db = app.database();
     let demand = db

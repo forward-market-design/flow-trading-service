@@ -102,7 +102,7 @@ fn query_portfolios_docs(op: TransformOperation) -> TransformOperation<'_> {
 async fn query_portfolios<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
-) -> Result<Json<Vec<<T::Repository as Repository>::PortfolioId>>, (StatusCode, String)> {
+) -> Result<Json<Vec<PortfolioRecord<T::Repository, T::PortfolioData>>>, (StatusCode, String)> {
     let as_of = app.now();
     let db = app.database();
     let bidder_ids = app.can_query_bid(&auth).await;
@@ -214,19 +214,7 @@ async fn get_portfolio<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
     Path(Id { portfolio_id }): Path<Id<<T::Repository as Repository>::PortfolioId>>,
-) -> Result<
-    Json<
-        PortfolioRecord<
-            <T::Repository as Repository>::DateTime,
-            <T::Repository as Repository>::BidderId,
-            <T::Repository as Repository>::PortfolioId,
-            <T::Repository as Repository>::DemandId,
-            <T::Repository as Repository>::ProductId,
-            T::PortfolioData,
-        >,
-    >,
-    (StatusCode, String),
-> {
+) -> Result<Json<PortfolioRecord<T::Repository, T::PortfolioData>>, (StatusCode, String)> {
     let as_of = app.now();
     let db = app.database();
     let portfolio = db

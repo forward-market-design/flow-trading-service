@@ -55,21 +55,7 @@ pub trait PortfolioRepository<PortfolioData>: super::Repository {
         &self,
         portfolio_id: Self::PortfolioId,
         as_of: Self::DateTime,
-    ) -> impl Future<
-        Output = Result<
-            Option<
-                PortfolioRecord<
-                    Self::DateTime,
-                    Self::BidderId,
-                    Self::PortfolioId,
-                    Self::DemandId,
-                    Self::ProductId,
-                    PortfolioData,
-                >,
-            >,
-            Self::Error,
-        >,
-    > + Send;
+    ) -> impl Future<Output = Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error>> + Send;
 
     /// Query all the portfolios with non-empty groups associated to `bidder_id`
     /// as-of the specified time.
@@ -81,7 +67,7 @@ pub trait PortfolioRepository<PortfolioData>: super::Repository {
         &self,
         bidder_ids: &[Self::BidderId],
         as_of: Self::DateTime,
-    ) -> impl Future<Output = Result<Vec<Self::PortfolioId>, Self::Error>> + Send;
+    ) -> impl Future<Output = Result<Vec<PortfolioRecord<Self, PortfolioData>>, Self::Error>> + Send;
 
     /// Retrieve the history of demand group changes for a portfolio.
     ///
