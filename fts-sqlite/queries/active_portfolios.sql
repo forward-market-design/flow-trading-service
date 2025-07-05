@@ -1,5 +1,5 @@
 -- A portfolio is considered active if and only if
--- * it has at least one associated demand, OR
+-- * it has at least one associated demand, AND
 -- * it has at least one associated product.
 with
 demand_groups_by_id as (
@@ -11,9 +11,9 @@ demand_groups_by_id as (
     from
         demand_group
     where
-        demand_group.valid_from <= $2
+        demand_group.valid_from <= $1
     and
-        ($2 < demand_group.valid_until or demand_group.valid_until is null)
+        ($1 < demand_group.valid_until or demand_group.valid_until is null)
     group by
         portfolio_id
 ),
@@ -27,30 +27,27 @@ product_groups_by_id as (
     from
         product_group
     where
-        product_group.valid_from <= $2
+        product_group.valid_from <= $1
     and
-        ($2 < product_group.valid_until or product_group.valid_until is null)
+        ($1 < product_group.valid_until or product_group.valid_until is null)
     group by
         portfolio_id
 )
 
 select
     portfolio_id as "id!: PortfolioId",
-    max(
-        coalesce(demand_groups_by_id.valid_from, product_groups_by_id.valid_from),
-        coalesce(product_groups_by_id.valid_from, demand_groups_by_id.valid_from)
-     ) as "valid_from!: DateTime",
+    max(demand_groups_by_id.valid_from, product_groups_by_id.valid_from) as "valid_from!: DateTime",
     min(
         coalesce(demand_groups_by_id.valid_until, product_groups_by_id.valid_until),
         coalesce(product_groups_by_id.valid_until, demand_groups_by_id.valid_until)
     ) as "valid_until?: DateTime",
     bidder_id as "bidder_id!: BidderId",
-    json(app_data) as "app_data!: sqlx::types::Json<PortfolioData>",
+    json("null") as "app_data!: sqlx::types::Json<()>",
     json(dgroup) as "demand_group?: sqlx::types::Json<DemandGroup<DemandId>>",
     json(pgroup) as "product_group?: sqlx::types::Json<ProductGroup<ProductId>>"
 from
     demand_groups_by_id
-full join
+join
     product_groups_by_id
 using
     (portfolio_id)
@@ -58,7 +55,3 @@ join
     portfolio
 on
     portfolio_id = portfolio.id
-join
-    json_each($1) as bidder_ids
-on
-    portfolio.bidder_id = bidder_ids.atom

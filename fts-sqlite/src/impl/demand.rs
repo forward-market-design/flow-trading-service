@@ -35,16 +35,35 @@ impl<DemandData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwned>
     async fn query_demand(
         &self,
         bidder_ids: &[Self::BidderId],
-        as_of: Self::DateTime,
     ) -> Result<Vec<DemandRecord<Self, DemandData>>, Self::Error> {
         if bidder_ids.len() == 0 {
             Ok(Vec::new())
         } else {
             let bidder_ids = sqlx::types::Json(bidder_ids);
-            let query =
-                sqlx::query_file_as!(DemandRow, "queries/active_demands.sql", bidder_ids, as_of,)
-                    .fetch_all(&self.reader)
-                    .await?;
+            let query = sqlx::query_as!(
+                DemandRow,
+                r#"
+                select
+                    demand.id as "id!: DemandId",
+                    as_of as "valid_from!: DateTime",
+                    null as "valid_until?: DateTime",
+                    bidder_id as "bidder_id!: BidderId",
+                    json(app_data) as "app_data!: sqlx::types::Json<DemandData>",
+                    json(curve_data) as "curve_data?: sqlx::types::Json<DemandCurveDto>",
+                    null as "portfolio_group?: sqlx::types::Json<PortfolioGroup<PortfolioId>>"
+                from
+                    demand
+                join
+                    json_each($1) as bidder_ids
+                on
+                    demand.bidder_id = bidder_ids.atom
+                where
+                    curve_data is not null
+                "#,
+                bidder_ids
+            )
+            .fetch_all(&self.reader)
+            .await?;
 
             Ok(query.into_iter().map(Into::into).collect())
         }

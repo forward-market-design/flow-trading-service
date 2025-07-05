@@ -72,22 +72,19 @@ async fn query_demands<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
 ) -> Result<Json<Vec<DemandRecord<T::Repository, T::DemandData>>>, (StatusCode, String)> {
-    let as_of = app.now();
     let db = app.database();
     let bidder_ids = app.can_query_bid(&auth).await;
 
     if bidder_ids.is_empty() {
         Err((StatusCode::UNAUTHORIZED, "not authorized".to_string()))
     } else {
-        Ok(Json(db.query_demand(&bidder_ids, as_of).await.map_err(
-            |err| {
-                event!(Level::ERROR, err = err.to_string());
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "failed to query demand".to_string(),
-                )
-            },
-        )?))
+        Ok(Json(db.query_demand(&bidder_ids).await.map_err(|err| {
+            event!(Level::ERROR, err = err.to_string());
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to query demand".to_string(),
+            )
+        })?))
     }
 }
 

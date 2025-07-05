@@ -18,13 +18,6 @@ pub use datetime::DateTime;
 mod ids;
 pub use ids::{BidderId, DemandId, PortfolioId, ProductId};
 
-pub(crate) struct BatchData {
-    pub demands: Option<sqlx::types::Json<Map<DemandId, DemandCurveDto>>>,
-    pub portfolios: Option<
-        sqlx::types::Json<Map<PortfolioId, (DemandGroup<DemandId>, ProductGroup<ProductId>)>>,
-    >,
-}
-
 pub(crate) struct DemandRow<AppData> {
     pub id: DemandId,
     pub valid_from: DateTime,

@@ -51,16 +51,14 @@ pub trait DemandRepository<DemandData>: super::Repository {
         as_of: Self::DateTime,
     ) -> impl Future<Output = Result<Option<DemandRecord<Self, DemandData>>, Self::Error>> + Send;
 
-    /// Query all the demand curves with non-null data associated to any of `bidder_ids`
-    /// as-of the specified time.
+    /// Query all the demand curves with non-null data associated to any of `bidder_ids`.
     ///
     /// # Returns
     ///
-    /// A vector of demand IDs that have active curves at the specified time.
+    /// A vector of "active" (as of the time of querying) demand records.
     fn query_demand(
         &self,
         bidder_ids: &[Self::BidderId],
-        as_of: Self::DateTime,
     ) -> impl Future<Output = Result<Vec<DemandRecord<Self, DemandData>>, Self::Error>> + Send;
 
     /// Retrieve the history of curve changes for a demand.

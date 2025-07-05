@@ -34,17 +34,34 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
     async fn query_portfolio(
         &self,
         bidder_ids: &[Self::BidderId],
-        as_of: Self::DateTime,
     ) -> Result<Vec<PortfolioRecord<Self, PortfolioData>>, Self::Error> {
         if bidder_ids.len() == 0 {
             Ok(Vec::new())
         } else {
             let bidder_ids = sqlx::types::Json(bidder_ids);
-            let query = sqlx::query_file_as!(
+            let query = sqlx::query_as!(
                 PortfolioRow,
-                "queries/active_portfolios.sql",
-                bidder_ids,
-                as_of,
+                r#"
+                select
+                    portfolio.id as "id!: PortfolioId",
+                    as_of as "valid_from!: DateTime",
+                    null as "valid_until?: DateTime",
+                    bidder_id as "bidder_id!: BidderId",
+                    json(app_data) as "app_data!: sqlx::types::Json<PortfolioData>",
+                    json(demand_group) as "demand_group?: sqlx::types::Json<DemandGroup<DemandId>>",
+                    json(product_group) as "product_group?: sqlx::types::Json<ProductGroup<ProductId>>"
+                from
+                    portfolio
+                join
+                    json_each($1) as bidder_ids
+                on
+                    portfolio.bidder_id = bidder_ids.atom
+                where
+                    portfolio.demand_group is not null
+                or
+                    portfolio.product_group is not null
+                "#,
+                bidder_ids
             )
             .fetch_all(&self.reader)
             .await?;
@@ -63,8 +80,16 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
         as_of: Self::DateTime,
     ) -> Result<(), Self::Error> {
         let app_data = sqlx::types::Json(app_data);
-        let demand_group = sqlx::types::Json(demand_group);
-        let product_group = sqlx::types::Json(product_group);
+        let demand_group = if demand_group.is_empty() {
+            None
+        } else {
+            Some(sqlx::types::Json(demand_group))
+        };
+        let product_group = if product_group.is_empty() {
+            None
+        } else {
+            Some(sqlx::types::Json(product_group))
+        };
         sqlx::query!(
             r#"
             insert into
@@ -93,8 +118,16 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
     ) -> Result<bool, Self::Error> {
         let updated = match (demand_group, product_group) {
             (Some(demand_group), Some(product_group)) => {
-                let demand_group = sqlx::types::Json(demand_group);
-                let product_group = sqlx::types::Json(product_group);
+                let demand_group = if demand_group.is_empty() {
+                    None
+                } else {
+                    Some(sqlx::types::Json(demand_group))
+                };
+                let product_group = if product_group.is_empty() {
+                    None
+                } else {
+                    Some(sqlx::types::Json(product_group))
+                };
                 let query = sqlx::query!(
                     r#"
                     update
@@ -116,7 +149,11 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
                 query.rows_affected() > 0
             }
             (Some(demand_group), None) => {
-                let demand_group = sqlx::types::Json(demand_group);
+                let demand_group = if demand_group.is_empty() {
+                    None
+                } else {
+                    Some(sqlx::types::Json(demand_group))
+                };
                 let query = sqlx::query!(
                     r#"
                     update
@@ -136,7 +173,11 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
                 query.rows_affected() > 0
             }
             (None, Some(product_group)) => {
-                let product_group = sqlx::types::Json(product_group);
+                let product_group = if product_group.is_empty() {
+                    None
+                } else {
+                    Some(sqlx::types::Json(product_group))
+                };
                 let query = sqlx::query!(
                     r#"
                     update

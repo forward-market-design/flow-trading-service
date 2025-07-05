@@ -103,14 +103,13 @@ async fn query_portfolios<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
 ) -> Result<Json<Vec<PortfolioRecord<T::Repository, T::PortfolioData>>>, (StatusCode, String)> {
-    let as_of = app.now();
     let db = app.database();
     let bidder_ids = app.can_query_bid(&auth).await;
 
     if bidder_ids.is_empty() {
         Err((StatusCode::UNAUTHORIZED, "not authorized".to_string()))
     } else {
-        Ok(Json(db.query_portfolio(&bidder_ids, as_of).await.map_err(
+        Ok(Json(db.query_portfolio(&bidder_ids).await.map_err(
             |err| {
                 event!(Level::ERROR, err = err.to_string());
                 (

@@ -1,10 +1,13 @@
 use crate::Db;
-use crate::types::{BatchData, DemandId, PortfolioId, ProductId, ValueRow};
-use fts_core::models::{DateTimeRangeQuery, DateTimeRangeResponse, Map};
+use crate::types::{
+    BidderId, DateTime, DemandId, DemandRow, PortfolioId, PortfolioRow, ProductId, ValueRow,
+};
+use fts_core::models::{DateTimeRangeQuery, DateTimeRangeResponse, PortfolioGroup};
 use fts_core::{
     models::{DemandCurve, DemandCurveDto, DemandGroup, ProductGroup},
     ports::{BatchRepository, Solver},
 };
+use tokio::try_join;
 
 impl<T: Solver<DemandId, PortfolioId, ProductId>> BatchRepository<T> for Db
 where
@@ -20,32 +23,47 @@ where
         solver: T,
         state: T::State,
     ) -> Result<Result<(), T::Error>, Self::Error> {
+        // TH
+        let demand_records =
+            sqlx::query_file_as!(DemandRow::<()>, "queries/active_demands.sql", timestamp)
+                .fetch_all(&self.reader);
+
+        let portfolio_records = sqlx::query_file_as!(
+            PortfolioRow::<()>,
+            "queries/active_portfolios.sql",
+            timestamp
+        )
+        .fetch_all(&self.reader);
+
+        let (demand_records, portfolio_records) = try_join!(demand_records, portfolio_records)?;
+
+        let demands = demand_records
+            .into_iter()
+            .filter_map(|row| {
+                row.curve_data
+                    .map(|data| (row.id, unsafe { DemandCurve::new_unchecked(data.0) }))
+            })
+            .collect();
+
+        let portfolios = portfolio_records
+            .into_iter()
+            .filter_map(|row| {
+                if let (Some(demand_group), Some(product_group)) =
+                    (row.demand_group, row.product_group)
+                {
+                    Some((row.id, (demand_group.0, product_group.0)))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
         // TODO: we may wish to filter the portfolios we include for administrative reasons./
         // what is the best way to do this? Perhaps we say this is (one of) the responsibilities
         // of the state, e.g. contains a HashSet of the "suspended" portfolio ids, and our solver is
         // responsible.... I actually like this a lot.
-        let data = sqlx::query_file_as!(BatchData, "queries/gather_batch.sql", timestamp)
-            .fetch_optional(&self.reader)
-            .await?;
 
-        let (demands, portfolios) = if let Some(BatchData {
-            demands,
-            portfolios,
-        }) = data
-        {
-            let demands = demands
-                .map(|x| x.0)
-                .unwrap_or_default()
-                .into_iter()
-                .map(|(key, value)| (key, unsafe { DemandCurve::new_unchecked(value) }))
-                .collect();
-
-            let portfolios = portfolios.map(|x| x.0).unwrap_or_default();
-
-            (demands, portfolios)
-        } else {
-            Default::default()
-        };
+        // ^ This fits neatly in the filter map approach above.
 
         let outcome = solver.solve(demands, portfolios, state).await;
 
