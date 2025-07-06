@@ -11,9 +11,9 @@ demand_groups_by_id as (
     from
         demand_group
     where
-        demand_group.valid_from <= $1
+        valid_from <= $1
     and
-        ($1 < demand_group.valid_until or demand_group.valid_until is null)
+        ($1 < valid_until or valid_until is null)
     group by
         portfolio_id
 ),
@@ -25,11 +25,11 @@ product_groups_by_id as (
         min(valid_until) as valid_until,
         jsonb_group_object(product_id, weight) as pgroup
     from
-        product_group
+        product_group_view
     where
-        product_group.valid_from <= $1
+        valid_from <= $1
     and
-        ($1 < product_group.valid_until or product_group.valid_until is null)
+        ($1 < valid_until or valid_until is null)
     group by
         portfolio_id
 )
