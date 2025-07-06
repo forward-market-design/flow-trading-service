@@ -57,7 +57,7 @@ jsonpath "$[0].id" == "{{demand_id}}"
 
 
 # Ensure we have a history entry
-GET {{baseurl}}/demand/{{demand_id}}/history
+GET {{baseurl}}/demand/{{demand_id}}/curve-history
 Authorization: Bearer bidder_id={{bidder1}}&can_read_bid=true
 HTTP 200
 Content-Type: application/json
@@ -98,7 +98,7 @@ jsonpath "$" count == 0
 
 # We should have (1) the initial creation, (2) the updated record, and (3) the NULL
 # entries in the demand history
-GET {{baseurl}}/demand/{{demand_id}}/history
+GET {{baseurl}}/demand/{{demand_id}}/curve-history
 Authorization: Bearer bidder_id={{bidder1}}&can_read_bid=true
 HTTP 200
 Content-Type: application/json

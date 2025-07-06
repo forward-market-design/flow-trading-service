@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            update\n                demand\n            set\n                as_of = $2,\n                curve_data = jsonb($3)\n            where\n                id = $1\n            returning\n                id as \"id!: DemandId\",\n                as_of as \"valid_from!: DateTime\",\n                null as \"valid_until?: DateTime\",\n                bidder_id as \"bidder_id!: BidderId\",\n                json(app_data) as \"app_data!: sqlx::types::Json<DemandData>\",\n                json(curve_data) as \"curve_data?: sqlx::types::Json<DemandCurveDto>\",\n                null as \"portfolio_group?: sqlx::types::Json<PortfolioGroup<PortfolioId>>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: DemandId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "valid_from!: DateTime",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "valid_until?: DateTime",
+        "ordinal": 2,
+        "type_info": "Null"
+      },
+      {
+        "name": "bidder_id!: BidderId",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "app_data!: sqlx::types::Json<DemandData>",
+        "ordinal": 4,
+        "type_info": "Null"
+      },
+      {
+        "name": "curve_data?: sqlx::types::Json<DemandCurveDto>",
+        "ordinal": 5,
+        "type_info": "Null"
+      },
+      {
+        "name": "portfolio_group?: sqlx::types::Json<PortfolioGroup<PortfolioId>>",
+        "ordinal": 6,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "3cf940229941bd1aadf04b9d2daa2c4faffa023e2cba47865d581ab84cbf67e5"
+}

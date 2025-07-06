@@ -23,7 +23,7 @@ pub trait DemandRepository<DemandData>: super::Repository {
         app_data: DemandData,
         curve_data: Option<DemandCurve>,
         as_of: Self::DateTime,
-    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
+    ) -> impl Future<Output = Result<DemandRecord<Self, DemandData>, Self::Error>> + Send;
 
     /// Update the curve data for an existing demand.
     ///
@@ -40,7 +40,7 @@ pub trait DemandRepository<DemandData>: super::Repository {
         demand_id: Self::DemandId,
         curve_data: Option<DemandCurve>,
         as_of: Self::DateTime,
-    ) -> impl Future<Output = Result<bool, Self::Error>> + Send;
+    ) -> impl Future<Output = Result<Option<DemandRecord<Self, DemandData>>, Self::Error>> + Send;
 
     /// Retrieve a demand at a specific point in time.
     ///
@@ -67,7 +67,7 @@ pub trait DemandRepository<DemandData>: super::Repository {
     ///
     /// A paginated response containing historical curve records, including
     /// when the curve was created, modified, or deleted (None).
-    fn get_demand_history(
+    fn get_demand_curve_history(
         &self,
         demand_id: Self::DemandId,
         query: DateTimeRangeQuery<Self::DateTime>,

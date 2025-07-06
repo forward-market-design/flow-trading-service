@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                    update\n                        portfolio\n                    set\n                        as_of = $2,\n                        product_group = jsonb($3)\n                    where\n                        id = $1\n                    returning\n                        id as \"id!: PortfolioId\",\n                        as_of as \"valid_from!: DateTime\",\n                        null as \"valid_until?: DateTime\",\n                        bidder_id as \"bidder_id!: BidderId\",\n                        json(app_data) as \"app_data!: sqlx::types::Json<PortfolioData>\",\n                        json(demand_group) as \"demand_group?: sqlx::types::Json<DemandGroup<DemandId>>\",\n                        json(product_group) as \"product_group?: sqlx::types::Json<ProductGroup<ProductId>>\"\n                    ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: PortfolioId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "valid_from!: DateTime",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "valid_until?: DateTime",
+        "ordinal": 2,
+        "type_info": "Null"
+      },
+      {
+        "name": "bidder_id!: BidderId",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "app_data!: sqlx::types::Json<PortfolioData>",
+        "ordinal": 4,
+        "type_info": "Null"
+      },
+      {
+        "name": "demand_group?: sqlx::types::Json<DemandGroup<DemandId>>",
+        "ordinal": 5,
+        "type_info": "Null"
+      },
+      {
+        "name": "product_group?: sqlx::types::Json<ProductGroup<ProductId>>",
+        "ordinal": 6,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "2a1879d0dd5022d61093ba48bb733beb704f30da5962a378dde6cd7d435cf2ae"
+}

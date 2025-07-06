@@ -259,7 +259,7 @@ async fn update_portfolio<T: ApiApplication>(
             <T::Repository as Repository>::ProductId,
         >,
     >,
-) -> Result<(StatusCode, String), (StatusCode, String)> {
+) -> Result<Json<PortfolioRecord<T::Repository, T::PortfolioData>>, (StatusCode, String)> {
     let as_of = app.now();
     let db = app.database();
     let bidder_id = db
@@ -295,22 +295,19 @@ async fn update_portfolio<T: ApiApplication>(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("failed to update portfolio {}", portfolio_id),
             )
+        })?
+        .ok_or_else(|| {
+            event!(
+                Level::ERROR,
+                err = "failed to update portfolio after successful read"
+            );
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("failed to update portfolio {}", portfolio_id),
+            )
         })?;
 
-    if updated {
-        Ok((StatusCode::OK, format!("{}", as_of)))
-    } else {
-        // Since we got the portfolio for the initial permission check,
-        // `updated` should always be true unless something weird happened.
-        event!(
-            Level::ERROR,
-            err = "failed to update portfolio after successful read"
-        );
-        Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("failed to update portfolio {}", portfolio_id),
-        ))
-    }
+    Ok(Json(updated))
 }
 
 /// Delete a portfolio by clearing both its demand and product groups.
@@ -332,7 +329,7 @@ async fn delete_portfolio<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
     Path(Id { portfolio_id }): Path<Id<<T::Repository as Repository>::PortfolioId>>,
-) -> Result<(StatusCode, String), (StatusCode, String)> {
+) -> Result<Json<PortfolioRecord<T::Repository, T::PortfolioData>>, (StatusCode, String)> {
     let as_of = app.now();
     let db = app.database();
     let bidder_id = db
@@ -368,22 +365,19 @@ async fn delete_portfolio<T: ApiApplication>(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("failed to delete portfolio {}", portfolio_id),
             )
+        })?
+        .ok_or_else(|| {
+            event!(
+                Level::ERROR,
+                err = "failed to delete portfolio after successful read"
+            );
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("failed to delete portfolio {}", portfolio_id),
+            )
         })?;
 
-    if deleted {
-        Ok((StatusCode::OK, format!("{}", as_of)))
-    } else {
-        // Since we got the portfolio for the initial permission check,
-        // `updated` should always be true unless something weird happened.
-        event!(
-            Level::ERROR,
-            err = "failed to delete portfolio after successful read"
-        );
-        Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("failed to delete portfolio {}", portfolio_id),
-        ))
-    }
+    Ok(Json(deleted))
 }
 
 /// Retrieve the historical changes to a portfolio's demand group.

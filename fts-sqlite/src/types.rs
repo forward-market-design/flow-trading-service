@@ -6,8 +6,8 @@
 
 use fts_core::{
     models::{
-        DemandCurve, DemandCurveDto, DemandGroup, DemandRecord, Map, PortfolioGroup,
-        PortfolioRecord, ProductGroup, ValueRecord,
+        DemandCurve, DemandCurveDto, DemandGroup, DemandRecord, PortfolioGroup, PortfolioRecord,
+        ProductGroup, ValueRecord,
     },
     ports::Repository,
 };

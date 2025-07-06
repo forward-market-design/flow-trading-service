@@ -75,7 +75,7 @@ async fn test_demand_curve_triggers() -> anyhow::Result<()> {
         update_time.into(),
     )
     .await?;
-    assert!(updated);
+    assert!(updated.is_some());
 
     // Verify demand has the new curve
     let updated_demand =
@@ -85,7 +85,7 @@ async fn test_demand_curve_triggers() -> anyhow::Result<()> {
     assert!(updated_demand.curve_data.unwrap().clone().points() == updated_curve.clone().points());
 
     // Verify we can see history
-    let history = <Db as DemandRepository<()>>::get_demand_history(
+    let history = <Db as DemandRepository<()>>::get_demand_curve_history(
         db,
         demand_id,
         DateTimeRangeQuery {
@@ -193,7 +193,7 @@ async fn test_portfolio_triggers_partial_updates() -> anyhow::Result<()> {
         update_time.into(),
     )
     .await?;
-    assert!(updated);
+    assert!(updated.is_some());
 
     // Verify demand group was updated but product group unchanged
     let updated_portfolio =
@@ -251,7 +251,7 @@ async fn test_portfolio_triggers_partial_updates() -> anyhow::Result<()> {
     )
     .await?;
 
-    assert!(updated_product);
+    assert!(updated_product.is_some());
 
     // Verify product group was updated but demand group unchanged
     let final_portfolio = <Db as PortfolioRepository<()>>::get_portfolio(
@@ -477,7 +477,7 @@ async fn test_demand_trigger_null_curve() -> anyhow::Result<()> {
         update_time.into(),
     )
     .await?;
-    assert!(updated);
+    assert!(updated.is_some());
 
     // Verify curve is now set
     let updated_demand =
@@ -490,7 +490,7 @@ async fn test_demand_trigger_null_curve() -> anyhow::Result<()> {
     let null_time = now + std::time::Duration::from_secs(10);
     let updated_again =
         <Db as DemandRepository<()>>::update_demand(db, demand_id, None, null_time.into()).await?;
-    assert!(updated_again);
+    assert!(updated_again.is_some());
 
     // Verify curve is null again
     let final_demand = <Db as DemandRepository<()>>::get_demand(db, demand_id, null_time.into())
@@ -499,7 +499,7 @@ async fn test_demand_trigger_null_curve() -> anyhow::Result<()> {
     assert!(final_demand.curve_data.is_none());
 
     // Verify history shows all transitions
-    let history = <Db as DemandRepository<()>>::get_demand_history(
+    let history = <Db as DemandRepository<()>>::get_demand_curve_history(
         db,
         demand_id,
         DateTimeRangeQuery {

@@ -26,7 +26,7 @@ pub trait PortfolioRepository<PortfolioData>: super::Repository {
         demand_group: DemandGroup<Self::DemandId>,
         product_group: ProductGroup<Self::ProductId>,
         as_of: Self::DateTime,
-    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
+    ) -> impl Future<Output = Result<PortfolioRecord<Self, PortfolioData>, Self::Error>> + Send;
 
     /// Update a portfolio's demand and/or product associations.
     ///
@@ -44,7 +44,7 @@ pub trait PortfolioRepository<PortfolioData>: super::Repository {
         demand_group: Option<DemandGroup<Self::DemandId>>,
         product_group: Option<ProductGroup<Self::ProductId>>,
         as_of: Self::DateTime,
-    ) -> impl Future<Output = Result<bool, Self::Error>> + Send;
+    ) -> impl Future<Output = Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error>> + Send;
 
     /// Retrieve a portfolio at a specific point in time.
     ///

@@ -76,17 +76,26 @@ impl<DemandData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwned>
         app_data: DemandData,
         curve_data: Option<DemandCurve>,
         as_of: Self::DateTime,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<DemandRecord<Self, DemandData>, Self::Error> {
         let app_data = sqlx::types::Json(app_data);
         // Important: If curve_data is None, we insert NULL into the database
         // Else, this propagates into a [0] value in the JSONB column
         let curve_data = curve_data.map(|x| sqlx::types::Json(x));
-        sqlx::query!(
+        let demand = sqlx::query_as!(
+            DemandRow::<DemandData>,
             r#"
             insert into
                 demand (id, as_of, bidder_id, app_data, curve_data)
             values
-                (?, ?, ?, jsonb(?), jsonb(?))
+                ($1, $2, $3, jsonb($4), jsonb($5))
+            returning
+                id as "id!: DemandId",
+                as_of as "valid_from!: DateTime",
+                null as "valid_until?: DateTime",
+                bidder_id as "bidder_id!: BidderId",
+                json(app_data) as "app_data!: sqlx::types::Json<DemandData>",
+                json(curve_data) as "curve_data?: sqlx::types::Json<DemandCurveDto>",
+                null as "portfolio_group?: sqlx::types::Json<PortfolioGroup<PortfolioId>>"
             "#,
             demand_id,
             as_of,
@@ -94,9 +103,9 @@ impl<DemandData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwned>
             app_data,
             curve_data,
         )
-        .execute(&self.writer)
+        .fetch_one(&self.writer)
         .await?;
-        Ok(())
+        Ok(demand.into())
     }
 
     async fn update_demand(
@@ -104,9 +113,10 @@ impl<DemandData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwned>
         demand_id: Self::DemandId,
         curve_data: Option<DemandCurve>,
         as_of: Self::DateTime,
-    ) -> Result<bool, Self::Error> {
+    ) -> Result<Option<DemandRecord<Self, DemandData>>, Self::Error> {
         let curve_data = curve_data.map(|x| sqlx::types::Json(x));
-        let query = sqlx::query!(
+        let demand = sqlx::query_as!(
+            DemandRow::<DemandData>,
             r#"
             update
                 demand
@@ -115,15 +125,23 @@ impl<DemandData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwned>
                 curve_data = jsonb($3)
             where
                 id = $1
+            returning
+                id as "id!: DemandId",
+                as_of as "valid_from!: DateTime",
+                null as "valid_until?: DateTime",
+                bidder_id as "bidder_id!: BidderId",
+                json(app_data) as "app_data!: sqlx::types::Json<DemandData>",
+                json(curve_data) as "curve_data?: sqlx::types::Json<DemandCurveDto>",
+                null as "portfolio_group?: sqlx::types::Json<PortfolioGroup<PortfolioId>>"
             "#,
             demand_id,
             as_of,
             curve_data,
         )
-        .execute(&self.writer)
-        .await?;
-
-        Ok(query.rows_affected() > 0)
+        .fetch_optional(&self.writer)
+        .await?
+        .map(Into::into);
+        Ok(demand)
     }
 
     async fn get_demand(
@@ -139,7 +157,7 @@ impl<DemandData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwned>
         Ok(query.map(Into::into))
     }
 
-    async fn get_demand_history(
+    async fn get_demand_curve_history(
         &self,
         demand_id: Self::DemandId,
         query: DateTimeRangeQuery<Self::DateTime>,

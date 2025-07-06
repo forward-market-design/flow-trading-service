@@ -37,8 +37,8 @@ pub fn router<T: ApiApplication>() -> ApiRouter<T> {
             |route| route.security_requirement("jwt").tag("demand"),
         )
         .api_route_with(
-            "/{demand_id}/history",
-            get(get_demand_history::<T>),
+            "/{demand_id}/curve-history",
+            get(get_demand_curve_history::<T>),
             |route| {
                 route
                     .security_requirement("jwt")
@@ -211,7 +211,7 @@ async fn update_demand<T: ApiApplication>(
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
     Path(Id { demand_id }): Path<Id<<T::Repository as Repository>::DemandId>>,
     Json(body): Json<DemandCurve>,
-) -> Result<(StatusCode, String), (StatusCode, String)> {
+) -> Result<Json<DemandRecord<T::Repository, T::DemandData>>, (StatusCode, String)> {
     let as_of = app.now();
     let db = app.database();
 
@@ -244,22 +244,19 @@ async fn update_demand<T: ApiApplication>(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("failed to update demand {}", demand_id),
             )
+        })?
+        .ok_or_else(|| {
+            event!(
+                Level::ERROR,
+                err = "failed to update demand after successful read"
+            );
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("failed to update demand {}", demand_id),
+            )
         })?;
 
-    if updated {
-        Ok((StatusCode::OK, format!("{}", as_of)))
-    } else {
-        // Since we got the demand for the initial permission check,
-        // `updated` should always be true unless something weird happened.
-        event!(
-            Level::ERROR,
-            err = "failed to update demand after successful read"
-        );
-        Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("failed to update demand {}", demand_id),
-        ))
-    }
+    Ok(Json(updated))
 }
 
 /// Delete a demand by setting its curve data to None.
@@ -281,7 +278,7 @@ async fn delete_demand<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
     Path(Id { demand_id }): Path<Id<<T::Repository as Repository>::DemandId>>,
-) -> Result<(StatusCode, String), (StatusCode, String)> {
+) -> Result<Json<DemandRecord<T::Repository, T::DemandData>>, (StatusCode, String)> {
     let as_of = app.now();
     let db = app.database();
 
@@ -314,22 +311,19 @@ async fn delete_demand<T: ApiApplication>(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 format!("failed to delete demand {}", demand_id),
             )
+        })?
+        .ok_or_else(|| {
+            event!(
+                Level::ERROR,
+                err = "failed to delete demand after successful read"
+            );
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("failed to delete demand {}", demand_id),
+            )
         })?;
 
-    if deleted {
-        Ok((StatusCode::OK, format!("{}", as_of)))
-    } else {
-        // Since we got the demand for the initial permission check,
-        // `updated` should always be true unless something weird happened.
-        event!(
-            Level::ERROR,
-            err = "failed to delete demand after successful read"
-        );
-        Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("failed to delete demand {}", demand_id),
-        ))
-    }
+    Ok(Json(deleted))
 }
 
 /// Retrieve the historical changes to a demand's curve data.
@@ -347,7 +341,7 @@ async fn delete_demand<T: ApiApplication>(
 /// - `401 Unauthorized`: Missing read permissions
 /// - `404 Not Found`: Demand does not exist
 /// - `500 Internal Server Error`: Database query failed
-async fn get_demand_history<T: ApiApplication>(
+async fn get_demand_curve_history<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
     Path(Id { demand_id }): Path<Id<<T::Repository as Repository>::DemandId>>,
@@ -379,7 +373,7 @@ async fn get_demand_history<T: ApiApplication>(
         return Err((StatusCode::UNAUTHORIZED, "not authorized".to_string()));
     }
     let history = db
-        .get_demand_history(demand_id.clone(), query, config.page_limit)
+        .get_demand_curve_history(demand_id.clone(), query, config.page_limit)
         .await
         .map_err(|err| {
             event!(Level::ERROR, err = err.to_string());
