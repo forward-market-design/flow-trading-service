@@ -4,7 +4,7 @@
 //! and associate them with tradeable products. Portfolios enable complex trading
 //! strategies by allowing weighted combinations of demands and products.
 
-use crate::{ApiApplication, config::AxumConfig};
+use crate::ApiApplication;
 use aide::{
     axum::{
         ApiRouter,
@@ -12,21 +12,18 @@ use aide::{
     },
     transform::TransformOperation,
 };
-use axum::{
-    Extension, Json,
-    extract::{Path, Query, State},
-    http::StatusCode,
-};
-use axum_extra::TypedHeader;
-use fts_core::{
-    models::{
-        DateTimeRangeQuery, DateTimeRangeResponse, DemandGroup, PortfolioRecord, ProductGroup,
-    },
-    ports::{BatchRepository, PortfolioRepository as _, Repository, Solver},
-};
-use headers::{Authorization, authorization::Bearer};
-use std::{hash::Hash, sync::Arc};
-use tracing::{Level, event};
+
+mod crud;
+use crud::*;
+
+mod history;
+use history::*;
+
+mod list;
+use list::*;
+
+mod outcomes;
+use outcomes::*;
 
 /// Path parameter for portfolio-specific endpoints.
 #[derive(serde::Deserialize, schemars::JsonSchema)]
@@ -41,13 +38,13 @@ pub fn router<T: ApiApplication>() -> ApiRouter<T> {
     ApiRouter::new()
         .api_route_with(
             "/",
-            get_with(query_portfolios::<T>, query_portfolios_docs)
+            get_with(list_portfolios::<T>, list_portfolios_docs)
                 .post_with(create_portfolio::<T>, create_portfolio_docs),
             |route| route.security_requirement("jwt").tag("portfolio"),
         )
         .api_route_with(
             "/{portfolio_id}",
-            get(get_portfolio::<T>)
+            get(read_portfolio::<T>)
                 .patch(update_portfolio::<T>)
                 .delete(delete_portfolio::<T>),
             |route| route.security_requirement("jwt").tag("portfolio"),
@@ -84,7 +81,7 @@ pub fn router<T: ApiApplication>() -> ApiRouter<T> {
         )
 }
 
-fn query_portfolios_docs(op: TransformOperation) -> TransformOperation<'_> {
+fn list_portfolios_docs(op: TransformOperation) -> TransformOperation<'_> {
     op.summary("List portfolios")
         .description(
             r#"
@@ -99,447 +96,17 @@ fn query_portfolios_docs(op: TransformOperation) -> TransformOperation<'_> {
         .response_with::<500, String, _>(|res| res.description("Database query failed"))
 }
 
-async fn query_portfolios<T: ApiApplication>(
-    State(app): State<T>,
-    TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
-) -> Result<Json<Vec<PortfolioRecord<T::Repository, T::PortfolioData>>>, StatusCode> {
-    let db = app.database();
-    let bidder_ids = app.can_query_bid(&auth).await;
-
-    if bidder_ids.is_empty() {
-        Err(StatusCode::UNAUTHORIZED)
-    } else {
-        Ok(Json(db.query_portfolio(&bidder_ids).await.map_err(
-            |err| {
-                event!(Level::ERROR, err = err.to_string());
-                StatusCode::INTERNAL_SERVER_ERROR
-            },
-        )?))
-    }
-}
-
 fn create_portfolio_docs(op: TransformOperation) -> TransformOperation<'_> {
     op.summary("Create Portfolio")
         .description(
             r#"
-        Create a new portfolio with initial demand and product associations.
+            Create a new portfolio with initial demand and product associations.
 
-        Requires `can_create_bid` permission. The portfolio will be
-        associated with the bidder determined by the authorization context. 
-        "#,
+            Requires `can_create_bid` permission. The portfolio will be
+            associated with the bidder determined by the authorization context. 
+            "#,
         )
         // FIXME: The 201 is not automatically generated, but manually documenting it here is... not nice.
         .response_with::<401, String, _>(|res| res.description("Missing create permissions"))
         .response_with::<500, String, _>(|res| res.description("Database operation failed"))
-}
-
-async fn create_portfolio<T: ApiApplication>(
-    State(app): State<T>,
-    TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
-    Json(body): Json<
-        CreatePortfolioDto<
-            T::PortfolioData,
-            <T::Repository as Repository>::DemandId,
-            <T::Repository as Repository>::ProductId,
-        >,
-    >,
-) -> Result<
-    (
-        StatusCode,
-        Json<PortfolioRecord<T::Repository, T::PortfolioData>>,
-    ),
-    StatusCode,
-> {
-    let as_of = app.now();
-    let db = app.database();
-    let portfolio_id = app.generate_portfolio_id(&body.app_data);
-    let bidder_id = app
-        .can_create_bid(&auth)
-        .await
-        .ok_or(StatusCode::UNAUTHORIZED)?;
-
-    db.create_portfolio(
-        portfolio_id.clone(),
-        bidder_id,
-        body.app_data,
-        body.demand_group,
-        body.product_group,
-        as_of.clone(),
-    )
-    .await
-    .map(|portfolio| (StatusCode::CREATED, Json(portfolio)))
-    .map_err(|err| {
-        event!(Level::ERROR, err = err.to_string());
-        StatusCode::INTERNAL_SERVER_ERROR
-    })
-}
-
-/// Retrieve a portfolio's current state.
-///
-/// Returns the portfolio data including its demand group, product group,
-/// and application-specific data. Product groups can be expanded to include
-/// any child products created through partitioning.
-///
-/// # Authorization
-///
-/// Requires read permission for the portfolio's bidder (`can_read_bid`).
-///
-/// # Returns
-///
-/// - `200 OK`: Portfolio data
-/// - `401 Unauthorized`: Missing read permissions
-/// - `404 Not Found`: Portfolio does not exist
-/// - `500 Internal Server Error`: Database query failed
-async fn get_portfolio<T: ApiApplication>(
-    State(app): State<T>,
-    TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
-    Path(Id { portfolio_id }): Path<Id<<T::Repository as Repository>::PortfolioId>>,
-    Query(params): Query<GetPortfolioQuery>,
-) -> Result<Json<PortfolioRecord<T::Repository, T::PortfolioData>>, StatusCode> {
-    let as_of = app.now();
-    let db = app.database();
-    let portfolio = if params.expand {
-        db.get_portfolio(portfolio_id, as_of).await
-    } else {
-        db.get_portfolio_with_expanded_products(portfolio_id, as_of)
-            .await
-    }
-    .map_err(|err| {
-        event!(Level::ERROR, err = err.to_string());
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?
-    .ok_or(StatusCode::NOT_FOUND)?;
-
-    if !app.can_read_bid(&auth, portfolio.bidder_id.clone()).await {
-        return Err(StatusCode::UNAUTHORIZED);
-    }
-    Ok(Json(portfolio))
-}
-
-/// Update a portfolio's demand and/or product associations.
-///
-/// Either or both groups can be updated by providing non-None values.
-/// Providing None for a group leaves it unchanged.
-///
-/// # Authorization
-///
-/// Requires update permission for the portfolio's bidder (`can_update_bid`).
-///
-/// # Returns
-///
-/// - `200 OK`: Portfolio updated successfully
-/// - `401 Unauthorized`: Missing update permissions
-/// - `404 Not Found`: Portfolio does not exist
-/// - `500 Internal Server Error`: Database operation failed
-async fn update_portfolio<T: ApiApplication>(
-    State(app): State<T>,
-    TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
-    Path(Id { portfolio_id }): Path<Id<<T::Repository as Repository>::PortfolioId>>,
-    Json(body): Json<
-        UpdatePortfolioDto<
-            <T::Repository as Repository>::DemandId,
-            <T::Repository as Repository>::ProductId,
-        >,
-    >,
-) -> Result<Json<PortfolioRecord<T::Repository, T::PortfolioData>>, StatusCode> {
-    let as_of = app.now();
-    let db = app.database();
-    let bidder_id = db
-        .get_portfolio_bidder_id(portfolio_id.clone())
-        .await
-        .map_err(|err| {
-            event!(Level::ERROR, err = err.to_string());
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?
-        .ok_or(StatusCode::NOT_FOUND)?;
-
-    if !app.can_update_bid(&auth, bidder_id).await {
-        return Err(StatusCode::UNAUTHORIZED);
-    }
-
-    let updated = match (body.demand_group, body.product_group) {
-        (Some(demand_group), Some(product_group)) => {
-            db.update_portfolio_groups(portfolio_id, demand_group, product_group, as_of)
-                .await
-        }
-        (Some(demand_group), None) => {
-            db.update_portfolio_demand_group(portfolio_id, demand_group, as_of)
-                .await
-        }
-        (None, Some(product_group)) => {
-            db.update_portfolio_product_group(portfolio_id, product_group, as_of)
-                .await
-        }
-        (None, None) => db.get_portfolio(portfolio_id, as_of).await,
-    }
-    .map_err(|err| {
-        event!(Level::ERROR, err = err.to_string());
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?
-    .ok_or_else(|| {
-        event!(
-            Level::ERROR,
-            err = "failed to update portfolio after successful read"
-        );
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    Ok(Json(updated))
-}
-
-/// Delete a portfolio by clearing both its demand and product groups.
-///
-/// This doesn't remove the portfolio from the database but deactivates it
-/// by setting both groups to None. The portfolio's history is preserved.
-///
-/// # Authorization
-///
-/// Requires update permission for the portfolio's bidder (`can_update_bid`).
-///
-/// # Returns
-///
-/// - `200 OK`: Portfolio deleted successfully
-/// - `401 Unauthorized`: Missing update permissions
-/// - `404 Not Found`: Portfolio does not exist
-/// - `500 Internal Server Error`: Database operation failed
-async fn delete_portfolio<T: ApiApplication>(
-    State(app): State<T>,
-    TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
-    Path(Id { portfolio_id }): Path<Id<<T::Repository as Repository>::PortfolioId>>,
-) -> Result<Json<PortfolioRecord<T::Repository, T::PortfolioData>>, StatusCode> {
-    let as_of = app.now();
-    let db = app.database();
-    let bidder_id = db
-        .get_portfolio_bidder_id(portfolio_id.clone())
-        .await
-        .map_err(|err| {
-            event!(Level::ERROR, err = err.to_string());
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?
-        .ok_or(StatusCode::NOT_FOUND)?;
-
-    if !app.can_update_bid(&auth, bidder_id).await {
-        return Err(StatusCode::UNAUTHORIZED);
-    }
-
-    let deleted = db
-        .update_portfolio_groups(portfolio_id, Default::default(), Default::default(), as_of)
-        .await
-        .map_err(|err| {
-            event!(Level::ERROR, err = err.to_string());
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?
-        .ok_or_else(|| {
-            event!(
-                Level::ERROR,
-                err = "failed to delete portfolio after successful read"
-            );
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-    Ok(Json(deleted))
-}
-
-/// Retrieve the historical changes to a portfolio's demand group.
-///
-/// Returns a paginated list of demand group changes over time, showing
-/// how the portfolio's demand associations have evolved.
-///
-/// # Authorization
-///
-/// Requires read permission for the portfolio's bidder (`can_read_bid`).
-///
-/// # Returns
-///
-/// - `200 OK`: Paginated demand group history records
-/// - `401 Unauthorized`: Missing read permissions
-/// - `404 Not Found`: Portfolio does not exist
-/// - `500 Internal Server Error`: Database query failed
-async fn get_portfolio_demand_history<T: ApiApplication>(
-    State(app): State<T>,
-    TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
-    Path(Id { portfolio_id }): Path<Id<<T::Repository as Repository>::PortfolioId>>,
-    Extension(config): Extension<Arc<AxumConfig>>,
-    Query(query): Query<DateTimeRangeQuery<<T::Repository as Repository>::DateTime>>,
-) -> Result<
-    Json<
-        DateTimeRangeResponse<
-            DemandGroup<<T::Repository as Repository>::DemandId>,
-            <T::Repository as Repository>::DateTime,
-        >,
-    >,
-    StatusCode,
-> {
-    let db = app.database();
-
-    // Check if the user is authorized to read the portfolio history
-    let bidder_id = db
-        .get_portfolio_bidder_id(portfolio_id.clone())
-        .await
-        .map_err(|err| {
-            event!(Level::ERROR, err = err.to_string());
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?
-        .ok_or(StatusCode::NOT_FOUND)?;
-
-    if !app.can_read_bid(&auth, bidder_id).await {
-        return Err(StatusCode::UNAUTHORIZED);
-    }
-
-    let history = db
-        .get_portfolio_demand_history(portfolio_id, query, config.page_limit)
-        .await
-        .map_err(|err| {
-            event!(Level::ERROR, err = err.to_string());
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-    Ok(Json(history))
-}
-
-/// Retrieve the historical changes to a portfolio's product group.
-///
-/// Returns a paginated list of product group changes over time, showing
-/// how the portfolio's product associations have evolved.
-///
-/// # Authorization
-///
-/// Requires read permission for the portfolio's bidder (`can_read_bid`).
-///
-/// # Returns
-///
-/// - `200 OK`: Paginated product group history records
-/// - `401 Unauthorized`: Missing read permissions
-/// - `404 Not Found`: Portfolio does not exist
-/// - `500 Internal Server Error`: Database query failed
-async fn get_portfolio_product_history<T: ApiApplication>(
-    State(app): State<T>,
-    TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
-    Path(Id { portfolio_id }): Path<Id<<T::Repository as Repository>::PortfolioId>>,
-    Extension(config): Extension<Arc<AxumConfig>>,
-    Query(query): Query<DateTimeRangeQuery<<T::Repository as Repository>::DateTime>>,
-) -> Result<
-    Json<
-        DateTimeRangeResponse<
-            ProductGroup<<T::Repository as Repository>::ProductId>,
-            <T::Repository as Repository>::DateTime,
-        >,
-    >,
-    StatusCode,
-> {
-    let db = app.database();
-
-    // Check if the user is authorized to read the portfolio history
-    let bidder_id = db
-        .get_portfolio_bidder_id(portfolio_id.clone())
-        .await
-        .map_err(|err| {
-            event!(Level::ERROR, err = err.to_string());
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?
-        .ok_or(StatusCode::NOT_FOUND)?;
-
-    if !app.can_read_bid(&auth, bidder_id).await {
-        return Err(StatusCode::UNAUTHORIZED);
-    }
-
-    let history = db
-        .get_portfolio_product_history(portfolio_id, query, config.page_limit)
-        .await
-        .map_err(|err| {
-            event!(Level::ERROR, err = err.to_string());
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-    Ok(Json(history))
-}
-
-/// Retrieve batch auction outcomes for a portfolio.
-///
-/// Returns the historical allocations computed by the solver for this
-/// portfolio across multiple batch auctions.
-///
-/// # Authorization
-///
-/// Requires read permission for the portfolio's bidder (`can_read_bid`).
-///
-/// # Returns
-///
-/// - `200 OK`: Paginated outcome records
-/// - `401 Unauthorized`: Missing read permissions
-/// - `404 Not Found`: Portfolio does not exist
-/// - `500 Internal Server Error`: Database query failed
-async fn get_portfolio_outcomes<T: ApiApplication>(
-    State(app): State<T>,
-    TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
-    Path(Id { portfolio_id }): Path<Id<<T::Repository as Repository>::PortfolioId>>,
-    Extension(config): Extension<Arc<AxumConfig>>,
-    Query(query): Query<DateTimeRangeQuery<<T::Repository as Repository>::DateTime>>,
-) -> Result<
-    Json<
-        DateTimeRangeResponse<
-            <T::Solver as Solver<
-                <T::Repository as Repository>::DemandId,
-                <T::Repository as Repository>::PortfolioId,
-                <T::Repository as Repository>::ProductId,
-            >>::PortfolioOutcome,
-            <T::Repository as Repository>::DateTime,
-        >,
-    >,
-    StatusCode,
-> {
-    let db = app.database();
-
-    // Check if the user is authorized to read the portfolio history
-    let bidder_id = db
-        .get_portfolio_bidder_id(portfolio_id.clone())
-        .await
-        .map_err(|err| {
-            event!(Level::ERROR, err = err.to_string());
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?
-        .ok_or(StatusCode::NOT_FOUND)?;
-
-    if !app.can_read_bid(&auth, bidder_id).await {
-        return Err(StatusCode::UNAUTHORIZED);
-    }
-
-    let outcomes = db
-        .get_portfolio_outcomes(portfolio_id, query, config.page_limit)
-        .await
-        .map_err(|err| {
-            event!(Level::ERROR, err = err.to_string());
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-    Ok(Json(outcomes))
-}
-
-/// Request body for updating a portfolio's groups.
-#[derive(schemars::JsonSchema, serde::Deserialize)]
-#[schemars(inline)]
-struct UpdatePortfolioDto<DemandId: Eq + Hash, ProductId: Eq + Hash> {
-    /// New demand group weights (None to keep existing)
-    demand_group: Option<DemandGroup<DemandId>>,
-    /// New product group weights (None to keep existing)
-    product_group: Option<ProductGroup<ProductId>>,
-}
-
-/// Request body for creating a new portfolio.
-#[derive(schemars::JsonSchema, serde::Deserialize)]
-#[schemars(inline)]
-struct CreatePortfolioDto<PortfolioData, DemandId: Eq + Hash, ProductId: Eq + Hash> {
-    /// Application-specific data to associate with the portfolio
-    app_data: PortfolioData,
-    /// Initial demand weights
-    demand_group: DemandGroup<DemandId>,
-    /// Initial product weights
-    product_group: ProductGroup<ProductId>,
-}
-
-#[derive(schemars::JsonSchema, serde::Deserialize)]
-#[schemars(inline)]
-struct GetPortfolioQuery {
-    #[serde(default)]
-    expand: bool,
 }
