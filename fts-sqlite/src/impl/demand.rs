@@ -74,13 +74,13 @@ impl<DemandData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwned>
         demand_id: Self::DemandId,
         bidder_id: Self::BidderId,
         app_data: DemandData,
-        curve_data: Option<DemandCurve>,
+        curve_data: DemandCurve,
         as_of: Self::DateTime,
     ) -> Result<DemandRecord<Self, DemandData>, Self::Error> {
         let app_data = sqlx::types::Json(app_data);
         // Important: If curve_data is None, we insert NULL into the database
         // Else, this propagates into a [0] value in the JSONB column
-        let curve_data = curve_data.map(|x| sqlx::types::Json(x));
+        let curve_data = curve_data.to_option().map(|x| sqlx::types::Json(x));
         let demand = sqlx::query_as!(
             DemandRow::<DemandData>,
             r#"
@@ -111,10 +111,10 @@ impl<DemandData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwned>
     async fn update_demand(
         &self,
         demand_id: Self::DemandId,
-        curve_data: Option<DemandCurve>,
+        curve_data: DemandCurve,
         as_of: Self::DateTime,
     ) -> Result<Option<DemandRecord<Self, DemandData>>, Self::Error> {
-        let curve_data = curve_data.map(|x| sqlx::types::Json(x));
+        let curve_data = curve_data.to_option().map(|x| sqlx::types::Json(x));
         let demand = sqlx::query_as!(
             DemandRow::<DemandData>,
             r#"
@@ -170,7 +170,7 @@ impl<DemandData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwned>
                 select
                     valid_from as "valid_from!: DateTime",
                     valid_until as "valid_until?: DateTime",
-                    json(value) as "value!: sqlx::types::Json<DemandCurveDto>"
+                    json(coalesce(value, "null")) as "value!: sqlx::types::Json<DemandCurveDto>"
                 from
                     curve_data
                 where

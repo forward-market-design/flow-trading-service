@@ -36,20 +36,14 @@ async fn test_demand_curve_triggers() -> anyhow::Result<()> {
     ])?
     .into();
 
-    db.create_demand(
-        demand_id,
-        bidder_id,
-        (),
-        Some(initial_curve.clone()),
-        now.into(),
-    )
-    .await?;
+    db.create_demand(demand_id, bidder_id, (), initial_curve.clone(), now.into())
+        .await?;
 
     // Verify demand exists and has the curve
     let demand = <Db as DemandRepository<()>>::get_demand(db, demand_id, now.into())
         .await?
         .unwrap();
-    assert!(demand.curve_data.unwrap().clone().points() == initial_curve.clone().points());
+    assert!(demand.curve_data.clone().points() == initial_curve.clone().points());
 
     // Update demand with new curve
     let updated_curve: DemandCurve = PwlCurve::new(vec![
@@ -71,7 +65,7 @@ async fn test_demand_curve_triggers() -> anyhow::Result<()> {
     let updated = <Db as DemandRepository<()>>::update_demand(
         db,
         demand_id,
-        Some(updated_curve.clone()),
+        updated_curve.clone(),
         update_time.into(),
     )
     .await?;
@@ -82,7 +76,7 @@ async fn test_demand_curve_triggers() -> anyhow::Result<()> {
         <Db as DemandRepository<()>>::get_demand(db, demand_id, update_time.into())
             .await?
             .unwrap();
-    assert!(updated_demand.curve_data.unwrap().clone().points() == updated_curve.clone().points());
+    assert!(updated_demand.curve_data.clone().points() == updated_curve.clone().points());
 
     // Verify we can see history
     let history = <Db as DemandRepository<()>>::get_demand_curve_history(
@@ -152,7 +146,7 @@ async fn test_portfolio_triggers_partial_updates() -> anyhow::Result<()> {
     let product_id = app.generate_product_id(&());
 
     // Create some entities first
-    db.create_demand(demand_id, bidder_id, (), None, now.into())
+    db.create_demand(demand_id, bidder_id, (), DemandCurve::None, now.into())
         .await?;
     db.create_product(product_id, (), now.into()).await?;
 
@@ -327,7 +321,7 @@ async fn test_portfolio_triggers_multiple_items() -> anyhow::Result<()> {
     let product2 = app.generate_product_id(&());
 
     for &demand_id in &[demand1, demand2, demand3] {
-        db.create_demand(demand_id, bidder_id, (), None, now.into())
+        db.create_demand(demand_id, bidder_id, (), DemandCurve::None, now.into())
             .await?;
     }
     for &product_id in &[product1, product2] {
@@ -458,14 +452,14 @@ async fn test_demand_trigger_null_curve() -> anyhow::Result<()> {
     let demand_id = app.generate_demand_id(&());
 
     // Create demand with null curve
-    db.create_demand(demand_id, bidder_id, (), None, now.into())
+    db.create_demand(demand_id, bidder_id, (), DemandCurve::None, now.into())
         .await?;
 
     // Verify demand exists with null curve
     let demand = <Db as DemandRepository<()>>::get_demand(db, demand_id, now.into())
         .await?
         .unwrap();
-    assert!(demand.curve_data.is_none());
+    assert!(demand.curve_data.to_option().is_none());
 
     // Update to non-null curve
     let curve: DemandCurve = ConstantCurve::new(Some(-10.0), Some(10.0), 5.0)?.into();
@@ -473,7 +467,7 @@ async fn test_demand_trigger_null_curve() -> anyhow::Result<()> {
     let updated = <Db as DemandRepository<()>>::update_demand(
         db,
         demand_id,
-        Some(curve.clone()),
+        curve.clone(),
         update_time.into(),
     )
     .await?;
@@ -484,19 +478,24 @@ async fn test_demand_trigger_null_curve() -> anyhow::Result<()> {
         <Db as DemandRepository<()>>::get_demand(db, demand_id, update_time.into())
             .await?
             .unwrap();
-    assert!(updated_demand.curve_data.unwrap().clone().points() == curve.clone().points());
+    assert!(updated_demand.curve_data.clone().points() == curve.clone().points());
 
     // Update back to null
     let null_time = now + std::time::Duration::from_secs(10);
-    let updated_again =
-        <Db as DemandRepository<()>>::update_demand(db, demand_id, None, null_time.into()).await?;
+    let updated_again = <Db as DemandRepository<()>>::update_demand(
+        db,
+        demand_id,
+        DemandCurve::None,
+        null_time.into(),
+    )
+    .await?;
     assert!(updated_again.is_some());
 
     // Verify curve is null again
     let final_demand = <Db as DemandRepository<()>>::get_demand(db, demand_id, null_time.into())
         .await?
         .unwrap();
-    assert!(final_demand.curve_data.is_none());
+    assert!(final_demand.curve_data.to_option().is_none());
 
     // Verify history shows all transitions
     let history = <Db as DemandRepository<()>>::get_demand_curve_history(

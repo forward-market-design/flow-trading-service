@@ -43,7 +43,7 @@ Authorization: Bearer bidder_id={{bidder1}}&can_create_bid=true
 }
 HTTP 201
 [Asserts]
-jsonpath "$.demand_id" == "{{demand_id}}"
+jsonpath "$.id" == "{{demand_id}}"
 
 
 # Verify the bid is considered live

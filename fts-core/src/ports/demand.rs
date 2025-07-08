@@ -21,7 +21,7 @@ pub trait DemandRepository<DemandData>: super::Repository {
         demand_id: Self::DemandId,
         bidder_id: Self::BidderId,
         app_data: DemandData,
-        curve_data: Option<DemandCurve>,
+        curve_data: DemandCurve,
         as_of: Self::DateTime,
     ) -> impl Future<Output = Result<DemandRecord<Self, DemandData>, Self::Error>> + Send;
 
@@ -38,7 +38,7 @@ pub trait DemandRepository<DemandData>: super::Repository {
     fn update_demand(
         &self,
         demand_id: Self::DemandId,
-        curve_data: Option<DemandCurve>,
+        curve_data: DemandCurve,
         as_of: Self::DateTime,
     ) -> impl Future<Output = Result<Option<DemandRecord<Self, DemandData>>, Self::Error>> + Send;
 

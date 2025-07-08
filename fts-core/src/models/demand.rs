@@ -58,7 +58,7 @@ pub struct DemandRecord<T: Repository, AppData> {
     /// When present, this curve is used by the solver to determine optimal
     /// allocations. Setting this to `None` effectively deletes the demand
     /// from active consideration while preserving its history.
-    pub curve_data: Option<DemandCurve>,
+    pub curve_data: DemandCurve,
 
     /// Map of portfolios associated with this demand and their weights.
     ///

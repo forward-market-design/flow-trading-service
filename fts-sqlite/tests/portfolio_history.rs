@@ -2,7 +2,7 @@ mod common;
 
 use common::TestApp;
 use fts_core::{
-    models::{DateTimeRangeQuery, DemandGroup, ProductGroup},
+    models::{DateTimeRangeQuery, DemandCurve, DemandGroup, ProductGroup},
     ports::{Application, DemandRepository as _, PortfolioRepository, ProductRepository as _},
 };
 use fts_sqlite::{Db, config::SqliteConfig, types::BidderId};
@@ -33,14 +33,14 @@ async fn test_portfolio_history() -> anyhow::Result<()> {
     )
     .await?;
 
-    db.create_demand(demand1, bidder_id, (), None, now.into())
+    db.create_demand(demand1, bidder_id, (), DemandCurve::None, now.into())
         .await?;
 
     db.create_demand(
         demand2,
         bidder_id,
         (),
-        None,
+        DemandCurve::None,
         (now + std::time::Duration::from_secs(1)).into(),
     )
     .await?;

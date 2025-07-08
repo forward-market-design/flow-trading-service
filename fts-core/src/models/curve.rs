@@ -24,16 +24,30 @@ pub use pwl::*;
 /// The solver uses these curves to find optimal allocations that maximize total welfare.
 /// All curves must include rate=0 in their domain to allow for zero trade scenarios.
 pub enum DemandCurve {
+    /// No demand curve
+    None,
     /// Piecewise linear curve defined by a series of points
     Pwl(#[cfg_attr(feature = "schemars", schemars(with = "PwlCurveDto"))] PwlCurve),
     /// Constant price curve over a rate interval
     Constant(#[cfg_attr(feature = "schemars", schemars(with = "ConstantCurveDto"))] ConstantCurve),
 }
 
+impl DemandCurve {
+    /// Convert the demand curve to an optional type
+    pub fn to_option(self) -> Option<Self> {
+        match self {
+            DemandCurve::None => None,
+            other => Some(other),
+        }
+    }
+}
+
 /// DTO for demand curves to enable validation during deserialization
 #[cfg_attr(feature = "serde", derive(serde::Serialize), serde(untagged))]
 #[derive(Debug)]
 pub enum DemandCurveDto {
+    /// No demand curve
+    None,
     /// Piecewise linear curve DTO
     Pwl(PwlCurveDto),
     /// Constant price curve DTO
@@ -49,6 +63,7 @@ impl<'de> serde::Deserialize<'de> for DemandCurveDto {
         serde_untagged::UntaggedEnumVisitor::new()
             .seq(|seq| seq.deserialize().map(DemandCurveDto::Pwl))
             .map(|map| map.deserialize().map(DemandCurveDto::Constant))
+            .unit(|| Ok(DemandCurveDto::None))
             .deserialize(deserializer)
     }
 }
@@ -59,6 +74,7 @@ impl TryFrom<DemandCurveDto> for DemandCurve {
     /// Creates a demand curve from a DTO, validating all constraints
     fn try_from(value: DemandCurveDto) -> Result<Self, Self::Error> {
         match value {
+            DemandCurveDto::None => Ok(DemandCurve::None),
             DemandCurveDto::Pwl(curve) => Ok(curve.try_into()?),
             DemandCurveDto::Constant(constant) => Ok(constant.try_into()?),
         }
@@ -68,6 +84,7 @@ impl TryFrom<DemandCurveDto> for DemandCurve {
 impl Into<DemandCurveDto> for DemandCurve {
     fn into(self) -> DemandCurveDto {
         match self {
+            Self::None => DemandCurveDto::None,
             Self::Pwl(curve) => DemandCurveDto::Pwl(curve.into()),
             Self::Constant(constant) => DemandCurveDto::Constant(constant.into()),
         }
@@ -120,6 +137,7 @@ impl DemandCurve {
     pub unsafe fn new_unchecked(value: DemandCurveDto) -> Self {
         unsafe {
             match value {
+                DemandCurveDto::None => DemandCurve::None,
                 DemandCurveDto::Pwl(curve) => PwlCurve::new_unchecked(curve.0).into(),
                 DemandCurveDto::Constant(ConstantCurveDto {
                     min_rate,
@@ -141,6 +159,7 @@ impl DemandCurve {
     /// A tuple `(min_rate, max_rate)` defining the valid rate range for this curve.
     pub fn domain(&self) -> (f64, f64) {
         match self {
+            DemandCurve::None => (0.0, 0.0),
             DemandCurve::Pwl(curve) => curve.domain(),
             DemandCurve::Constant(curve) => curve.domain(),
         }
@@ -152,6 +171,7 @@ impl DemandCurve {
     /// returns two points representing the endpoints of the constant price segment.
     pub fn points(self) -> Vec<Point> {
         match self {
+            DemandCurve::None => Vec::new(),
             DemandCurve::Pwl(curve) => curve.points(),
             DemandCurve::Constant(curve) => curve.points(),
         }
@@ -161,6 +181,12 @@ impl DemandCurve {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_deserialize_none() {
+        let test = serde_json::from_str::<DemandCurve>("null");
+        assert!(test.is_ok());
+    }
 
     #[test]
     fn test_deserialize_pwl() {

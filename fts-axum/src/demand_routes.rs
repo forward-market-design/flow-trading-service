@@ -104,18 +104,7 @@ async fn create_demand<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
     Json(body): Json<CreateDemandRequestBody<T::DemandData>>,
-) -> Result<
-    (
-        StatusCode,
-        Json<
-            CreateDemandResponseBody<
-                <T::Repository as Repository>::DateTime,
-                <T::Repository as Repository>::DemandId,
-            >,
-        >,
-    ),
-    (StatusCode, String),
-> {
+) -> Result<(StatusCode, Json<DemandRecord<T::Repository, T::DemandData>>), (StatusCode, String)> {
     let as_of = app.now();
     let db = app.database();
     let demand_id = app.generate_demand_id(&body.app_data);
@@ -132,12 +121,7 @@ async fn create_demand<T: ApiApplication>(
         as_of.clone(),
     )
     .await
-    .map(|_| {
-        (
-            StatusCode::CREATED,
-            Json(CreateDemandResponseBody { as_of, demand_id }),
-        )
-    })
+    .map(|demand| (StatusCode::CREATED, Json(demand)))
     .map_err(|err| {
         event!(Level::ERROR, err = err.to_string());
         (
@@ -236,7 +220,7 @@ async fn update_demand<T: ApiApplication>(
     }
 
     let updated = db
-        .update_demand(demand_id.clone(), Some(body), as_of.clone())
+        .update_demand(demand_id.clone(), body, as_of.clone())
         .await
         .map_err(|err| {
             event!(Level::ERROR, err = err.to_string());
@@ -303,7 +287,7 @@ async fn delete_demand<T: ApiApplication>(
     }
 
     let deleted = db
-        .update_demand(demand_id.clone(), None, as_of.clone())
+        .update_demand(demand_id.clone(), DemandCurve::None, as_of.clone())
         .await
         .map_err(|err| {
             event!(Level::ERROR, err = err.to_string());
@@ -393,15 +377,5 @@ struct CreateDemandRequestBody<D> {
     /// Application-specific data to associate with the demand
     app_data: D,
     /// Optional initial curve data
-    curve_data: Option<DemandCurve>,
-}
-
-/// Response body for creating a new demand.
-#[derive(serde::Serialize, schemars::JsonSchema)]
-#[schemars(inline)]
-struct CreateDemandResponseBody<T, U> {
-    /// The effective timestamp of the demand
-    as_of: T,
-    /// The system-generated id of the demand curve
-    demand_id: U,
+    curve_data: DemandCurve,
 }
