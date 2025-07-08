@@ -49,7 +49,7 @@ where
                 .curve_data
                 // SAFETY: we are deserialized from the database, and we ensure we only save valid demand curves
                 .map(|x| unsafe { DemandCurve::new_unchecked(x.0) })
-                .unwrap_or(DemandCurve::None),
+                .unwrap_or_default(),
             portfolio_group: self.portfolio_group.map(|x| x.0).unwrap_or_default(),
         }
     }

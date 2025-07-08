@@ -18,13 +18,14 @@ pub use pwl::*;
     derive(serde::Serialize, serde::Deserialize),
     serde(try_from = "DemandCurveDto", into = "DemandCurveDto")
 )]
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 /// A demand curve expressing a bidder's willingness to pay at different rates.
 ///
 /// The solver uses these curves to find optimal allocations that maximize total welfare.
 /// All curves must include rate=0 in their domain to allow for zero trade scenarios.
 pub enum DemandCurve {
     /// No demand curve
+    #[default]
     None,
     /// Piecewise linear curve defined by a series of points
     Pwl(#[cfg_attr(feature = "schemars", schemars(with = "PwlCurveDto"))] PwlCurve),
@@ -44,9 +45,10 @@ impl DemandCurve {
 
 /// DTO for demand curves to enable validation during deserialization
 #[cfg_attr(feature = "serde", derive(serde::Serialize), serde(untagged))]
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub enum DemandCurveDto {
     /// No demand curve
+    #[default]
     None,
     /// Piecewise linear curve DTO
     Pwl(PwlCurveDto),

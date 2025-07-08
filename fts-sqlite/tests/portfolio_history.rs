@@ -71,11 +71,11 @@ async fn test_portfolio_history() -> anyhow::Result<()> {
     updated_demand_group.insert(demand1, 0.3);
     updated_demand_group.insert(demand2, 0.8);
 
-    <Db as PortfolioRepository<()>>::update_portfolio(
+    <Db as PortfolioRepository<()>>::update_portfolio_groups(
         db,
         portfolio_id,
-        Some(updated_demand_group),
-        Some(updated_product_group),
+        updated_demand_group,
+        updated_product_group,
         (now + std::time::Duration::from_secs(4)).into(),
     )
     .await?;

@@ -179,11 +179,10 @@ async fn test_portfolio_triggers_partial_updates() -> anyhow::Result<()> {
     updated_demand_group.insert(demand_id, 1.5);
     let update_time = now + std::time::Duration::from_secs(5);
 
-    let updated = <Db as PortfolioRepository<()>>::update_portfolio(
+    let updated = <Db as PortfolioRepository<()>>::update_portfolio_demand_group(
         db,
         portfolio_id,
-        Some(updated_demand_group),
-        None, // Don't update product group
+        updated_demand_group,
         update_time.into(),
     )
     .await?;
@@ -236,11 +235,10 @@ async fn test_portfolio_triggers_partial_updates() -> anyhow::Result<()> {
     let mut updated_product_group = ProductGroup::default();
     updated_product_group.insert(product_id, 3.0);
     let product_update_time = now + std::time::Duration::from_secs(10);
-    let updated_product = <Db as PortfolioRepository<()>>::update_portfolio(
+    let updated_product = <Db as PortfolioRepository<()>>::update_portfolio_product_group(
         db,
         portfolio_id,
-        None, // Don't update demand group
-        Some(updated_product_group),
+        updated_product_group,
         product_update_time.into(),
     )
     .await?;
@@ -372,11 +370,11 @@ async fn test_portfolio_triggers_multiple_items() -> anyhow::Result<()> {
     // product2 removed
 
     let update_time = now + std::time::Duration::from_secs(10);
-    <Db as PortfolioRepository<()>>::update_portfolio(
+    <Db as PortfolioRepository<()>>::update_portfolio_groups(
         db,
         portfolio_id,
-        Some(updated_demand_group.clone()),
-        Some(updated_product_group.clone()),
+        updated_demand_group.clone(),
+        updated_product_group.clone(),
         update_time.into(),
     )
     .await?;

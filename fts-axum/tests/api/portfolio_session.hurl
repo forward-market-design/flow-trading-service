@@ -75,7 +75,7 @@ Authorization: Bearer bidder_id={{bidder1}}&can_create_bid=true
 }
 HTTP 201
 [Asserts]
-jsonpath "$.portfolio_id" == "{{portfolio1}}"
+jsonpath "$.id" == "{{portfolio1}}"
 
 POST {{baseurl}}/portfolio
 Authorization: Bearer bidder_id={{bidder1}}&can_create_bid=true
@@ -86,7 +86,7 @@ Authorization: Bearer bidder_id={{bidder1}}&can_create_bid=true
 }
 HTTP 201
 [Asserts]
-jsonpath "$.portfolio_id" == "{{portfolio2}}"
+jsonpath "$.id" == "{{portfolio2}}"
 
 GET {{baseurl}}/portfolio/{{portfolio2}}/demand-history
 Authorization: Bearer bidder_id={{bidder1}}&can_read_bid=true

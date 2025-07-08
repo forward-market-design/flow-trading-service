@@ -118,128 +118,130 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
         Ok(portfolio.into())
     }
 
-    async fn update_portfolio(
+    async fn update_portfolio_demand_group(
         &self,
         portfolio_id: Self::PortfolioId,
-        demand_group: Option<DemandGroup<Self::DemandId>>,
-        product_group: Option<ProductGroup<Self::ProductId>>,
+        demand_group: DemandGroup<Self::DemandId>,
         as_of: Self::DateTime,
     ) -> Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error> {
-        let updated = match (demand_group, product_group) {
-            (Some(demand_group), Some(product_group)) => {
-                let demand_group = if demand_group.is_empty() {
-                    None
-                } else {
-                    Some(sqlx::types::Json(demand_group))
-                };
-                let product_group = if product_group.is_empty() {
-                    None
-                } else {
-                    Some(sqlx::types::Json(product_group))
-                };
-                sqlx::query_as!(
-                    PortfolioRow,
-                    r#"
-                    update
-                        portfolio
-                    set
-                        as_of = $2,
-                        demand_group = jsonb($3),
-                        product_group = jsonb($4)
-                    where
-                        id = $1
-                    returning
-                        id as "id!: PortfolioId",
-                        as_of as "valid_from!: DateTime",
-                        null as "valid_until?: DateTime",
-                        bidder_id as "bidder_id!: BidderId",
-                        json(app_data) as "app_data!: sqlx::types::Json<PortfolioData>",
-                        json(demand_group) as "demand_group?: sqlx::types::Json<DemandGroup<DemandId>>",
-                        json(product_group) as "product_group?: sqlx::types::Json<ProductGroup<ProductId>>"
-                    "#,
-                    portfolio_id,
-                    as_of,
-                    demand_group,
-                    product_group,
-                )
-                .fetch_optional(&self.writer)
-                .await?
-            }
-            (Some(demand_group), None) => {
-                let demand_group = if demand_group.is_empty() {
-                    None
-                } else {
-                    Some(sqlx::types::Json(demand_group))
-                };
-                sqlx::query_as!(
-                    PortfolioRow,
-                    r#"
-                    update
-                        portfolio
-                    set
-                        as_of = $2,
-                        demand_group = jsonb($3)
-                    where
-                        id = $1
-                    returning
-                        id as "id!: PortfolioId",
-                        as_of as "valid_from!: DateTime",
-                        null as "valid_until?: DateTime",
-                        bidder_id as "bidder_id!: BidderId",
-                        json(app_data) as "app_data!: sqlx::types::Json<PortfolioData>",
-                        json(demand_group) as "demand_group?: sqlx::types::Json<DemandGroup<DemandId>>",
-                        json(product_group) as "product_group?: sqlx::types::Json<ProductGroup<ProductId>>"
-                    "#,
-                    portfolio_id,
-                    as_of,
-                    demand_group,
-                )
-                .fetch_optional(&self.writer)
-                .await?
-            }
-            (None, Some(product_group)) => {
-                let product_group = if product_group.is_empty() {
-                    None
-                } else {
-                    Some(sqlx::types::Json(product_group))
-                };
-                sqlx::query_as!(
-                    PortfolioRow,
-                    r#"
-                    update
-                        portfolio
-                    set
-                        as_of = $2,
-                        product_group = jsonb($3)
-                    where
-                        id = $1
-                    returning
-                        id as "id!: PortfolioId",
-                        as_of as "valid_from!: DateTime",
-                        null as "valid_until?: DateTime",
-                        bidder_id as "bidder_id!: BidderId",
-                        json(app_data) as "app_data!: sqlx::types::Json<PortfolioData>",
-                        json(demand_group) as "demand_group?: sqlx::types::Json<DemandGroup<DemandId>>",
-                        json(product_group) as "product_group?: sqlx::types::Json<ProductGroup<ProductId>>"
-                    "#,
-                    portfolio_id,
-                    as_of,
-                    product_group,
-                )
-                .fetch_optional(&self.writer)
-                .await?
-            }
-            (None, None) => {
-                sqlx::query_file_as!(
-                    PortfolioRow,
-                    "queries/get_portfolio_by_id.sql",
-                    portfolio_id,
-                    as_of
-                )
-                .fetch_optional(&self.reader)
-                .await?
-            }
+        let demand_group = if demand_group.is_empty() {
+            None
+        } else {
+            Some(sqlx::types::Json(demand_group))
         };
+        let updated = sqlx::query_as!(
+            PortfolioRow,
+            r#"
+            update
+                portfolio
+            set
+                as_of = $2,
+                demand_group = jsonb($3)
+            where
+                id = $1
+            returning
+                id as "id!: PortfolioId",
+                as_of as "valid_from!: DateTime",
+                null as "valid_until?: DateTime",
+                bidder_id as "bidder_id!: BidderId",
+                json(app_data) as "app_data!: sqlx::types::Json<PortfolioData>",
+                json(demand_group) as "demand_group?: sqlx::types::Json<DemandGroup<DemandId>>",
+                json(product_group) as "product_group?: sqlx::types::Json<ProductGroup<ProductId>>"
+            "#,
+            portfolio_id,
+            as_of,
+            demand_group,
+        )
+        .fetch_optional(&self.writer)
+        .await?;
+
+        Ok(updated.map(Into::into))
+    }
+
+    async fn update_portfolio_product_group(
+        &self,
+        portfolio_id: Self::PortfolioId,
+        product_group: ProductGroup<Self::ProductId>,
+        as_of: Self::DateTime,
+    ) -> Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error> {
+        let product_group = if product_group.is_empty() {
+            None
+        } else {
+            Some(sqlx::types::Json(product_group))
+        };
+        let updated = sqlx::query_as!(
+            PortfolioRow,
+            r#"
+            update
+                portfolio
+            set
+                as_of = $2,
+                product_group = jsonb($3)
+            where
+                id = $1
+            returning
+                id as "id!: PortfolioId",
+                as_of as "valid_from!: DateTime",
+                null as "valid_until?: DateTime",
+                bidder_id as "bidder_id!: BidderId",
+                json(app_data) as "app_data!: sqlx::types::Json<PortfolioData>",
+                json(demand_group) as "demand_group?: sqlx::types::Json<DemandGroup<DemandId>>",
+                json(product_group) as "product_group?: sqlx::types::Json<ProductGroup<ProductId>>"
+            "#,
+            portfolio_id,
+            as_of,
+            product_group,
+        )
+        .fetch_optional(&self.writer)
+        .await?;
+
+        Ok(updated.map(Into::into))
+    }
+
+    async fn update_portfolio_groups(
+        &self,
+        portfolio_id: Self::PortfolioId,
+        demand_group: DemandGroup<Self::DemandId>,
+        product_group: ProductGroup<Self::ProductId>,
+        as_of: Self::DateTime,
+    ) -> Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error> {
+        let demand_group = if demand_group.is_empty() {
+            None
+        } else {
+            Some(sqlx::types::Json(demand_group))
+        };
+        let product_group = if product_group.is_empty() {
+            None
+        } else {
+            Some(sqlx::types::Json(product_group))
+        };
+        let updated = sqlx::query_as!(
+            PortfolioRow,
+            r#"
+            update
+                portfolio
+            set
+                as_of = $2,
+                demand_group = jsonb($3),
+                product_group = jsonb($4)
+            where
+                id = $1
+            returning
+                id as "id!: PortfolioId",
+                as_of as "valid_from!: DateTime",
+                null as "valid_until?: DateTime",
+                bidder_id as "bidder_id!: BidderId",
+                json(app_data) as "app_data!: sqlx::types::Json<PortfolioData>",
+                json(demand_group) as "demand_group?: sqlx::types::Json<DemandGroup<DemandId>>",
+                json(product_group) as "product_group?: sqlx::types::Json<ProductGroup<ProductId>>"
+            "#,
+            portfolio_id,
+            as_of,
+            demand_group,
+            product_group,
+        )
+        .fetch_optional(&self.writer)
+        .await?;
 
         Ok(updated.map(Into::into))
     }
@@ -252,6 +254,23 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
         let query = sqlx::query_file_as!(
             PortfolioRow,
             "queries/get_portfolio_by_id.sql",
+            portfolio_id,
+            as_of
+        )
+        .fetch_optional(&self.reader)
+        .await?;
+
+        Ok(query.map(Into::into))
+    }
+
+    async fn get_portfolio_with_expanded_products(
+        &self,
+        portfolio_id: Self::PortfolioId,
+        as_of: Self::DateTime,
+    ) -> Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error> {
+        let query = sqlx::query_file_as!(
+            PortfolioRow,
+            "queries/get_portfolio_by_id_expanded.sql",
             portfolio_id,
             as_of
         )

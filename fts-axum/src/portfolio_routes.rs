@@ -102,20 +102,17 @@ fn query_portfolios_docs(op: TransformOperation) -> TransformOperation<'_> {
 async fn query_portfolios<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
-) -> Result<Json<Vec<PortfolioRecord<T::Repository, T::PortfolioData>>>, (StatusCode, String)> {
+) -> Result<Json<Vec<PortfolioRecord<T::Repository, T::PortfolioData>>>, StatusCode> {
     let db = app.database();
     let bidder_ids = app.can_query_bid(&auth).await;
 
     if bidder_ids.is_empty() {
-        Err((StatusCode::UNAUTHORIZED, "not authorized".to_string()))
+        Err(StatusCode::UNAUTHORIZED)
     } else {
         Ok(Json(db.query_portfolio(&bidder_ids).await.map_err(
             |err| {
                 event!(Level::ERROR, err = err.to_string());
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "failed to query demand".to_string(),
-                )
+                StatusCode::INTERNAL_SERVER_ERROR
             },
         )?))
     }
@@ -140,7 +137,7 @@ async fn create_portfolio<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
     Json(body): Json<
-        CreatePortfolioRequestBody<
+        CreatePortfolioDto<
             T::PortfolioData,
             <T::Repository as Repository>::DemandId,
             <T::Repository as Repository>::ProductId,
@@ -149,14 +146,9 @@ async fn create_portfolio<T: ApiApplication>(
 ) -> Result<
     (
         StatusCode,
-        Json<
-            CreatePortfolioResponseBody<
-                <T::Repository as Repository>::DateTime,
-                <T::Repository as Repository>::PortfolioId,
-            >,
-        >,
+        Json<PortfolioRecord<T::Repository, T::PortfolioData>>,
     ),
-    (StatusCode, String),
+    StatusCode,
 > {
     let as_of = app.now();
     let db = app.database();
@@ -164,7 +156,7 @@ async fn create_portfolio<T: ApiApplication>(
     let bidder_id = app
         .can_create_bid(&auth)
         .await
-        .ok_or((StatusCode::UNAUTHORIZED, "not authorized".to_string()))?;
+        .ok_or(StatusCode::UNAUTHORIZED)?;
 
     db.create_portfolio(
         portfolio_id.clone(),
@@ -175,28 +167,17 @@ async fn create_portfolio<T: ApiApplication>(
         as_of.clone(),
     )
     .await
-    .map(|_| {
-        (
-            StatusCode::CREATED,
-            Json(CreatePortfolioResponseBody {
-                as_of,
-                portfolio_id,
-            }),
-        )
-    })
+    .map(|portfolio| (StatusCode::CREATED, Json(portfolio)))
     .map_err(|err| {
         event!(Level::ERROR, err = err.to_string());
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "failed to create portfolio".to_string(),
-        )
+        StatusCode::INTERNAL_SERVER_ERROR
     })
 }
 
 /// Retrieve a portfolio's current state.
 ///
 /// Returns the portfolio data including its demand group, product group,
-/// and application-specific data. Product groups are expanded to include
+/// and application-specific data. Product groups can be expanded to include
 /// any child products created through partitioning.
 ///
 /// # Authorization
@@ -213,23 +194,24 @@ async fn get_portfolio<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
     Path(Id { portfolio_id }): Path<Id<<T::Repository as Repository>::PortfolioId>>,
-) -> Result<Json<PortfolioRecord<T::Repository, T::PortfolioData>>, (StatusCode, String)> {
+    Query(params): Query<GetPortfolioQuery>,
+) -> Result<Json<PortfolioRecord<T::Repository, T::PortfolioData>>, StatusCode> {
     let as_of = app.now();
     let db = app.database();
-    let portfolio = db
-        .get_portfolio(portfolio_id.clone(), as_of)
-        .await
-        .map_err(|err| {
-            event!(Level::ERROR, err = err.to_string());
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "failed to get portfolio".to_string(),
-            )
-        })?
-        .ok_or((StatusCode::NOT_FOUND, "portfolio not found".to_string()))?;
+    let portfolio = if params.expand {
+        db.get_portfolio(portfolio_id, as_of).await
+    } else {
+        db.get_portfolio_with_expanded_products(portfolio_id, as_of)
+            .await
+    }
+    .map_err(|err| {
+        event!(Level::ERROR, err = err.to_string());
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?
+    .ok_or(StatusCode::NOT_FOUND)?;
 
     if !app.can_read_bid(&auth, portfolio.bidder_id.clone()).await {
-        return Err((StatusCode::UNAUTHORIZED, "not authorized".to_string()));
+        return Err(StatusCode::UNAUTHORIZED);
     }
     Ok(Json(portfolio))
 }
@@ -259,7 +241,7 @@ async fn update_portfolio<T: ApiApplication>(
             <T::Repository as Repository>::ProductId,
         >,
     >,
-) -> Result<Json<PortfolioRecord<T::Repository, T::PortfolioData>>, (StatusCode, String)> {
+) -> Result<Json<PortfolioRecord<T::Repository, T::PortfolioData>>, StatusCode> {
     let as_of = app.now();
     let db = app.database();
     let bidder_id = db
@@ -267,45 +249,40 @@ async fn update_portfolio<T: ApiApplication>(
         .await
         .map_err(|err| {
             event!(Level::ERROR, err = err.to_string());
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("failed to get portfolio {}", portfolio_id),
-            )
+            StatusCode::INTERNAL_SERVER_ERROR
         })?
-        .ok_or((
-            StatusCode::NOT_FOUND,
-            format!("unknown portfolio {}", portfolio_id),
-        ))?;
+        .ok_or(StatusCode::NOT_FOUND)?;
 
     if !app.can_update_bid(&auth, bidder_id).await {
-        return Err((StatusCode::UNAUTHORIZED, "not authorized".to_string()));
+        return Err(StatusCode::UNAUTHORIZED);
     }
 
-    let updated = db
-        .update_portfolio(
-            portfolio_id.clone(),
-            body.demand_group,
-            body.product_group,
-            as_of.clone(),
-        )
-        .await
-        .map_err(|err| {
-            event!(Level::ERROR, err = err.to_string());
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("failed to update portfolio {}", portfolio_id),
-            )
-        })?
-        .ok_or_else(|| {
-            event!(
-                Level::ERROR,
-                err = "failed to update portfolio after successful read"
-            );
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("failed to update portfolio {}", portfolio_id),
-            )
-        })?;
+    let updated = match (body.demand_group, body.product_group) {
+        (Some(demand_group), Some(product_group)) => {
+            db.update_portfolio_groups(portfolio_id, demand_group, product_group, as_of)
+                .await
+        }
+        (Some(demand_group), None) => {
+            db.update_portfolio_demand_group(portfolio_id, demand_group, as_of)
+                .await
+        }
+        (None, Some(product_group)) => {
+            db.update_portfolio_product_group(portfolio_id, product_group, as_of)
+                .await
+        }
+        (None, None) => db.get_portfolio(portfolio_id, as_of).await,
+    }
+    .map_err(|err| {
+        event!(Level::ERROR, err = err.to_string());
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?
+    .ok_or_else(|| {
+        event!(
+            Level::ERROR,
+            err = "failed to update portfolio after successful read"
+        );
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
 
     Ok(Json(updated))
 }
@@ -329,7 +306,7 @@ async fn delete_portfolio<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
     Path(Id { portfolio_id }): Path<Id<<T::Repository as Repository>::PortfolioId>>,
-) -> Result<Json<PortfolioRecord<T::Repository, T::PortfolioData>>, (StatusCode, String)> {
+) -> Result<Json<PortfolioRecord<T::Repository, T::PortfolioData>>, StatusCode> {
     let as_of = app.now();
     let db = app.database();
     let bidder_id = db
@@ -337,44 +314,27 @@ async fn delete_portfolio<T: ApiApplication>(
         .await
         .map_err(|err| {
             event!(Level::ERROR, err = err.to_string());
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("failed to get portfolio {}", portfolio_id),
-            )
+            StatusCode::INTERNAL_SERVER_ERROR
         })?
-        .ok_or((
-            StatusCode::NOT_FOUND,
-            format!("unknown portfolio {}", portfolio_id),
-        ))?;
+        .ok_or(StatusCode::NOT_FOUND)?;
 
     if !app.can_update_bid(&auth, bidder_id).await {
-        return Err((StatusCode::UNAUTHORIZED, "not authorized".to_string()));
+        return Err(StatusCode::UNAUTHORIZED);
     }
 
     let deleted = db
-        .update_portfolio(
-            portfolio_id.clone(),
-            Some(Default::default()),
-            Some(Default::default()),
-            as_of.clone(),
-        )
+        .update_portfolio_groups(portfolio_id, Default::default(), Default::default(), as_of)
         .await
         .map_err(|err| {
             event!(Level::ERROR, err = err.to_string());
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("failed to delete portfolio {}", portfolio_id),
-            )
+            StatusCode::INTERNAL_SERVER_ERROR
         })?
         .ok_or_else(|| {
             event!(
                 Level::ERROR,
                 err = "failed to delete portfolio after successful read"
             );
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("failed to delete portfolio {}", portfolio_id),
-            )
+            StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
     Ok(Json(deleted))
@@ -408,7 +368,7 @@ async fn get_portfolio_demand_history<T: ApiApplication>(
             <T::Repository as Repository>::DateTime,
         >,
     >,
-    (StatusCode, String),
+    StatusCode,
 > {
     let db = app.database();
 
@@ -418,29 +378,20 @@ async fn get_portfolio_demand_history<T: ApiApplication>(
         .await
         .map_err(|err| {
             event!(Level::ERROR, err = err.to_string());
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("failed to get portfolio {}", portfolio_id),
-            )
+            StatusCode::INTERNAL_SERVER_ERROR
         })?
-        .ok_or((
-            StatusCode::NOT_FOUND,
-            format!("unknown portfolio {}", portfolio_id),
-        ))?;
+        .ok_or(StatusCode::NOT_FOUND)?;
 
     if !app.can_read_bid(&auth, bidder_id).await {
-        return Err((StatusCode::UNAUTHORIZED, "not authorized".to_string()));
+        return Err(StatusCode::UNAUTHORIZED);
     }
 
     let history = db
-        .get_portfolio_demand_history(portfolio_id.clone(), query, config.page_limit)
+        .get_portfolio_demand_history(portfolio_id, query, config.page_limit)
         .await
         .map_err(|err| {
             event!(Level::ERROR, err = err.to_string());
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("failed to get portfolio demand history {}", portfolio_id),
-            )
+            StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
     Ok(Json(history))
@@ -474,7 +425,7 @@ async fn get_portfolio_product_history<T: ApiApplication>(
             <T::Repository as Repository>::DateTime,
         >,
     >,
-    (StatusCode, String),
+    StatusCode,
 > {
     let db = app.database();
 
@@ -484,29 +435,20 @@ async fn get_portfolio_product_history<T: ApiApplication>(
         .await
         .map_err(|err| {
             event!(Level::ERROR, err = err.to_string());
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("failed to get portfolio {}", portfolio_id),
-            )
+            StatusCode::INTERNAL_SERVER_ERROR
         })?
-        .ok_or((
-            StatusCode::NOT_FOUND,
-            format!("unknown portfolio {}", portfolio_id),
-        ))?;
+        .ok_or(StatusCode::NOT_FOUND)?;
 
     if !app.can_read_bid(&auth, bidder_id).await {
-        return Err((StatusCode::UNAUTHORIZED, "not authorized".to_string()));
+        return Err(StatusCode::UNAUTHORIZED);
     }
 
     let history = db
-        .get_portfolio_product_history(portfolio_id.clone(), query, config.page_limit)
+        .get_portfolio_product_history(portfolio_id, query, config.page_limit)
         .await
         .map_err(|err| {
             event!(Level::ERROR, err = err.to_string());
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("failed to get portfolio product history {}", portfolio_id),
-            )
+            StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
     Ok(Json(history))
@@ -544,7 +486,7 @@ async fn get_portfolio_outcomes<T: ApiApplication>(
             <T::Repository as Repository>::DateTime,
         >,
     >,
-    (StatusCode, String),
+    StatusCode,
 > {
     let db = app.database();
 
@@ -554,29 +496,20 @@ async fn get_portfolio_outcomes<T: ApiApplication>(
         .await
         .map_err(|err| {
             event!(Level::ERROR, err = err.to_string());
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("failed to get portfolio {}", portfolio_id),
-            )
+            StatusCode::INTERNAL_SERVER_ERROR
         })?
-        .ok_or((
-            StatusCode::NOT_FOUND,
-            format!("unknown portfolio {}", portfolio_id),
-        ))?;
+        .ok_or(StatusCode::NOT_FOUND)?;
 
     if !app.can_read_bid(&auth, bidder_id).await {
-        return Err((StatusCode::UNAUTHORIZED, "not authorized".to_string()));
+        return Err(StatusCode::UNAUTHORIZED);
     }
 
     let outcomes = db
-        .get_portfolio_outcomes(portfolio_id.clone(), query, config.page_limit)
+        .get_portfolio_outcomes(portfolio_id, query, config.page_limit)
         .await
         .map_err(|err| {
             event!(Level::ERROR, err = err.to_string());
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("failed to get portfolio outcomes {}", portfolio_id),
-            )
+            StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
     Ok(Json(outcomes))
@@ -595,7 +528,7 @@ struct UpdatePortfolioDto<DemandId: Eq + Hash, ProductId: Eq + Hash> {
 /// Request body for creating a new portfolio.
 #[derive(schemars::JsonSchema, serde::Deserialize)]
 #[schemars(inline)]
-struct CreatePortfolioRequestBody<PortfolioData, DemandId: Eq + Hash, ProductId: Eq + Hash> {
+struct CreatePortfolioDto<PortfolioData, DemandId: Eq + Hash, ProductId: Eq + Hash> {
     /// Application-specific data to associate with the portfolio
     app_data: PortfolioData,
     /// Initial demand weights
@@ -604,12 +537,9 @@ struct CreatePortfolioRequestBody<PortfolioData, DemandId: Eq + Hash, ProductId:
     product_group: ProductGroup<ProductId>,
 }
 
-/// Response body for creating a new portfolio
-#[derive(serde::Serialize, schemars::JsonSchema)]
+#[derive(schemars::JsonSchema, serde::Deserialize)]
 #[schemars(inline)]
-struct CreatePortfolioResponseBody<T, U> {
-    /// The effective timestamp of the portfolio
-    as_of: T,
-    /// The system-generated id of the portfolio
-    portfolio_id: U,
+struct GetPortfolioQuery {
+    #[serde(default)]
+    expand: bool,
 }

@@ -68,9 +68,13 @@ async fn test_product_expansion() -> anyhow::Result<()> {
     for i in 0u64..=7 {
         let as_of = DateTime::from(now + std::time::Duration::from_secs(i));
         let PortfolioRecord { product_group, .. } =
-            <Db as PortfolioRepository<()>>::get_portfolio(db, portfolio_id, as_of)
-                .await?
-                .unwrap();
+            <Db as PortfolioRepository<()>>::get_portfolio_with_expanded_products(
+                db,
+                portfolio_id,
+                as_of,
+            )
+            .await?
+            .unwrap();
 
         // Additional assertions based on the time point
         match i {

@@ -28,30 +28,41 @@ pub trait PortfolioRepository<PortfolioData>: super::Repository {
         as_of: Self::DateTime,
     ) -> impl Future<Output = Result<PortfolioRecord<Self, PortfolioData>, Self::Error>> + Send;
 
-    /// Update a portfolio's demand and/or product associations.
-    ///
-    /// Optionally updates the demand curves and products the portfolio is associated to.
-    /// (Provide a `None` value to not update the respective data.)
-    ///
-    /// # Returns
-    ///
-    /// - Ok(true) if successful
-    /// - Ok(false) if portfolio does not exist
-    /// - Err otherwise
-    fn update_portfolio(
+    /// Update a portfolio's demand group.
+    fn update_portfolio_demand_group(
         &self,
         portfolio_id: Self::PortfolioId,
-        demand_group: Option<DemandGroup<Self::DemandId>>,
-        product_group: Option<ProductGroup<Self::ProductId>>,
+        demand_group: DemandGroup<Self::DemandId>,
+        as_of: Self::DateTime,
+    ) -> impl Future<Output = Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error>> + Send;
+
+    /// Update a portfolio's product group
+    fn update_portfolio_product_group(
+        &self,
+        portfolio_id: Self::PortfolioId,
+        product_group: ProductGroup<Self::ProductId>,
+        as_of: Self::DateTime,
+    ) -> impl Future<Output = Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error>> + Send;
+
+    /// Update both the demand- and product- groups at once.
+    fn update_portfolio_groups(
+        &self,
+        portfolio_id: Self::PortfolioId,
+        demand_group: DemandGroup<Self::DemandId>,
+        product_group: ProductGroup<Self::ProductId>,
         as_of: Self::DateTime,
     ) -> impl Future<Output = Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error>> + Send;
 
     /// Retrieve a portfolio at a specific point in time.
-    ///
-    /// Retrieve the requested portfolio and associated demand curves, returning Option::None if it does not exist.
-    /// The portfolio's product_group will be *fully expanded* in the contemporary product basis (in the event that
-    /// any products have been partitioned since the initial creation).
     fn get_portfolio(
+        &self,
+        portfolio_id: Self::PortfolioId,
+        as_of: Self::DateTime,
+    ) -> impl Future<Output = Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error>> + Send;
+
+    /// Retrieve a portfolio at a specific point in time, with the product group expanded in the
+    /// contemporary product basis.
+    fn get_portfolio_with_expanded_products(
         &self,
         portfolio_id: Self::PortfolioId,
         as_of: Self::DateTime,

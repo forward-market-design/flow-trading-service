@@ -37,7 +37,7 @@ product_group_cte as (
         min(valid_until) as valid_until,
         jsonb_group_object(product_id, weight) as value
     from
-        product_group
+        product_group_view
     where
         portfolio_id = $1
         and
