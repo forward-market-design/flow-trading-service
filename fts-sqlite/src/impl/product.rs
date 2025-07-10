@@ -1,6 +1,9 @@
 use crate::Db;
-use crate::types::ProductId;
-use fts_core::{models::ProductRecord, ports::ProductRepository};
+use crate::types::{ProductId, ProductRow};
+use fts_core::{
+    models::{ProductGroup, ProductRecord},
+    ports::ProductRepository,
+};
 
 impl<ProductData: Send + Unpin + 'static + serde::Serialize + serde::de::DeserializeOwned>
     ProductRepository<ProductData> for Db
@@ -10,27 +13,33 @@ impl<ProductData: Send + Unpin + 'static + serde::Serialize + serde::de::Deseria
         product_id: Self::ProductId,
         app_data: ProductData,
         as_of: Self::DateTime,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<ProductRecord<Self, ProductData>, Self::Error> {
         // the triggers manage all the details of updating the product tree
         // TODO: errors about temporary value being dropped if we do not
         //       explicitly bind Json(app_data) to a variable first.
         //       research this!
         let app_data = sqlx::types::Json(app_data);
-        sqlx::query!(
+        let new_product = sqlx::query_as!(
+            ProductRow,
             r#"
             insert into
                 product (id, as_of, app_data)
             values
                 ($1, $2, jsonb($3))
+            returning
+                id as "id!: ProductId",
+                json(app_data) as "app_data!: sqlx::types::Json<ProductData>",
+                null as "parent?: sqlx::types::Json<(ProductId, f64)>",
+                null as "basis?: sqlx::types::Json<ProductGroup<ProductId>>"
             "#,
             product_id,
             as_of,
             app_data,
         )
-        .execute(&self.writer)
+        .fetch_one(&self.writer)
         .await?;
 
-        Ok(())
+        Ok(new_product.into())
     }
 
     async fn partition_product<T: Send + IntoIterator<Item = (Self::ProductId, ProductData, f64)>>(
@@ -38,43 +47,84 @@ impl<ProductData: Send + Unpin + 'static + serde::Serialize + serde::de::Deseria
         product_id: Self::ProductId,
         children: T,
         as_of: Self::DateTime,
-    ) -> Result<usize, Self::Error>
+    ) -> Result<Option<Vec<ProductRecord<Self, ProductData>>>, Self::Error>
     where
         T::IntoIter: Send + ExactSizeIterator,
     {
+        let npaths = sqlx::query_scalar!(
+            "select count(*) from product_tree where src_id = $1 and valid_from <= $2 and ($2 < valid_until or valid_until is null)",
+            product_id,
+            as_of
+        )
+        .fetch_one(&self.reader)
+        .await?;
+
+        if npaths == 0 {
+            return Ok(None);
+        } else if npaths > 1 {
+            return Ok(Some(Vec::new()));
+        }
+
         let children = children.into_iter();
         if children.len() == 0 {
-            return Ok(0);
+            return Ok(Some(Vec::new()));
         }
 
         let mut query_builder = sqlx::QueryBuilder::new(
             "insert into product (id, as_of, app_data, parent_id, parent_ratio) ",
         );
         // TODO: we should partition the iterator to play nice with DB limits
-        query_builder.push_values(children, |mut b, (child_id, app_data, child_ratio)| {
-            b.push_bind(child_id)
-                .push_bind(as_of)
-                .push("jsonb(")
-                .push_bind_unseparated(sqlx::types::Json(app_data))
-                .push_unseparated(")")
-                .push_bind(product_id)
-                .push_bind(child_ratio);
-        });
+        query_builder
+            .push_values(children, |mut b, (child_id, app_data, child_ratio)| {
+                b.push_bind(child_id)
+                    .push_bind(as_of)
+                    .push("jsonb(")
+                    .push_bind_unseparated(sqlx::types::Json(app_data))
+                    .push_unseparated(")")
+                    .push_bind(product_id)
+                    .push_bind(child_ratio);
+            })
+            .push(" returning id, json(app_data), parent_id, parent_ratio");
 
-        let result = query_builder.build().execute(&self.writer).await?;
+        let result: Vec<(ProductId, sqlx::types::Json<ProductData>, ProductId, f64)> =
+            query_builder
+                .build_query_as()
+                .fetch_all(&self.writer)
+                .await?;
 
-        Ok(result.rows_affected() as usize)
+        Ok(Some(
+            result
+                .into_iter()
+                .map(|(id, app_data, parent_id, parent_ratio)| ProductRecord {
+                    id,
+                    app_data: app_data.0,
+                    parent: Some((parent_id, parent_ratio)),
+                    basis: Default::default(),
+                })
+                .collect(),
+        ))
     }
 
     async fn get_product(
         &self,
         product_id: Self::ProductId,
         as_of: Self::DateTime,
-    ) -> Result<Option<ProductRecord<Self::ProductId, ProductData>>, Self::Error> {
-        let product_data = sqlx::query_scalar!(
+    ) -> Result<Option<ProductRecord<Self, ProductData>>, Self::Error> {
+        let record: Option<ProductRecord<Self, ProductData>> = sqlx::query_as!(
+            ProductRow,
             r#"
             select
-                json(app_data) as "data!: sqlx::types::Json::<ProductData>"
+                id as "id!: ProductId",
+                json(app_data) as "app_data!: sqlx::types::Json<ProductData>",
+                case
+                    when
+                        parent_id is null
+                    then
+                        null
+                    else
+                        json_array(parent_id, parent_ratio)
+                    end as "parent?: sqlx::types::Json<(ProductId, f64)>",
+                null as "basis?: sqlx::types::Json<ProductGroup<ProductId>>"
             from
                 product
             where
@@ -84,63 +134,36 @@ impl<ProductData: Send + Unpin + 'static + serde::Serialize + serde::de::Deseria
         )
         .fetch_optional(&self.reader)
         .await?
-        .map(|x| x.0);
+        .map(Into::into);
 
-        let parent = sqlx::query!(
-            r#"
-            select
-                src_id as "parent_id!: ProductId",
-                ratio as "ratio!: f64"
-            from
-                product_tree
-            where
-                dst_id = $1
-            and
-                depth = 1
-            and
-                valid_from <= $2
-            and
-                ($2 < valid_until or valid_until is null)
-            "#,
-            product_id,
-            as_of,
-        )
-        .fetch_optional(&self.reader)
-        .await?
-        .map(|record| (record.parent_id, record.ratio));
+        if let Some(mut record) = record {
+            let children = sqlx::query!(
+                r#"
+                select
+                    dst_id as "child_id!: ProductId",
+                    ratio as "ratio!: f64"
+                from
+                    product_tree
+                where
+                    src_id = $1
+                and
+                    valid_from <= $2
+                and
+                    ($2 < valid_until or valid_until is null)
+                "#,
+                product_id,
+                as_of
+            )
+            .fetch_all(&self.reader)
+            .await?
+            .iter()
+            .map(|record| (record.child_id, record.ratio))
+            .collect();
 
-        let children = sqlx::query!(
-            r#"
-            select
-                dst_id as "child_id!: ProductId",
-                ratio as "ratio!: f64"
-            from
-                product_tree
-            where
-                src_id = $1
-            and
-                depth = 1
-            and
-                valid_from <= $2
-            and
-                ($2 < valid_until or valid_until is null)
-            "#,
-            product_id,
-            as_of
-        )
-        .fetch_all(&self.reader)
-        .await?
-        .iter()
-        .map(|record| (record.child_id, record.ratio))
-        .collect();
-
-        // TODO: Chaining these queries is probably okay in SQLite,
-        //       but we should be better.
-        Ok(product_data.map(|app_data| ProductRecord {
-            id: product_id,
-            app_data,
-            parent,
-            children,
-        }))
+            record.basis = children;
+            Ok(Some(record))
+        } else {
+            Ok(None)
+        }
     }
 }

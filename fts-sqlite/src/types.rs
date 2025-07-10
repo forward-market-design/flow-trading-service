@@ -7,7 +7,7 @@
 use fts_core::{
     models::{
         DemandCurve, DemandCurveDto, DemandGroup, DemandRecord, PortfolioGroup, PortfolioRecord,
-        ProductGroup, ValueRecord,
+        ProductGroup, ProductRecord, ValueRecord,
     },
     ports::Repository,
 };
@@ -84,6 +84,33 @@ where
             app_data: self.app_data.0,
             demand_group: self.demand_group.map(|x| x.0).unwrap_or_default(),
             product_group: self.product_group.map(|x| x.0).unwrap_or_default(),
+        }
+    }
+}
+
+pub(crate) struct ProductRow<AppData> {
+    pub id: ProductId,
+    pub app_data: sqlx::types::Json<AppData>,
+    pub parent: Option<sqlx::types::Json<(ProductId, f64)>>,
+    pub basis: Option<sqlx::types::Json<ProductGroup<ProductId>>>,
+}
+
+impl<T, AppData> Into<ProductRecord<T, AppData>> for ProductRow<AppData>
+where
+    T: Repository<
+            DateTime = DateTime,
+            BidderId = BidderId,
+            DemandId = DemandId,
+            PortfolioId = PortfolioId,
+            ProductId = ProductId,
+        >,
+{
+    fn into(self) -> ProductRecord<T, AppData> {
+        ProductRecord {
+            id: self.id,
+            app_data: self.app_data.0,
+            parent: self.parent.map(|x| x.0),
+            basis: self.basis.map(|x| x.0).unwrap_or_default(),
         }
     }
 }
