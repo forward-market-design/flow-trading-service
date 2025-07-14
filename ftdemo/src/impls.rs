@@ -22,13 +22,17 @@ use serde::{Deserialize, Serialize};
 ///
 /// This represents application-specific data that can be attached to demand entities.
 #[derive(Serialize, Deserialize, JsonSchema)]
-pub struct DemandData;
+pub struct DemandData {
+    name: String,
+}
 
 /// Placeholder portfolio data structure.
 ///
 /// This represents application-specific data that can be attached to portfolio entities.
 #[derive(Serialize, Deserialize, JsonSchema)]
-pub struct PortfolioData;
+pub struct PortfolioData {
+    name: String,
+}
 
 /// Defines a product characterized by a "kind" and an interval of time ("from", "thru").
 #[derive(Serialize, Deserialize, JsonSchema)]
