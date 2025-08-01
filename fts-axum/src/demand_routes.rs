@@ -101,9 +101,8 @@ async fn create_demand<T: ApiApplication>(
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
     Json(body): Json<CreateDemandDto<T::DemandData>>,
 ) -> Result<(StatusCode, Json<DemandRecord<T::Repository, T::DemandData>>), StatusCode> {
-    let as_of = app.now();
     let db = app.database();
-    let demand_id = app.generate_demand_id(&body.app_data);
+    let (demand_id, as_of) = app.generate_demand_id(&body.app_data);
     let bidder_id = app
         .can_create_bid(&auth)
         .await

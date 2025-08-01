@@ -99,23 +99,32 @@ pub trait Application {
     /// Get the current time
     fn now(&self) -> <Self::Repository as Repository>::DateTime;
 
-    /// Generate an appropriate id for the provided demand data
+    /// Generate an appropriate id for the provided demand data and the time at which it was generated
     fn generate_demand_id(
         &self,
         data: &Self::DemandData,
-    ) -> <Self::Repository as Repository>::DemandId;
+    ) -> (
+        <Self::Repository as Repository>::DemandId,
+        <Self::Repository as Repository>::DateTime,
+    );
 
-    /// Generate an appropriate id for the provided portfolio data
+    /// Generate an appropriate id for the provided portfolio data and the time at which it was generated
     fn generate_portfolio_id(
         &self,
         data: &Self::PortfolioData,
-    ) -> <Self::Repository as Repository>::PortfolioId;
+    ) -> (
+        <Self::Repository as Repository>::PortfolioId,
+        <Self::Repository as Repository>::DateTime,
+    );
 
-    /// Generate an appropriate id for the provided product data
+    /// Generate an appropriate id for the provided product data and the time at which it was generated
     fn generate_product_id(
         &self,
         data: &Self::ProductData,
-    ) -> <Self::Repository as Repository>::ProductId;
+    ) -> (
+        <Self::Repository as Repository>::ProductId,
+        <Self::Repository as Repository>::DateTime,
+    );
 
     /// Check if the context can create new demands or portfolios.
     ///

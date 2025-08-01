@@ -17,7 +17,7 @@ async fn test_demand_curve_triggers() -> anyhow::Result<()> {
     let db = app.database();
 
     let bidder_id = BidderId(uuid::Uuid::new_v4());
-    let demand_id = app.generate_demand_id(&());
+    let demand_id = app.generate_demand_id(&()).0;
 
     // Create demand with initial curve using safe constructor
     let initial_curve: DemandCurve = PwlCurve::new(vec![
@@ -108,7 +108,7 @@ async fn test_portfolio_triggers_empty_groups() -> anyhow::Result<()> {
     let db = app.database();
 
     let bidder_id = BidderId(uuid::Uuid::new_v4());
-    let portfolio_id = app.generate_portfolio_id(&());
+    let portfolio_id = app.generate_portfolio_id(&()).0;
 
     // Create portfolio with empty groups
     db.create_portfolio(
@@ -141,9 +141,9 @@ async fn test_portfolio_triggers_partial_updates() -> anyhow::Result<()> {
     let db = app.database();
 
     let bidder_id = BidderId(uuid::Uuid::new_v4());
-    let portfolio_id = app.generate_portfolio_id(&());
-    let demand_id = app.generate_demand_id(&());
-    let product_id = app.generate_product_id(&());
+    let portfolio_id = app.generate_portfolio_id(&()).0;
+    let demand_id = app.generate_demand_id(&()).0;
+    let product_id = app.generate_product_id(&()).0;
 
     // Create some entities first
     db.create_demand(demand_id, bidder_id, (), DemandCurve::None, now.into())
@@ -309,14 +309,14 @@ async fn test_portfolio_triggers_multiple_items() -> anyhow::Result<()> {
     let db = app.database();
 
     let bidder_id = BidderId(uuid::Uuid::new_v4());
-    let portfolio_id = app.generate_portfolio_id(&());
+    let portfolio_id = app.generate_portfolio_id(&()).0;
 
     // Create multiple demands and products
-    let demand1 = app.generate_demand_id(&());
-    let demand2 = app.generate_demand_id(&());
-    let demand3 = app.generate_demand_id(&());
-    let product1 = app.generate_product_id(&());
-    let product2 = app.generate_product_id(&());
+    let demand1 = app.generate_demand_id(&()).0;
+    let demand2 = app.generate_demand_id(&()).0;
+    let demand3 = app.generate_demand_id(&()).0;
+    let product1 = app.generate_product_id(&()).0;
+    let product2 = app.generate_product_id(&()).0;
 
     for &demand_id in &[demand1, demand2, demand3] {
         db.create_demand(demand_id, bidder_id, (), DemandCurve::None, now.into())
@@ -447,7 +447,7 @@ async fn test_demand_trigger_null_curve() -> anyhow::Result<()> {
     let db = app.database();
 
     let bidder_id = BidderId(uuid::Uuid::new_v4());
-    let demand_id = app.generate_demand_id(&());
+    let demand_id = app.generate_demand_id(&()).0;
 
     // Create demand with null curve
     db.create_demand(demand_id, bidder_id, (), DemandCurve::None, now.into())
@@ -522,8 +522,8 @@ async fn test_product_tree_trigger_zero_ratio() -> anyhow::Result<()> {
     let app = TestApp(database);
     let db = app.database();
 
-    let parent = app.generate_product_id(&());
-    let child = app.generate_product_id(&());
+    let parent = app.generate_product_id(&()).0;
+    let child = app.generate_product_id(&()).0;
 
     // Create parent
     db.create_product(parent, (), now.into()).await?;
@@ -554,7 +554,7 @@ async fn test_product_tree_trigger_zero_ratio() -> anyhow::Result<()> {
 
     // Create a portfolio with the parent to verify zero ratio is handled correctly
     let bidder_id = BidderId(uuid::Uuid::new_v4());
-    let portfolio_id = app.generate_portfolio_id(&());
+    let portfolio_id = app.generate_portfolio_id(&()).0;
 
     let mut product_group = ProductGroup::default();
     product_group.insert(parent, 1.0);

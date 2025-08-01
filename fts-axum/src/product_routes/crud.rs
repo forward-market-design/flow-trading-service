@@ -47,9 +47,8 @@ pub(crate) async fn create_product<T: ApiApplication>(
     // In this case, we expect D::can_create to check if the `auth` corresponds to an admin
     // user.
     if app.can_manage_products(&auth).await {
-        let as_of = app.now();
         let db = app.database();
-        let product_id = app.generate_product_id(&product_data);
+        let (product_id, as_of) = app.generate_product_id(&product_data);
 
         let product_record = db
             .create_product(product_id, product_data, as_of)
@@ -147,7 +146,7 @@ pub(crate) async fn update_product<T: ApiApplication>(
                 |PartitionItem {
                      app_data: data,
                      ratio,
-                 }| (app.generate_product_id(&data), data, ratio),
+                 }| (app.generate_product_id(&data).0, data, ratio),
             )
             .collect::<Vec<_>>();
 

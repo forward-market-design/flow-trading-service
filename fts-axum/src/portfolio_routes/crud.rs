@@ -32,9 +32,8 @@ pub(crate) async fn create_portfolio<T: ApiApplication>(
     ),
     StatusCode,
 > {
-    let as_of = app.now();
     let db = app.database();
-    let portfolio_id = app.generate_portfolio_id(&body.app_data);
+    let (portfolio_id, as_of) = app.generate_portfolio_id(&body.app_data);
     let bidder_id = app
         .can_create_bid(&auth)
         .await

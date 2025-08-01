@@ -16,13 +16,13 @@ async fn test_portfolio_history() -> anyhow::Result<()> {
     let db = app.database();
 
     let bidder_id = BidderId(uuid::Uuid::new_v4());
-    let portfolio_id = app.generate_portfolio_id(&());
+    let portfolio_id = app.generate_portfolio_id(&()).0;
 
     // Create some products and demands for testing
-    let product1 = app.generate_product_id(&());
-    let product2 = app.generate_product_id(&());
-    let demand1 = app.generate_demand_id(&());
-    let demand2 = app.generate_demand_id(&());
+    let product1 = app.generate_product_id(&()).0;
+    let product2 = app.generate_product_id(&()).0;
+    let demand1 = app.generate_demand_id(&()).0;
+    let demand2 = app.generate_demand_id(&()).0;
 
     // Create products and demands
     db.create_product(product1, (), now.into()).await?;

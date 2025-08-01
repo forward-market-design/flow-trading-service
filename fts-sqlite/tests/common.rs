@@ -27,16 +27,16 @@ impl Application for TestApp {
         ClarabelSolver::default()
     }
 
-    fn generate_demand_id(&self, _data: &Self::DemandData) -> DemandId {
-        uuid::Uuid::new_v4().into()
+    fn generate_demand_id(&self, _data: &Self::DemandData) -> (DemandId, DateTime) {
+        (uuid::Uuid::new_v4().into(), self.now())
     }
 
-    fn generate_portfolio_id(&self, _data: &Self::PortfolioData) -> PortfolioId {
-        uuid::Uuid::new_v4().into()
+    fn generate_portfolio_id(&self, _data: &Self::PortfolioData) -> (PortfolioId, DateTime) {
+        (uuid::Uuid::new_v4().into(), self.now())
     }
 
-    fn generate_product_id(&self, _data: &Self::ProductData) -> ProductId {
-        uuid::Uuid::new_v4().into()
+    fn generate_product_id(&self, _data: &Self::ProductData) -> (ProductId, DateTime) {
+        (uuid::Uuid::new_v4().into(), self.now())
     }
 
     async fn can_create_bid(&self, _context: &Self::Context) -> Option<BidderId> {

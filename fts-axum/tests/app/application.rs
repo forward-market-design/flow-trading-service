@@ -41,16 +41,16 @@ impl Application for TestApp {
         time::OffsetDateTime::now_utc().into()
     }
 
-    fn generate_demand_id(&self, data: &Self::DemandData) -> DemandId {
-        data.clone()
+    fn generate_demand_id(&self, data: &Self::DemandData) -> (DemandId, DateTime) {
+        (data.clone(), self.now())
     }
 
-    fn generate_portfolio_id(&self, data: &Self::PortfolioData) -> PortfolioId {
-        data.clone()
+    fn generate_portfolio_id(&self, data: &Self::PortfolioData) -> (PortfolioId, DateTime) {
+        (data.clone(), self.now())
     }
 
-    fn generate_product_id(&self, data: &Self::ProductData) -> ProductId {
-        data.clone()
+    fn generate_product_id(&self, data: &Self::ProductData) -> (ProductId, DateTime) {
+        (data.clone(), self.now())
     }
 
     async fn can_create_bid(&self, context: &Self::Context) -> Option<BidderId> {

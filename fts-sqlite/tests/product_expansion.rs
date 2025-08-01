@@ -22,17 +22,17 @@ async fn test_product_expansion() -> anyhow::Result<()> {
 
     let bidder_id = BidderId(uuid::Uuid::new_v4());
 
-    let food = app.generate_product_id(&());
-    let fruit = app.generate_product_id(&());
-    let apple = app.generate_product_id(&());
-    let banana = app.generate_product_id(&());
-    let vegetable = app.generate_product_id(&());
-    let carrot = app.generate_product_id(&());
-    let daikon = app.generate_product_id(&());
+    let food = app.generate_product_id(&()).0;
+    let fruit = app.generate_product_id(&()).0;
+    let apple = app.generate_product_id(&()).0;
+    let banana = app.generate_product_id(&()).0;
+    let vegetable = app.generate_product_id(&()).0;
+    let carrot = app.generate_product_id(&()).0;
+    let daikon = app.generate_product_id(&()).0;
 
     db.create_product(food, (), now.into()).await?;
 
-    let portfolio_id = app.generate_portfolio_id(&());
+    let portfolio_id = app.generate_portfolio_id(&()).0;
     db.create_portfolio(
         portfolio_id,
         bidder_id,
