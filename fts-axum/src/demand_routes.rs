@@ -4,7 +4,10 @@
 //! bidders' pricing preferences in the flow trading system. Demands can be
 //! created, updated, deleted, and queried, with full history tracking.
 
-use crate::{ApiApplication, config};
+use crate::{
+    ApiApplication,
+    config::{self, AxumConfig},
+};
 use aide::axum::{ApiRouter, routing::get};
 use axum::{
     Extension, Json,
@@ -14,7 +17,7 @@ use axum::{
 use axum_extra::TypedHeader;
 use fts_core::{
     models::{DateTimeRangeQuery, DateTimeRangeResponse, DemandCurve, DemandRecord},
-    ports::{DemandRepository as _, Repository},
+    ports::{BatchRepository as _, DemandRepository as _, Repository},
 };
 use headers::{Authorization, authorization::Bearer};
 use std::sync::Arc;
@@ -174,6 +177,7 @@ async fn update_demand<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
     Path(Id { demand_id }): Path<Id<<T::Repository as Repository>::DemandId>>,
+    Extension(config): Extension<Arc<AxumConfig>>,
     Json(body): Json<DemandCurve>,
 ) -> Result<Json<DemandRecord<T::Repository, T::DemandData>>, StatusCode> {
     let as_of = app.now();
@@ -195,7 +199,7 @@ async fn update_demand<T: ApiApplication>(
     }
 
     let updated = db
-        .update_demand(demand_id, body, as_of)
+        .update_demand(demand_id, body, as_of.clone())
         .await
         .map_err(|err| {
             event!(Level::ERROR, err = err.to_string());
@@ -208,6 +212,23 @@ async fn update_demand<T: ApiApplication>(
             );
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
+
+    if config.auto_solve {
+        tokio::spawn(async move {
+            let db = app.database();
+            let result = db.run_batch(as_of, app.solver(), Default::default()).await;
+
+            match result {
+                Err(err) => {
+                    event!(Level::ERROR, err = err.to_string());
+                }
+                Ok(Err(err)) => {
+                    event!(Level::ERROR, err = err.to_string());
+                }
+                _ => {}
+            };
+        });
+    };
 
     Ok(Json(updated))
 }
@@ -231,6 +252,7 @@ async fn delete_demand<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
     Path(Id { demand_id }): Path<Id<<T::Repository as Repository>::DemandId>>,
+    Extension(config): Extension<Arc<AxumConfig>>,
 ) -> Result<Json<DemandRecord<T::Repository, T::DemandData>>, StatusCode> {
     let as_of = app.now();
     let db = app.database();
@@ -250,7 +272,7 @@ async fn delete_demand<T: ApiApplication>(
     }
 
     let deleted = db
-        .update_demand(demand_id, DemandCurve::None, as_of)
+        .update_demand(demand_id, DemandCurve::None, as_of.clone())
         .await
         .map_err(|err| {
             event!(Level::ERROR, err = err.to_string());
@@ -263,6 +285,23 @@ async fn delete_demand<T: ApiApplication>(
             );
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
+
+    if config.auto_solve {
+        tokio::spawn(async move {
+            let db = app.database();
+            let result = db.run_batch(as_of, app.solver(), Default::default()).await;
+
+            match result {
+                Err(err) => {
+                    event!(Level::ERROR, err = err.to_string());
+                }
+                Ok(Err(err)) => {
+                    event!(Level::ERROR, err = err.to_string());
+                }
+                _ => {}
+            };
+        });
+    };
 
     Ok(Json(deleted))
 }

@@ -1,23 +1,24 @@
 use super::Id;
-use crate::ApiApplication;
+use crate::{ApiApplication, config::AxumConfig};
 
 use axum::{
-    Json,
+    Extension, Json,
     extract::{Path, Query, State},
     http::StatusCode,
 };
 use axum_extra::TypedHeader;
 use fts_core::{
     models::{DemandGroup, PortfolioRecord, ProductGroup},
-    ports::{PortfolioRepository as _, Repository},
+    ports::{BatchRepository as _, PortfolioRepository as _, Repository},
 };
 use headers::{Authorization, authorization::Bearer};
-use std::hash::Hash;
+use std::{hash::Hash, sync::Arc};
 use tracing::{Level, event};
 
 pub(crate) async fn create_portfolio<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
+    Extension(config): Extension<Arc<AxumConfig>>,
     Json(body): Json<
         CreatePortfolioDto<
             T::PortfolioData,
@@ -39,20 +40,39 @@ pub(crate) async fn create_portfolio<T: ApiApplication>(
         .await
         .ok_or(StatusCode::UNAUTHORIZED)?;
 
-    db.create_portfolio(
-        portfolio_id,
-        bidder_id,
-        body.app_data,
-        body.demand_group,
-        body.product_group,
-        as_of.clone(),
-    )
-    .await
-    .map(|portfolio| (StatusCode::CREATED, Json(portfolio)))
-    .map_err(|err| {
-        event!(Level::ERROR, err = err.to_string());
-        StatusCode::INTERNAL_SERVER_ERROR
-    })
+    let created = db
+        .create_portfolio(
+            portfolio_id,
+            bidder_id,
+            body.app_data,
+            body.demand_group,
+            body.product_group,
+            as_of.clone(),
+        )
+        .await
+        .map_err(|err| {
+            event!(Level::ERROR, err = err.to_string());
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    if config.auto_solve {
+        tokio::spawn(async move {
+            let db = app.database();
+            let result = db.run_batch(as_of, app.solver(), Default::default()).await;
+
+            match result {
+                Err(err) => {
+                    event!(Level::ERROR, err = err.to_string());
+                }
+                Ok(Err(err)) => {
+                    event!(Level::ERROR, err = err.to_string());
+                }
+                _ => {}
+            };
+        });
+    };
+
+    Ok((StatusCode::CREATED, Json(created)))
 }
 
 /// Retrieve a portfolio's current state.
@@ -116,6 +136,7 @@ pub(crate) async fn update_portfolio<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
     Path(Id { portfolio_id }): Path<Id<<T::Repository as Repository>::PortfolioId>>,
+    Extension(config): Extension<Arc<AxumConfig>>,
     Json(body): Json<
         UpdatePortfolioDto<
             <T::Repository as Repository>::DemandId,
@@ -140,18 +161,18 @@ pub(crate) async fn update_portfolio<T: ApiApplication>(
 
     let updated = match (body.demand_group, body.product_group) {
         (Some(demand_group), Some(product_group)) => {
-            db.update_portfolio_groups(portfolio_id, demand_group, product_group, as_of)
+            db.update_portfolio_groups(portfolio_id, demand_group, product_group, as_of.clone())
                 .await
         }
         (Some(demand_group), None) => {
-            db.update_portfolio_demand_group(portfolio_id, demand_group, as_of)
+            db.update_portfolio_demand_group(portfolio_id, demand_group, as_of.clone())
                 .await
         }
         (None, Some(product_group)) => {
-            db.update_portfolio_product_group(portfolio_id, product_group, as_of)
+            db.update_portfolio_product_group(portfolio_id, product_group, as_of.clone())
                 .await
         }
-        (None, None) => db.get_portfolio(portfolio_id, as_of).await,
+        (None, None) => db.get_portfolio(portfolio_id, as_of.clone()).await,
     }
     .map_err(|err| {
         event!(Level::ERROR, err = err.to_string());
@@ -164,6 +185,23 @@ pub(crate) async fn update_portfolio<T: ApiApplication>(
         );
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
+
+    if config.auto_solve {
+        tokio::spawn(async move {
+            let db = app.database();
+            let result = db.run_batch(as_of, app.solver(), Default::default()).await;
+
+            match result {
+                Err(err) => {
+                    event!(Level::ERROR, err = err.to_string());
+                }
+                Ok(Err(err)) => {
+                    event!(Level::ERROR, err = err.to_string());
+                }
+                _ => {}
+            };
+        });
+    };
 
     Ok(Json(updated))
 }
@@ -187,6 +225,7 @@ pub(crate) async fn delete_portfolio<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
     Path(Id { portfolio_id }): Path<Id<<T::Repository as Repository>::PortfolioId>>,
+    Extension(config): Extension<Arc<AxumConfig>>,
 ) -> Result<Json<PortfolioRecord<T::Repository, T::PortfolioData>>, StatusCode> {
     let as_of = app.now();
     let db = app.database();
@@ -204,7 +243,12 @@ pub(crate) async fn delete_portfolio<T: ApiApplication>(
     }
 
     let deleted = db
-        .update_portfolio_groups(portfolio_id, Default::default(), Default::default(), as_of)
+        .update_portfolio_groups(
+            portfolio_id,
+            Default::default(),
+            Default::default(),
+            as_of.clone(),
+        )
         .await
         .map_err(|err| {
             event!(Level::ERROR, err = err.to_string());
@@ -217,6 +261,23 @@ pub(crate) async fn delete_portfolio<T: ApiApplication>(
             );
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
+
+    if config.auto_solve {
+        tokio::spawn(async move {
+            let db = app.database();
+            let result = db.run_batch(as_of, app.solver(), Default::default()).await;
+
+            match result {
+                Err(err) => {
+                    event!(Level::ERROR, err = err.to_string());
+                }
+                Ok(Err(err)) => {
+                    event!(Level::ERROR, err = err.to_string());
+                }
+                _ => {}
+            };
+        });
+    };
 
     Ok(Json(deleted))
 }

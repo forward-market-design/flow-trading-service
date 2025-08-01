@@ -5,6 +5,9 @@
 # The address and port to bind the server to
 bind_address = "0.0.0.0:8080"
 
+# Instead of scheduling every 15s, or whatever, just solve anytime we get a new bid update
+auto_solve = true
+
 # Database Configuration
 [database]
 # Path to the SQLite database file (If not specified, uses an in-memory database)
@@ -18,4 +21,4 @@ create_if_missing = true
 from = "2025-01-01T00:00:00Z"
 
 # How often to run a batch auction?
-every = "15s"
+# every = "15s"
