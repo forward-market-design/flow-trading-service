@@ -34,7 +34,7 @@ uuid = { workspace = true, features = ["v4"] }
 
 axum-test = "17.3"
 hurl = "6.1"
-hurl_core = "6.1"
+hurl_core = "7.0"
 form_urlencoded = "1.2"
 serde_html_form = "0.2"
 test-log = { version = "0.2", features = ["trace"] }
