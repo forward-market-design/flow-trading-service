@@ -4,7 +4,7 @@ use crate::types::{
 };
 use fts_core::models::{DateTimeRangeQuery, DateTimeRangeResponse, PortfolioGroup};
 use fts_core::{
-    models::{DemandCurve, DemandCurveDto, DemandGroup, ProductGroup},
+    models::{DemandCurve, DemandCurveDto, DemandGroup, Basis},
     ports::{BatchRepository, Solver},
 };
 use tokio::try_join;
@@ -48,10 +48,8 @@ where
         let portfolios = portfolio_records
             .into_iter()
             .filter_map(|row| {
-                if let (Some(demand_group), Some(product_group)) =
-                    (row.demand_group, row.product_group)
-                {
-                    Some((row.id, (demand_group.0, product_group.0)))
+                if let (Some(demand_group), Some(basis)) = (row.demand_group, row.basis) {
+                    Some((row.id, (demand_group.0, basis.0)))
                 } else {
                     None
                 }

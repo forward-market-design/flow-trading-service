@@ -18,7 +18,7 @@ type ProductGroup = Record<ProductId, number> | Array<ProductId> | ProductId;
 //   X => { X: 1.0 },
 //   [X, Y, ...] => { X: 1.0, Y: 1.0, ...}
 
-type Portfolio = { demand_group: DemandGroup, product_group: ProductGroup };
+type Portfolio = { demand_group: DemandGroup, basis: ProductGroup };
 
 type Point = {
     rate: number,

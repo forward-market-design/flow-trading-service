@@ -2,7 +2,7 @@ mod common;
 
 use common::TestApp;
 use fts_core::{
-    models::{DateTimeRangeQuery, DemandCurve, DemandGroup, ProductGroup},
+    models::{DateTimeRangeQuery, DemandCurve, DemandGroup, Basis},
     ports::{Application, DemandRepository as _, PortfolioRepository, ProductRepository as _},
 };
 use fts_sqlite::{Db, config::SqliteConfig, types::BidderId};
@@ -46,8 +46,8 @@ async fn test_portfolio_history() -> anyhow::Result<()> {
     .await?;
 
     // Create initial portfolio
-    let mut initial_product_group = ProductGroup::default();
-    initial_product_group.insert(product1, 1.0);
+    let mut initial_basis = Basis::default();
+    initial_basis.insert(product1, 1.0);
 
     let mut initial_demand_group = DemandGroup::default();
     initial_demand_group.insert(demand1, 0.5);
@@ -57,15 +57,15 @@ async fn test_portfolio_history() -> anyhow::Result<()> {
         bidder_id,
         (),
         initial_demand_group,
-        initial_product_group,
+        initial_basis,
         (now + std::time::Duration::from_secs(2)).into(),
     )
     .await?;
 
     // Update portfolio to include more products and demands
-    let mut updated_product_group = ProductGroup::default();
-    updated_product_group.insert(product1, 0.7);
-    updated_product_group.insert(product2, 1.5);
+    let mut updated_basis = Basis::default();
+    updated_basis.insert(product1, 0.7);
+    updated_basis.insert(product2, 1.5);
 
     let mut updated_demand_group = DemandGroup::default();
     updated_demand_group.insert(demand1, 0.3);
@@ -75,7 +75,7 @@ async fn test_portfolio_history() -> anyhow::Result<()> {
         db,
         portfolio_id,
         updated_demand_group,
-        updated_product_group,
+        updated_basis,
         (now + std::time::Duration::from_secs(4)).into(),
     )
     .await?;

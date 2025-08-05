@@ -24,11 +24,11 @@
     "portfolios": {
         "buyer": {
             "demand_group": "buyer",
-            "product_group": "A"
+            "basis": "A"
         },
         "seller": {
             "demand_group": "seller",
-            "product_group": "A"
+            "basis": "A"
         }
     }
 }

@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            insert into\n                portfolio (id, as_of, bidder_id, app_data, demand_group, basis)\n            values\n                ($1, $2, $3, jsonb($4), jsonb($5), jsonb($6))\n            returning\n                id as \"id!: PortfolioId\",\n                as_of as \"valid_from!: DateTime\",\n                null as \"valid_until?: DateTime\",\n                bidder_id as \"bidder_id!: BidderId\",\n                json(app_data) as \"app_data!: sqlx::types::Json<PortfolioData>\",\n                json(demand_group) as \"demand_group?: sqlx::types::Json<DemandGroup<DemandId>>\",\n                json(basis) as \"basis?: sqlx::types::Json<Basis<ProductId>>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: PortfolioId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "valid_from!: DateTime",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "valid_until?: DateTime",
+        "ordinal": 2,
+        "type_info": "Null"
+      },
+      {
+        "name": "bidder_id!: BidderId",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "app_data!: sqlx::types::Json<PortfolioData>",
+        "ordinal": 4,
+        "type_info": "Null"
+      },
+      {
+        "name": "demand_group?: sqlx::types::Json<DemandGroup<DemandId>>",
+        "ordinal": 5,
+        "type_info": "Null"
+      },
+      {
+        "name": "basis?: sqlx::types::Json<Basis<ProductId>>",
+        "ordinal": 6,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 6
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "9cb916def650ade437a36a0bb848014fd4aa1029ff3750caa9d7367d1d656825"
+}

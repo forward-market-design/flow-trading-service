@@ -8,7 +8,7 @@ use axum::{
 };
 use axum_extra::TypedHeader;
 use fts_core::{
-    models::{DemandGroup, PortfolioRecord, ProductGroup},
+    models::{DemandGroup, PortfolioRecord, Basis},
     ports::{BatchRepository as _, PortfolioRepository as _, Repository},
 };
 use headers::{Authorization, authorization::Bearer};
@@ -46,7 +46,7 @@ pub(crate) async fn create_portfolio<T: ApiApplication>(
             bidder_id,
             body.app_data,
             body.demand_group,
-            body.product_group,
+            body.basis,
             as_of.clone(),
         )
         .await
@@ -159,17 +159,17 @@ pub(crate) async fn update_portfolio<T: ApiApplication>(
         return Err(StatusCode::UNAUTHORIZED);
     }
 
-    let updated = match (body.demand_group, body.product_group) {
-        (Some(demand_group), Some(product_group)) => {
-            db.update_portfolio_groups(portfolio_id, demand_group, product_group, as_of.clone())
+    let updated = match (body.demand_group, body.basis) {
+        (Some(demand_group), Some(basis)) => {
+            db.update_portfolio_groups(portfolio_id, demand_group, basis, as_of.clone())
                 .await
         }
         (Some(demand_group), None) => {
             db.update_portfolio_demand_group(portfolio_id, demand_group, as_of.clone())
                 .await
         }
-        (None, Some(product_group)) => {
-            db.update_portfolio_product_group(portfolio_id, product_group, as_of.clone())
+        (None, Some(basis)) => {
+            db.update_portfolio_basis(portfolio_id, basis, as_of.clone())
                 .await
         }
         (None, None) => db.get_portfolio(portfolio_id, as_of.clone()).await,
@@ -291,7 +291,7 @@ pub(crate) struct CreatePortfolioDto<PortfolioData, DemandId: Eq + Hash, Product
     /// Initial demand weights
     demand_group: DemandGroup<DemandId>,
     /// Initial product weights
-    product_group: ProductGroup<ProductId>,
+    basis: Basis<ProductId>,
 }
 
 /// Request body for updating a portfolio's groups.
@@ -301,7 +301,7 @@ pub(crate) struct UpdatePortfolioDto<DemandId: Eq + Hash, ProductId: Eq + Hash> 
     /// New demand group weights (None to keep existing)
     demand_group: Option<DemandGroup<DemandId>>,
     /// New product group weights (None to keep existing)
-    product_group: Option<ProductGroup<ProductId>>,
+    basis: Option<Basis<ProductId>>,
 }
 
 #[derive(schemars::JsonSchema, serde::Deserialize)]

@@ -69,17 +69,17 @@ A _portfolio_ acts as a container that groups together related demands and produ
 
 ### Product Weights
 
-Suppose a market contains products `A` and `B`. A portfolio's product group might be:
+Suppose a market contains products `A` and `B`. A portfolio's basis might be:
 
 ```typescript
 // Trade only product A
-product_group1 = { A: 1.0 };
+basis1 = { A: 1.0 };
 // Trade A and B in strictly equal amounts
-product_group2 = { A: 1.0, B: 1.0 };
+basis2 = { A: 1.0, B: 1.0 };
 // Replace A with B (or vice versa) at some fixed ratio
-product_group3 = { A: 0.5, B: -0.75 };
+basis3 = { A: 0.5, B: -0.75 };
 ```
-There are no restrictions on the signs or magnitudes of the weights. Buying 1 unit of portfolio `product_group3` corresponds to buying 0.5 units of `A` and selling 0.75 units of `B`.
+There are no restrictions on the signs or magnitudes of the weights. Buying 1 unit of portfolio `basis3` corresponds to buying 0.5 units of `A` and selling 0.75 units of `B`.
 
 ### Demand Weights
 

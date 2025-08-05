@@ -1,6 +1,6 @@
 use crate::export::{export_lp, export_mps};
 use fts_core::{
-    models::{DemandCurve, DemandGroup, Map, ProductGroup},
+    models::{DemandCurve, DemandGroup, Map, Basis},
     ports::Solver,
 };
 use serde::{Deserialize, Serialize};
@@ -34,7 +34,7 @@ pub struct Portfolio {
     /// the demand curves
     demand_group: DemandGroup<DemandId>,
     /// the products
-    product_group: ProductGroup<ProductId>,
+    basis: Basis<ProductId>,
 }
 
 /// a representation of an auction
@@ -69,9 +69,9 @@ impl Auction {
                     portfolio_id,
                     Portfolio {
                         demand_group,
-                        product_group,
+                        basis,
                     },
-                )| (portfolio_id, (demand_group, product_group)),
+                )| (portfolio_id, (demand_group, basis)),
             )
             .collect::<Map<_, _>>();
 
@@ -96,9 +96,9 @@ impl Auction {
                     portfolio_id,
                     Portfolio {
                         demand_group,
-                        product_group,
+                        basis,
                     },
-                )| (portfolio_id, (demand_group, product_group)),
+                )| (portfolio_id, (demand_group, basis)),
             )
             .collect();
         export_lp(self.demand_curves, portfolios, buffer)
@@ -114,9 +114,9 @@ impl Auction {
                     portfolio_id,
                     Portfolio {
                         demand_group,
-                        product_group,
+                        basis,
                     },
-                )| (portfolio_id, (demand_group, product_group)),
+                )| (portfolio_id, (demand_group, basis)),
             )
             .collect();
         export_mps(self.demand_curves, portfolios, buffer)

@@ -1,5 +1,5 @@
 use crate::models::{
-    DateTimeRangeQuery, DateTimeRangeResponse, DemandGroup, PortfolioRecord, ProductGroup,
+    Basis, DateTimeRangeQuery, DateTimeRangeResponse, DemandGroup, PortfolioRecord,
 };
 
 /// Repository interface for portfolio CRUD operations and history tracking.
@@ -24,7 +24,7 @@ pub trait PortfolioRepository<PortfolioData>: super::Repository {
         bidder_id: Self::BidderId,
         app_data: PortfolioData,
         demand_group: DemandGroup<Self::DemandId>,
-        product_group: ProductGroup<Self::ProductId>,
+        basis: Basis<Self::ProductId>,
         as_of: Self::DateTime,
     ) -> impl Future<Output = Result<PortfolioRecord<Self, PortfolioData>, Self::Error>> + Send;
 
@@ -37,10 +37,10 @@ pub trait PortfolioRepository<PortfolioData>: super::Repository {
     ) -> impl Future<Output = Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error>> + Send;
 
     /// Update a portfolio's product group
-    fn update_portfolio_product_group(
+    fn update_portfolio_basis(
         &self,
         portfolio_id: Self::PortfolioId,
-        product_group: ProductGroup<Self::ProductId>,
+        basis: Basis<Self::ProductId>,
         as_of: Self::DateTime,
     ) -> impl Future<Output = Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error>> + Send;
 
@@ -49,7 +49,7 @@ pub trait PortfolioRepository<PortfolioData>: super::Repository {
         &self,
         portfolio_id: Self::PortfolioId,
         demand_group: DemandGroup<Self::DemandId>,
-        product_group: ProductGroup<Self::ProductId>,
+        basis: Basis<Self::ProductId>,
         as_of: Self::DateTime,
     ) -> impl Future<Output = Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error>> + Send;
 
@@ -106,9 +106,6 @@ pub trait PortfolioRepository<PortfolioData>: super::Repository {
         query: DateTimeRangeQuery<Self::DateTime>,
         limit: usize,
     ) -> impl Future<
-        Output = Result<
-            DateTimeRangeResponse<ProductGroup<Self::ProductId>, Self::DateTime>,
-            Self::Error,
-        >,
+        Output = Result<DateTimeRangeResponse<Basis<Self::ProductId>, Self::DateTime>, Self::Error>,
     > + Send;
 }

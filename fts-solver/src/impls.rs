@@ -1,5 +1,5 @@
 use crate::{HashSet, PortfolioOutcome, ProductOutcome};
-use fts_core::models::{DemandCurve, DemandGroup, Map, ProductGroup};
+use fts_core::models::{Basis, DemandCurve, DemandGroup, Map};
 use std::hash::Hash;
 
 /// Implementation using the Clarabel interior point solver
@@ -18,10 +18,10 @@ pub(crate) fn prepare<
     ProductId: Clone + Eq + Hash + Ord,
 >(
     mut demand_curves: Map<DemandId, DemandCurve>,
-    mut portfolios: Map<PortfolioId, (DemandGroup<DemandId>, ProductGroup<ProductId>)>,
+    mut portfolios: Map<PortfolioId, (DemandGroup<DemandId>, Basis<ProductId>)>,
 ) -> (
     Map<DemandId, DemandCurve>,
-    Map<PortfolioId, (DemandGroup<DemandId>, ProductGroup<ProductId>)>,
+    Map<PortfolioId, (DemandGroup<DemandId>, Basis<ProductId>)>,
     Map<PortfolioId, PortfolioOutcome>,
     Map<ProductId, ProductOutcome>,
 ) {
@@ -35,7 +35,7 @@ pub(crate) fn prepare<
     // Canonicalize the input so we can avoid some awkward error handling later
     let mut demands_in_use = HashSet::default();
 
-    for (portfolio_id, (demand_group, product_group)) in portfolios.iter_mut() {
+    for (portfolio_id, (demand_group, basis)) in portfolios.iter_mut() {
         // We keep only demands that are known to exist (and have non-zero weight)
         demand_group
             .retain(|demand_id, weight| *weight != 0.0 && demand_curves.contains_key(demand_id));
@@ -49,12 +49,12 @@ pub(crate) fn prepare<
         demands_in_use.extend(demand_group.keys());
 
         // We keep only non-zero portfolio entries
-        product_group.retain(|_, &mut weight| weight != 0.0);
-        product_group.sort_unstable_keys();
+        basis.retain(|_, &mut weight| weight != 0.0);
+        basis.sort_unstable_keys();
 
         // Ensure we have slots to put required outcomes
         portfolio_outcomes.entry(portfolio_id.clone()).or_default();
-        for product_id in product_group.keys() {
+        for product_id in basis.keys() {
             product_outcomes.entry(product_id.clone()).or_default();
         }
     }
@@ -83,7 +83,7 @@ pub(crate) fn finalize<
 >(
     mut primal: impl Iterator<Item = &'a f64>,
     dual: impl Iterator<Item = &'b f64>,
-    portfolios: &Map<PortfolioId, (DemandGroup<DemandId>, ProductGroup<ProductId>)>,
+    portfolios: &Map<PortfolioId, (DemandGroup<DemandId>, Basis<ProductId>)>,
     portfolio_outcomes: &mut Map<PortfolioId, PortfolioOutcome>,
     product_outcomes: &mut Map<ProductId, ProductOutcome>,
 ) {
@@ -92,8 +92,8 @@ pub(crate) fn finalize<
         product_outcome.price = price;
     }
     // 2. For each portfolio...
-    for (portfolio_id, (demand_group, product_group)) in portfolios.iter() {
-        let rate = if demand_group.len() == 0 || product_group.len() == 0 {
+    for (portfolio_id, (demand_group, basis)) in portfolios.iter() {
+        let rate = if demand_group.len() == 0 || basis.len() == 0 {
             0.0
         } else {
             // SAFETY: this should never panic, since we always add a decision variable for the above condition
@@ -106,9 +106,9 @@ pub(crate) fn finalize<
         // Copy the determined rate...
         portfolio_outcome.rate = rate;
         // ... and simultaneously construct the effective price and update the product trade volume
-        if product_group.len() > 0 {
+        if basis.len() > 0 {
             portfolio_outcome.price = 0.0;
-            for (product_id, weight) in product_group.iter() {
+            for (product_id, weight) in basis.iter() {
                 let product_outcome = product_outcomes.get_mut(product_id).unwrap();
                 portfolio_outcome.price += product_outcome.price * weight;
                 product_outcome.rate += (weight * rate).abs();

@@ -75,7 +75,7 @@ POST {{baseurl}}/portfolio
 {
     "app_data": "{{portfolio1}}",
     "demand_group": { "{{demand1}}": 1 },
-    "product_group": { "{{product1}}": 1 }
+    "basis": { "{{product1}}": 1 }
 }
 HTTP 400
 
@@ -84,7 +84,7 @@ Authorization: Bearer bidder_id={{bidder1}}
 {
     "app_data": "{{portfolio1}}",
     "demand_group": { "{{demand1}}": 1 },
-    "product_group": { "{{product1}}": 1 }
+    "basis": { "{{product1}}": 1 }
 }
 HTTP 401
 
@@ -93,7 +93,7 @@ Authorization: Bearer bidder_id={{bidder1}}&can_create_bid=true
 {
     "app_data": "{{portfolio1}}",
     "demand_group": { "{{demand1}}": 1 },
-    "product_group": { "{{product1}}": 1 }
+    "basis": { "{{product1}}": 1 }
 }
 HTTP 201
 
@@ -124,7 +124,7 @@ HTTP 404
 PATCH {{baseurl}}/portfolio/{{portfolio1}}
 {
     "demand_group": { "{{demand1}}": 1, "{{demand2}}": 1 },
-    "product_group": { "{{product1}}": 1, "{{product2}}": 1 }
+    "basis": { "{{product1}}": 1, "{{product2}}": 1 }
 }
 HTTP 400
 
@@ -132,7 +132,7 @@ PATCH {{baseurl}}/portfolio/{{portfolio1}}
 Authorization: Bearer bidder_id={{bidder1}}
 {
     "demand_group": { "{{demand1}}": 1, "{{demand2}}": 1 },
-    "product_group": { "{{product1}}": 1, "{{product2}}": 1 }
+    "basis": { "{{product1}}": 1, "{{product2}}": 1 }
 }
 HTTP 401
 
@@ -140,7 +140,7 @@ PATCH {{baseurl}}/portfolio/{{portfolio1}}
 Authorization: Bearer bidder_id={{bidder1}}&can_update_bid=true
 {
     "demand_group": { "{{demand1}}": 1, "{{demand2}}": 1 },
-    "product_group": { "{{product1}}": 1, "{{product2}}": 1 }
+    "basis": { "{{product1}}": 1, "{{product2}}": 1 }
 }
 HTTP 200
 
@@ -149,7 +149,7 @@ PATCH {{baseurl}}/portfolio/{{portfolio2}}
 Authorization: Bearer bidder_id={{bidder1}}
 {
     "demand_group": { "{{demand1}}": 1, "{{demand2}}": 1 },
-    "product_group": { "{{product1}}": 1, "{{product2}}": 1 }
+    "basis": { "{{product1}}": 1, "{{product2}}": 1 }
 }
 HTTP 404
 
@@ -157,7 +157,7 @@ PATCH {{baseurl}}/portfolio/{{portfolio2}}
 Authorization: Bearer bidder_id={{bidder1}}&can_update_bid=true
 {
     "demand_group": { "{{demand1}}": 1, "{{demand2}}": 1 },
-    "product_group": { "{{product1}}": 1, "{{product2}}": 1 }
+    "basis": { "{{product1}}": 1, "{{product2}}": 1 }
 }
 HTTP 404
 

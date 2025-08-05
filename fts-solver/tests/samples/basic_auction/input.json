@@ -57,22 +57,22 @@
                 "buyerx",
                 "buyerxy"
             ],
-            "product_group": "A"
+            "basis": "A"
         },
         "buyery": {
             "demand_group": [
                 "buyery",
                 "buyerxy"
             ],
-            "product_group": "B"
+            "basis": "B"
         },
         "sellerx": {
             "demand_group": "sellerx",
-            "product_group": "A"
+            "basis": "A"
         },
         "sellery": {
             "demand_group": "sellery",
-            "product_group": "B"
+            "basis": "B"
         }
     }
 }

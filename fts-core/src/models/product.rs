@@ -1,4 +1,4 @@
-use crate::{models::ProductGroup, ports::Repository};
+use crate::{models::Basis, ports::Repository};
 
 /// Represents a demand entity in the flow trading system.
 ///
@@ -40,5 +40,5 @@ pub struct ProductRecord<T: Repository, AppData> {
 
     /// Each product at any given time is either a basis element
     /// or can be represented in terms of a finer basis.
-    pub basis: ProductGroup<T::ProductId>,
+    pub basis: Basis<T::ProductId>,
 }

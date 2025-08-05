@@ -1,4 +1,4 @@
-use crate::models::{DemandCurve, DemandGroup, Map, ProductGroup};
+use crate::models::{DemandCurve, DemandGroup, Map, Basis};
 use std::hash::Hash;
 
 /// Interface for optimization solvers that compute market clearing solutions.
@@ -41,7 +41,7 @@ pub trait Solver<DemandId: Eq + Hash, PortfolioId: Eq + Hash, ProductId: Eq + Ha
     fn solve(
         &self,
         demand_curves: Map<DemandId, DemandCurve>,
-        portfolios: Map<PortfolioId, (DemandGroup<DemandId>, ProductGroup<ProductId>)>,
+        portfolios: Map<PortfolioId, (DemandGroup<DemandId>, Basis<ProductId>)>,
         state: Self::State,
     ) -> impl Future<
         Output = Result<

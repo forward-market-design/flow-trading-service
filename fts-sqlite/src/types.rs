@@ -7,7 +7,7 @@
 use fts_core::{
     models::{
         DemandCurve, DemandCurveDto, DemandGroup, DemandRecord, PortfolioGroup, PortfolioRecord,
-        ProductGroup, ProductRecord, ValueRecord,
+        Basis, ProductRecord, ValueRecord,
     },
     ports::Repository,
 };
@@ -62,7 +62,7 @@ pub(crate) struct PortfolioRow<AppData> {
     pub bidder_id: BidderId,
     pub app_data: sqlx::types::Json<AppData>,
     pub demand_group: Option<sqlx::types::Json<DemandGroup<DemandId>>>,
-    pub product_group: Option<sqlx::types::Json<ProductGroup<ProductId>>>,
+    pub basis: Option<sqlx::types::Json<Basis<ProductId>>>,
 }
 
 impl<T, AppData> Into<PortfolioRecord<T, AppData>> for PortfolioRow<AppData>
@@ -83,7 +83,7 @@ where
             bidder_id: self.bidder_id,
             app_data: self.app_data.0,
             demand_group: self.demand_group.map(|x| x.0).unwrap_or_default(),
-            product_group: self.product_group.map(|x| x.0).unwrap_or_default(),
+            basis: self.basis.map(|x| x.0).unwrap_or_default(),
         }
     }
 }
@@ -92,7 +92,7 @@ pub(crate) struct ProductRow<AppData> {
     pub id: ProductId,
     pub app_data: sqlx::types::Json<AppData>,
     pub parent: Option<sqlx::types::Json<(ProductId, f64)>>,
-    pub basis: Option<sqlx::types::Json<ProductGroup<ProductId>>>,
+    pub basis: Option<sqlx::types::Json<Basis<ProductId>>>,
 }
 
 impl<T, AppData> Into<ProductRecord<T, AppData>> for ProductRow<AppData>

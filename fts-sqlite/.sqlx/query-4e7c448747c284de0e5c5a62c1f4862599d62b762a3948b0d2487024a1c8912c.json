@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "select count(*) from product_tree where src_id = $1 and valid_from <= $2 and ($2 < valid_until or valid_until is null)",
+  "describe": {
+    "columns": [
+      {
+        "name": "count(*)",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4e7c448747c284de0e5c5a62c1f4862599d62b762a3948b0d2487024a1c8912c"
+}

@@ -1,7 +1,7 @@
 use crate::Db;
 use crate::types::{ProductId, ProductRow};
 use fts_core::{
-    models::{ProductGroup, ProductRecord},
+    models::{Basis, ProductRecord},
     ports::ProductRepository,
 };
 
@@ -30,7 +30,7 @@ impl<ProductData: Send + Unpin + 'static + serde::Serialize + serde::de::Deseria
                 id as "id!: ProductId",
                 json(app_data) as "app_data!: sqlx::types::Json<ProductData>",
                 null as "parent?: sqlx::types::Json<(ProductId, f64)>",
-                null as "basis?: sqlx::types::Json<ProductGroup<ProductId>>"
+                null as "basis?: sqlx::types::Json<Basis<ProductId>>"
             "#,
             product_id,
             as_of,
@@ -124,7 +124,7 @@ impl<ProductData: Send + Unpin + 'static + serde::Serialize + serde::de::Deseria
                     else
                         json_array(parent_id, parent_ratio)
                     end as "parent?: sqlx::types::Json<(ProductId, f64)>",
-                null as "basis?: sqlx::types::Json<ProductGroup<ProductId>>"
+                null as "basis?: sqlx::types::Json<Basis<ProductId>>"
             from
                 product
             where

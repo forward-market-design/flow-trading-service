@@ -67,7 +67,7 @@ async fn test_product_expansion() -> anyhow::Result<()> {
     // Test at different time points
     for i in 0u64..=7 {
         let as_of = DateTime::from(now + std::time::Duration::from_secs(i));
-        let PortfolioRecord { product_group, .. } =
+        let PortfolioRecord { basis, .. } =
             <Db as PortfolioRepository<()>>::get_portfolio_with_expanded_products(
                 db,
                 portfolio_id,
@@ -80,43 +80,43 @@ async fn test_product_expansion() -> anyhow::Result<()> {
         match i {
             0 => {
                 // Before any product expansion
-                assert_eq!(product_group.len(), 0);
+                assert_eq!(basis.len(), 0);
             }
             1 => {
                 // After portfolio creation but before partition
-                assert_eq!(product_group.len(), 1);
-                assert!(product_group.contains_key(&food));
-                assert_eq!(product_group.get(&food), Some(&1.0));
+                assert_eq!(basis.len(), 1);
+                assert!(basis.contains_key(&food));
+                assert_eq!(basis.get(&food), Some(&1.0));
             }
             2 | 3 => {
                 // After first partition
-                assert_eq!(product_group.len(), 2);
-                assert!(product_group.contains_key(&fruit));
-                assert!(product_group.contains_key(&vegetable));
-                assert_eq!(product_group.get(&fruit), Some(&2.0));
-                assert_eq!(product_group.get(&vegetable), Some(&3.0));
+                assert_eq!(basis.len(), 2);
+                assert!(basis.contains_key(&fruit));
+                assert!(basis.contains_key(&vegetable));
+                assert_eq!(basis.get(&fruit), Some(&2.0));
+                assert_eq!(basis.get(&vegetable), Some(&3.0));
             }
             4 | 5 => {
                 // After fruit partition
-                assert_eq!(product_group.len(), 3);
-                assert!(product_group.contains_key(&vegetable));
-                assert!(product_group.contains_key(&apple));
-                assert!(product_group.contains_key(&banana));
-                assert_eq!(product_group.get(&vegetable), Some(&3.0));
-                assert_eq!(product_group.get(&apple), Some(&10.0));
-                assert_eq!(product_group.get(&banana), Some(&14.0));
+                assert_eq!(basis.len(), 3);
+                assert!(basis.contains_key(&vegetable));
+                assert!(basis.contains_key(&apple));
+                assert!(basis.contains_key(&banana));
+                assert_eq!(basis.get(&vegetable), Some(&3.0));
+                assert_eq!(basis.get(&apple), Some(&10.0));
+                assert_eq!(basis.get(&banana), Some(&14.0));
             }
             6 | 7 => {
                 // After vegetable partition
-                assert_eq!(product_group.len(), 4);
-                assert!(product_group.contains_key(&apple));
-                assert!(product_group.contains_key(&banana));
-                assert!(product_group.contains_key(&carrot));
-                assert!(product_group.contains_key(&daikon));
-                assert_eq!(product_group.get(&apple), Some(&10.0));
-                assert_eq!(product_group.get(&banana), Some(&14.0));
-                assert_eq!(product_group.get(&carrot), Some(&33.0));
-                assert_eq!(product_group.get(&daikon), Some(&39.0));
+                assert_eq!(basis.len(), 4);
+                assert!(basis.contains_key(&apple));
+                assert!(basis.contains_key(&banana));
+                assert!(basis.contains_key(&carrot));
+                assert!(basis.contains_key(&daikon));
+                assert_eq!(basis.get(&apple), Some(&10.0));
+                assert_eq!(basis.get(&banana), Some(&14.0));
+                assert_eq!(basis.get(&carrot), Some(&33.0));
+                assert_eq!(basis.get(&daikon), Some(&39.0));
             }
             _ => {}
         }

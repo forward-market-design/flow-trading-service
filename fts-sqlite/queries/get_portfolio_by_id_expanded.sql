@@ -30,14 +30,14 @@ demand_group_cte as (
         portfolio_id
 ),
 
-product_group_cte as (
+basis_cte as (
     select
         portfolio_id,
         max(valid_from) as valid_from,
         min(valid_until) as valid_until,
         jsonb_group_object(product_id, weight) as value
     from
-        product_group_view
+        basis_view
     where
         portfolio_id = $1
         and
@@ -51,17 +51,17 @@ product_group_cte as (
 select
     portfolio_id as "id!: PortfolioId",
     max(
-        coalesce(demand_group_cte.valid_from, product_group_cte.valid_from, app_data_cte.as_of),
-        coalesce(product_group_cte.valid_from, demand_group_cte.valid_from, app_data_cte.as_of)
+        coalesce(demand_group_cte.valid_from, basis_cte.valid_from, app_data_cte.as_of),
+        coalesce(basis_cte.valid_from, demand_group_cte.valid_from, app_data_cte.as_of)
     ) as "valid_from!: DateTime",
     min(
-        coalesce(demand_group_cte.valid_until, product_group_cte.valid_until),
-        coalesce(product_group_cte.valid_until, demand_group_cte.valid_until)
+        coalesce(demand_group_cte.valid_until, basis_cte.valid_until),
+        coalesce(basis_cte.valid_until, demand_group_cte.valid_until)
     ) as "valid_until?: DateTime",
     app_data_cte.bidder_id as "bidder_id!: BidderId",
     json(app_data_cte.value) as "app_data!: sqlx::types::Json<PortfolioData>",
     json(demand_group_cte.value) as "demand_group?: sqlx::types::Json<DemandGroup<DemandId>>",
-    json(product_group_cte.value) as "product_group?: sqlx::types::Json<ProductGroup<ProductId>>"
+    json(basis_cte.value) as "basis?: sqlx::types::Json<Basis<ProductId>>"
 from
     app_data_cte
 left join
@@ -69,6 +69,6 @@ left join
     using
         (portfolio_id)
 left join
-    product_group_cte
+    basis_cte
     using
         (portfolio_id);
