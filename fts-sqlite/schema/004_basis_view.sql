@@ -8,19 +8,19 @@ create view basis_view (
 ) as
 
 select
-    basis.portfolio_id,
+    portfolio_product.portfolio_id,
     product_tree.dst_id,
     product_tree.ratio * weight as weight,
-    max(basis.valid_from, product_tree.valid_from) as combined_from,
+    max(portfolio_product.valid_from, product_tree.valid_from) as combined_from,
     min(
-        coalesce(basis.valid_until, product_tree.valid_until),
-        coalesce(product_tree.valid_until, basis.valid_until)
+        coalesce(portfolio_product.valid_until, product_tree.valid_until),
+        coalesce(product_tree.valid_until, portfolio_product.valid_until)
     ) as combined_until
 from
-    basis
+    portfolio_product
 join
     product_tree
     on
-        basis.product_id = product_tree.src_id
+        portfolio_product.product_id = product_tree.src_id
 where
     combined_until is null or combined_from < combined_until

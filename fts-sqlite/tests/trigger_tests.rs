@@ -2,9 +2,7 @@ mod common;
 
 use common::TestApp;
 use fts_core::{
-    models::{
-        ConstantCurve, DateTimeRangeQuery, DemandCurve, DemandGroup, Point, Basis, PwlCurve,
-    },
+    models::{Basis, ConstantCurve, DateTimeRangeQuery, DemandCurve, Weights, Point, PwlCurve},
     ports::{Application, DemandRepository, PortfolioRepository, ProductRepository},
 };
 use fts_sqlite::{Db, config::SqliteConfig, types::BidderId};
@@ -115,8 +113,8 @@ async fn test_portfolio_triggers_empty_groups() -> anyhow::Result<()> {
         portfolio_id,
         bidder_id,
         (),
-        DemandGroup::default(),  // empty demand group
-        Basis::default(), // empty product group
+        Weights::default(), // empty demand group
+        Basis::default(),       // empty product group
         now.into(),
     )
     .await?;
@@ -127,7 +125,7 @@ async fn test_portfolio_triggers_empty_groups() -> anyhow::Result<()> {
     assert!(portfolio.is_some());
     let portfolio = portfolio.unwrap();
 
-    assert!(portfolio.demand_group.is_empty());
+    assert!(portfolio.demand.is_empty());
     assert!(portfolio.basis.is_empty());
 
     Ok(())
@@ -151,8 +149,8 @@ async fn test_portfolio_triggers_partial_updates() -> anyhow::Result<()> {
     db.create_product(product_id, (), now.into()).await?;
 
     // Create portfolio with initial groups
-    let mut initial_demand_group = DemandGroup::default();
-    initial_demand_group.insert(demand_id, 1.0);
+    let mut initial_demand = Weights::default();
+    initial_demand.insert(demand_id, 1.0);
     let mut initial_basis = Basis::default();
     initial_basis.insert(product_id, 2.0);
 
@@ -160,7 +158,7 @@ async fn test_portfolio_triggers_partial_updates() -> anyhow::Result<()> {
         portfolio_id,
         bidder_id,
         (),
-        initial_demand_group,
+        initial_demand,
         initial_basis,
         now.into(),
     )
@@ -171,18 +169,18 @@ async fn test_portfolio_triggers_partial_updates() -> anyhow::Result<()> {
         <Db as PortfolioRepository<()>>::get_portfolio(db, portfolio_id, now.into()).await?;
     assert!(initial_portfolio.is_some());
     let initial_portfolio = initial_portfolio.unwrap();
-    assert_eq!(initial_portfolio.demand_group.get(&demand_id), Some(&1.0));
+    assert_eq!(initial_portfolio.demand.get(&demand_id), Some(&1.0));
     assert_eq!(initial_portfolio.basis.get(&product_id), Some(&2.0));
 
     // Update only demand group
-    let mut updated_demand_group = DemandGroup::default();
-    updated_demand_group.insert(demand_id, 1.5);
+    let mut updated_demand = Weights::default();
+    updated_demand.insert(demand_id, 1.5);
     let update_time = now + std::time::Duration::from_secs(5);
 
-    let updated = <Db as PortfolioRepository<()>>::update_portfolio_demand_group(
+    let updated = <Db as PortfolioRepository<()>>::update_portfolio_demand(
         db,
         portfolio_id,
-        updated_demand_group,
+        updated_demand,
         update_time.into(),
     )
     .await?;
@@ -194,7 +192,7 @@ async fn test_portfolio_triggers_partial_updates() -> anyhow::Result<()> {
             .await?;
     assert!(updated_portfolio.is_some());
     let updated_portfolio = updated_portfolio.unwrap();
-    assert_eq!(updated_portfolio.demand_group.get(&demand_id), Some(&1.5));
+    assert_eq!(updated_portfolio.demand.get(&demand_id), Some(&1.5));
     assert_eq!(updated_portfolio.basis.get(&product_id), Some(&2.0));
 
     // Verify we can see demand history
@@ -254,7 +252,7 @@ async fn test_portfolio_triggers_partial_updates() -> anyhow::Result<()> {
     .await?
     .unwrap();
 
-    assert_eq!(final_portfolio.demand_group.get(&demand_id), Some(&1.5));
+    assert_eq!(final_portfolio.demand.get(&demand_id), Some(&1.5));
     assert_eq!(final_portfolio.basis.get(&product_id), Some(&3.0));
 
     // Verify product history shows the update
@@ -327,16 +325,16 @@ async fn test_portfolio_triggers_multiple_items() -> anyhow::Result<()> {
     }
 
     // Create portfolio with multiple items in each group
-    let mut demand_group = DemandGroup::default();
-    demand_group.insert(demand1, 1.0);
-    demand_group.insert(demand2, 2.0);
-    demand_group.insert(demand3, 3.0);
+    let mut demand = Weights::default();
+    demand.insert(demand1, 1.0);
+    demand.insert(demand2, 2.0);
+    demand.insert(demand3, 3.0);
 
     let mut basis = Basis::default();
     basis.insert(product1, 4.0);
     basis.insert(product2, 5.0);
 
-    db.create_portfolio(portfolio_id, bidder_id, (), demand_group, basis, now.into())
+    db.create_portfolio(portfolio_id, bidder_id, (), demand, basis, now.into())
         .await?;
 
     // Verify all items were inserted
@@ -344,18 +342,18 @@ async fn test_portfolio_triggers_multiple_items() -> anyhow::Result<()> {
         .await?
         .unwrap();
 
-    assert_eq!(portfolio.demand_group.len(), 3);
+    assert_eq!(portfolio.demand.len(), 3);
     assert_eq!(portfolio.basis.len(), 2);
-    assert_eq!(portfolio.demand_group.get(&demand1), Some(&1.0));
-    assert_eq!(portfolio.demand_group.get(&demand2), Some(&2.0));
-    assert_eq!(portfolio.demand_group.get(&demand3), Some(&3.0));
+    assert_eq!(portfolio.demand.get(&demand1), Some(&1.0));
+    assert_eq!(portfolio.demand.get(&demand2), Some(&2.0));
+    assert_eq!(portfolio.demand.get(&demand3), Some(&3.0));
     assert_eq!(portfolio.basis.get(&product1), Some(&4.0));
     assert_eq!(portfolio.basis.get(&product2), Some(&5.0));
 
     // Update to remove some items and modify others
-    let mut updated_demand_group = DemandGroup::default();
-    updated_demand_group.insert(demand1, 1.5); // modified
-    updated_demand_group.insert(demand3, 3.5); // modified
+    let mut updated_demand = Weights::default();
+    updated_demand.insert(demand1, 1.5); // modified
+    updated_demand.insert(demand3, 3.5); // modified
     // demand2 removed
 
     let mut updated_basis = Basis::default();
@@ -363,10 +361,10 @@ async fn test_portfolio_triggers_multiple_items() -> anyhow::Result<()> {
     // product2 removed
 
     let update_time = now + std::time::Duration::from_secs(10);
-    <Db as PortfolioRepository<()>>::update_portfolio_groups(
+    <Db as PortfolioRepository<()>>::update_portfolio(
         db,
         portfolio_id,
-        updated_demand_group.clone(),
+        updated_demand.clone(),
         updated_basis.clone(),
         update_time.into(),
     )
@@ -379,11 +377,11 @@ async fn test_portfolio_triggers_multiple_items() -> anyhow::Result<()> {
     assert!(updated_portfolio.is_some());
     let updated_portfolio = updated_portfolio.unwrap();
 
-    assert_eq!(updated_portfolio.demand_group.len(), 2);
+    assert_eq!(updated_portfolio.demand.len(), 2);
     assert_eq!(updated_portfolio.basis.len(), 1);
-    assert_eq!(updated_portfolio.demand_group.get(&demand1), Some(&1.5));
-    assert_eq!(updated_portfolio.demand_group.get(&demand3), Some(&3.5));
-    assert!(!updated_portfolio.demand_group.contains_key(&demand2));
+    assert_eq!(updated_portfolio.demand.get(&demand1), Some(&1.5));
+    assert_eq!(updated_portfolio.demand.get(&demand3), Some(&3.5));
+    assert!(!updated_portfolio.demand.contains_key(&demand2));
     assert_eq!(updated_portfolio.basis.get(&product1), Some(&4.5));
     assert!(!updated_portfolio.basis.contains_key(&product2));
 
@@ -556,7 +554,7 @@ async fn test_product_tree_trigger_zero_ratio() -> anyhow::Result<()> {
         portfolio_id,
         bidder_id,
         (),
-        DemandGroup::default(),
+        Weights::default(),
         basis,
         (now + std::time::Duration::from_secs(2)).into(),
     )

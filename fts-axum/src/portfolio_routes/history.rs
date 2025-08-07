@@ -8,7 +8,7 @@ use axum::{
 };
 use axum_extra::TypedHeader;
 use fts_core::{
-    models::{DateTimeRangeQuery, DateTimeRangeResponse, DemandGroup, Basis},
+    models::{DateTimeRangeQuery, DateTimeRangeResponse, Weights, Basis},
     ports::{PortfolioRepository as _, Repository},
 };
 use headers::{Authorization, authorization::Bearer};
@@ -39,7 +39,7 @@ pub(crate) async fn get_portfolio_demand_history<T: ApiApplication>(
 ) -> Result<
     Json<
         DateTimeRangeResponse<
-            DemandGroup<<T::Repository as Repository>::DemandId>,
+            Weights<<T::Repository as Repository>::DemandId>,
             <T::Repository as Repository>::DateTime,
         >,
     >,

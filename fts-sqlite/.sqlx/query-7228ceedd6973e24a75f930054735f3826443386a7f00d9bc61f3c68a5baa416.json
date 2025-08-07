@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            update\n                demand\n            set\n                as_of = $2,\n                curve_data = jsonb($3)\n            where\n                id = $1\n            returning\n                id as \"id!: DemandId\",\n                as_of as \"valid_from!: DateTime\",\n                null as \"valid_until?: DateTime\",\n                bidder_id as \"bidder_id!: BidderId\",\n                json(app_data) as \"app_data!: sqlx::types::Json<DemandData>\",\n                json(curve_data) as \"curve_data?: sqlx::types::Json<DemandCurveDto>\",\n                null as \"portfolio_group?: sqlx::types::Json<PortfolioGroup<PortfolioId>>\"\n            ",
+  "query": "\n            insert into\n                demand (id, as_of, bidder_id, app_data, curve_data)\n            values\n                ($1, $2, $3, jsonb($4), jsonb($5))\n            returning\n                id as \"id!: DemandId\",\n                as_of as \"valid_from!: DateTime\",\n                null as \"valid_until?: DateTime\",\n                bidder_id as \"bidder_id!: BidderId\",\n                json(app_data) as \"app_data!: sqlx::types::Json<DemandData>\",\n                json(curve_data) as \"curve_data?: sqlx::types::Json<DemandCurveDto>\",\n                null as \"portfolios?: sqlx::types::Json<Sum<PortfolioId>>\"\n            ",
   "describe": {
     "columns": [
       {
@@ -34,23 +34,23 @@
         "type_info": "Null"
       },
       {
-        "name": "portfolio_group?: sqlx::types::Json<PortfolioGroup<PortfolioId>>",
+        "name": "portfolios?: sqlx::types::Json<Sum<PortfolioId>>",
         "ordinal": 6,
         "type_info": "Null"
       }
     ],
     "parameters": {
-      "Right": 3
+      "Right": 5
     },
     "nullable": [
       false,
       false,
-      null,
+      true,
       false,
       null,
       null,
-      null
+      true
     ]
   },
-  "hash": "3cf940229941bd1aadf04b9d2daa2c4faffa023e2cba47865d581ab84cbf67e5"
+  "hash": "7228ceedd6973e24a75f930054735f3826443386a7f00d9bc61f3c68a5baa416"
 }

@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            insert into\n                portfolio (id, as_of, bidder_id, app_data, demand_group, basis)\n            values\n                ($1, $2, $3, jsonb($4), jsonb($5), jsonb($6))\n            returning\n                id as \"id!: PortfolioId\",\n                as_of as \"valid_from!: DateTime\",\n                null as \"valid_until?: DateTime\",\n                bidder_id as \"bidder_id!: BidderId\",\n                json(app_data) as \"app_data!: sqlx::types::Json<PortfolioData>\",\n                json(demand_group) as \"demand_group?: sqlx::types::Json<DemandGroup<DemandId>>\",\n                json(basis) as \"basis?: sqlx::types::Json<Basis<ProductId>>\"\n            ",
+  "query": "\n            update\n                portfolio\n            set\n                as_of = $2,\n                demand = jsonb($3)\n            where\n                id = $1\n            returning\n                id as \"id!: PortfolioId\",\n                as_of as \"valid_from!: DateTime\",\n                null as \"valid_until?: DateTime\",\n                bidder_id as \"bidder_id!: BidderId\",\n                json(app_data) as \"app_data!: sqlx::types::Json<PortfolioData>\",\n                json(demand) as \"demand?: sqlx::types::Json<Weights<DemandId>>\",\n                json(basis) as \"basis?: sqlx::types::Json<Basis<ProductId>>\"\n            ",
   "describe": {
     "columns": [
       {
@@ -29,7 +29,7 @@
         "type_info": "Null"
       },
       {
-        "name": "demand_group?: sqlx::types::Json<DemandGroup<DemandId>>",
+        "name": "demand?: sqlx::types::Json<Weights<DemandId>>",
         "ordinal": 5,
         "type_info": "Null"
       },
@@ -40,17 +40,17 @@
       }
     ],
     "parameters": {
-      "Right": 6
+      "Right": 3
     },
     "nullable": [
       false,
       false,
-      true,
+      null,
       false,
       null,
       null,
       null
     ]
   },
-  "hash": "9cb916def650ade437a36a0bb848014fd4aa1029ff3750caa9d7367d1d656825"
+  "hash": "295d8684cfe07d17e3895b2d92499160d2355460f19ed648d1f1bf2470a0bb32"
 }

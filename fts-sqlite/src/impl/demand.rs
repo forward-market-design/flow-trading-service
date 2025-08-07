@@ -4,8 +4,8 @@ use crate::{
 };
 use fts_core::{
     models::{
-        DateTimeRangeQuery, DateTimeRangeResponse, DemandCurve, DemandCurveDto, DemandRecord,
-        PortfolioGroup, ValueRecord,
+        DateTimeRangeQuery, DateTimeRangeResponse, DemandCurve, DemandCurveDto, DemandRecord, Sum,
+        ValueRecord,
     },
     ports::DemandRepository,
 };
@@ -50,7 +50,7 @@ impl<DemandData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwned>
                     bidder_id as "bidder_id!: BidderId",
                     json(app_data) as "app_data!: sqlx::types::Json<DemandData>",
                     json(curve_data) as "curve_data?: sqlx::types::Json<DemandCurveDto>",
-                    null as "portfolio_group?: sqlx::types::Json<PortfolioGroup<PortfolioId>>"
+                    null as "portfolios?: sqlx::types::Json<Sum<PortfolioId>>"
                 from
                     demand
                 join
@@ -95,7 +95,7 @@ impl<DemandData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwned>
                 bidder_id as "bidder_id!: BidderId",
                 json(app_data) as "app_data!: sqlx::types::Json<DemandData>",
                 json(curve_data) as "curve_data?: sqlx::types::Json<DemandCurveDto>",
-                null as "portfolio_group?: sqlx::types::Json<PortfolioGroup<PortfolioId>>"
+                null as "portfolios?: sqlx::types::Json<Sum<PortfolioId>>"
             "#,
             demand_id,
             as_of,
@@ -132,7 +132,7 @@ impl<DemandData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwned>
                 bidder_id as "bidder_id!: BidderId",
                 json(app_data) as "app_data!: sqlx::types::Json<DemandData>",
                 json(curve_data) as "curve_data?: sqlx::types::Json<DemandCurveDto>",
-                null as "portfolio_group?: sqlx::types::Json<PortfolioGroup<PortfolioId>>"
+                null as "portfolios?: sqlx::types::Json<Sum<PortfolioId>>"
             "#,
             demand_id,
             as_of,

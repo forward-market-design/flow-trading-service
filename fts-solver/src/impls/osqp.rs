@@ -1,6 +1,6 @@
 use crate::{PortfolioOutcome, ProductOutcome, disaggregate};
 use fts_core::{
-    models::{DemandCurve, DemandGroup, Map, Basis},
+    models::{Basis, DemandCurve, Weights, Map},
     ports::Solver,
 };
 use osqp::{CscMatrix, Problem, Settings, Solution, Status};
@@ -42,7 +42,7 @@ impl<
     fn solve(
         settings: Settings,
         demand_curves: Map<DemandId, DemandCurve>,
-        portfolios: Map<PortfolioId, (DemandGroup<DemandId>, Basis<ProductId>)>,
+        portfolios: Map<PortfolioId, (Weights<DemandId>, Basis<ProductId>)>,
     ) -> Result<
         (
             Map<PortfolioId, PortfolioOutcome>,
@@ -83,9 +83,9 @@ impl<
         let mut a_colptr = Vec::new();
 
         // We begin by setting up the portfolio variables.
-        for (demand_group, basis) in portfolios.values() {
+        for (demand, basis) in portfolios.values() {
             // We can skip any portfolio variable that does not have associated products or demands
-            if basis.len() == 0 || demand_group.len() == 0 {
+            if basis.len() == 0 || demand.len() == 0 {
                 continue;
             }
 
@@ -105,7 +105,7 @@ impl<
             }
 
             // We copy the demand weights into the matrix as well
-            for (demand_id, &weight) in demand_group.iter() {
+            for (demand_id, &weight) in demand.iter() {
                 // SAFETY: this unwrap() is guaranteed by the logic in prepare()
                 let idx = demand_curves.get_index_of(demand_id).unwrap();
                 a_nzval.push(weight);
@@ -226,7 +226,7 @@ impl<
     async fn solve(
         &self,
         demand_curves: Map<DemandId, DemandCurve>,
-        portfolios: Map<PortfolioId, (DemandGroup<DemandId>, Basis<ProductId>)>,
+        portfolios: Map<PortfolioId, (Weights<DemandId>, Basis<ProductId>)>,
         _state: Self::State,
     ) -> Result<
         (

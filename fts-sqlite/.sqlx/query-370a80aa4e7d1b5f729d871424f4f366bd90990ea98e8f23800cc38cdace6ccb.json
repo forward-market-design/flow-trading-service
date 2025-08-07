@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "-- fn(demand_id: DemandId, as_of: DateTime) -> DemandRow\nwith\napp_data_cte as (\n    select\n        id as demand_id,\n        bidder_id,\n        app_data as value,\n        as_of\n    from\n        demand\n    where\n        id = $1\n),\n\ncurve_data_cte as (\n    select\n        demand_id,\n        valid_from,\n        valid_until,\n        value\n    from\n        curve_data\n    where\n        demand_id = $1\n        and\n        valid_from <= $2\n        and\n        ($2 < valid_until or valid_until is null)\n),\n\nportfolios_cte as (\n    select\n        demand_id,\n        max(valid_from) as valid_from,\n        min(valid_until) as valid_until,\n        jsonb_group_object(portfolio_id, weight) as value\n    from\n        portfolio_demand\n    where\n        demand_id = $1\n        and\n        valid_from <= $2\n        and\n        ($2 < valid_until or valid_until is null)\n    group by\n        demand_id\n)\n\nselect\n    demand_id as \"id!: DemandId\",\n    max(\n        coalesce(curve_data_cte.valid_from, portfolios_cte.valid_from, app_data_cte.as_of),\n        coalesce(portfolios_cte.valid_from, curve_data_cte.valid_from, app_data_cte.as_of)\n     ) as \"valid_from!: DateTime\",\n    min(\n        coalesce(curve_data_cte.valid_until, portfolios_cte.valid_until),\n        coalesce(portfolios_cte.valid_until, curve_data_cte.valid_until)\n    ) as \"valid_until?: DateTime\",\n    app_data_cte.bidder_id as \"bidder_id!: BidderId\",\n    json(app_data_cte.value) as \"app_data!: sqlx::types::Json<DemandData>\",\n    json(curve_data_cte.value) as \"curve_data?: sqlx::types::Json<DemandCurveDto>\",\n    json(portfolios_cte.value) as \"portfolios?: sqlx::types::Json<Sum<PortfolioId>>\"\nfrom\n    app_data_cte\nleft join\n    curve_data_cte\n    using\n        (demand_id)\nleft join\n    portfolios_cte\n    using\n        (demand_id);\n",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: DemandId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "valid_from!: DateTime",
+        "ordinal": 1,
+        "type_info": "Null"
+      },
+      {
+        "name": "valid_until?: DateTime",
+        "ordinal": 2,
+        "type_info": "Null"
+      },
+      {
+        "name": "bidder_id!: BidderId",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "app_data!: sqlx::types::Json<DemandData>",
+        "ordinal": 4,
+        "type_info": "Null"
+      },
+      {
+        "name": "curve_data?: sqlx::types::Json<DemandCurveDto>",
+        "ordinal": 5,
+        "type_info": "Null"
+      },
+      {
+        "name": "portfolios?: sqlx::types::Json<Sum<PortfolioId>>",
+        "ordinal": 6,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      null,
+      null,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "370a80aa4e7d1b5f729d871424f4f366bd90990ea98e8f23800cc38cdace6ccb"
+}

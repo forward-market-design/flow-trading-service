@@ -88,15 +88,15 @@ Similarly, a portfolio can aggregate multiple demands:
 ```typescript
 // We expect most often that a portfolio is
 // associated to a single demand, and vice versa
-demand_group1 = { D1: 1.0 };
+demand1 = { D1: 1.0 };
 // However, if portfolios are substitutes, multiple
 // portfolios may be associated to a single demand,
 // and a single portfolio may be associated to multiple
 // demands.
-demand_group2 = { D1: 1, D2: 1 };
+demand2 = { D1: 1, D2: 1 };
 // As before, there are no restrictions
 // on the signs or magnitudes of these weights.
-demand_group3 = { D1: 0.8, D2: 0.2 };
+demand3 = { D1: 0.8, D2: 0.2 };
 ```
 
 This allows bidders to express substitution preferences between different pricing strategies while maintaining a unified trading interface.

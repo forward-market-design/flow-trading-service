@@ -6,8 +6,8 @@
 
 use fts_core::{
     models::{
-        DemandCurve, DemandCurveDto, DemandGroup, DemandRecord, PortfolioGroup, PortfolioRecord,
-        Basis, ProductRecord, ValueRecord,
+        Basis, DemandCurve, DemandCurveDto, DemandRecord, PortfolioRecord, ProductRecord, Sum,
+        ValueRecord, Weights,
     },
     ports::Repository,
 };
@@ -25,7 +25,7 @@ pub(crate) struct DemandRow<AppData> {
     pub bidder_id: BidderId,
     pub app_data: sqlx::types::Json<AppData>,
     pub curve_data: Option<sqlx::types::Json<DemandCurveDto>>,
-    pub portfolio_group: Option<sqlx::types::Json<PortfolioGroup<PortfolioId>>>,
+    pub portfolios: Option<sqlx::types::Json<Sum<PortfolioId>>>,
 }
 
 impl<T, AppData> Into<DemandRecord<T, AppData>> for DemandRow<AppData>
@@ -50,7 +50,7 @@ where
                 // SAFETY: we are deserialized from the database, and we ensure we only save valid demand curves
                 .map(|x| unsafe { DemandCurve::new_unchecked(x.0) })
                 .unwrap_or_default(),
-            portfolio_group: self.portfolio_group.map(|x| x.0).unwrap_or_default(),
+            portfolios: self.portfolios.map(|x| x.0).unwrap_or_default(),
         }
     }
 }
@@ -61,7 +61,7 @@ pub(crate) struct PortfolioRow<AppData> {
     pub valid_until: Option<DateTime>,
     pub bidder_id: BidderId,
     pub app_data: sqlx::types::Json<AppData>,
-    pub demand_group: Option<sqlx::types::Json<DemandGroup<DemandId>>>,
+    pub demand: Option<sqlx::types::Json<Weights<DemandId>>>,
     pub basis: Option<sqlx::types::Json<Basis<ProductId>>>,
 }
 
@@ -82,7 +82,7 @@ where
             valid_until: self.valid_until,
             bidder_id: self.bidder_id,
             app_data: self.app_data.0,
-            demand_group: self.demand_group.map(|x| x.0).unwrap_or_default(),
+            demand: self.demand.map(|x| x.0).unwrap_or_default(),
             basis: self.basis.map(|x| x.0).unwrap_or_default(),
         }
     }

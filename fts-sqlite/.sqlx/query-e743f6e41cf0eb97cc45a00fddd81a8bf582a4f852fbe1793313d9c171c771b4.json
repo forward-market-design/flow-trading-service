@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            update\n                portfolio\n            set\n                as_of = $2,\n                demand_group = jsonb($3),\n                basis = jsonb($4)\n            where\n                id = $1\n            returning\n                id as \"id!: PortfolioId\",\n                as_of as \"valid_from!: DateTime\",\n                null as \"valid_until?: DateTime\",\n                bidder_id as \"bidder_id!: BidderId\",\n                json(app_data) as \"app_data!: sqlx::types::Json<PortfolioData>\",\n                json(demand_group) as \"demand_group?: sqlx::types::Json<DemandGroup<DemandId>>\",\n                json(basis) as \"basis?: sqlx::types::Json<Basis<ProductId>>\"\n            ",
+  "query": "\n            update\n                portfolio\n            set\n                as_of = $2,\n                demand = jsonb($3),\n                basis = jsonb($4)\n            where\n                id = $1\n            returning\n                id as \"id!: PortfolioId\",\n                as_of as \"valid_from!: DateTime\",\n                null as \"valid_until?: DateTime\",\n                bidder_id as \"bidder_id!: BidderId\",\n                json(app_data) as \"app_data!: sqlx::types::Json<PortfolioData>\",\n                json(demand) as \"demand?: sqlx::types::Json<Weights<DemandId>>\",\n                json(basis) as \"basis?: sqlx::types::Json<Basis<ProductId>>\"\n            ",
   "describe": {
     "columns": [
       {
@@ -29,7 +29,7 @@
         "type_info": "Null"
       },
       {
-        "name": "demand_group?: sqlx::types::Json<DemandGroup<DemandId>>",
+        "name": "demand?: sqlx::types::Json<Weights<DemandId>>",
         "ordinal": 5,
         "type_info": "Null"
       },
@@ -52,5 +52,5 @@
       null
     ]
   },
-  "hash": "92ec8a8b3116018fc661ab827eb09639594ef93f18d27caa1b963a7c7e2b0bc7"
+  "hash": "e743f6e41cf0eb97cc45a00fddd81a8bf582a4f852fbe1793313d9c171c771b4"
 }

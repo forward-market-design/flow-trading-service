@@ -1,5 +1,5 @@
 use crate::models::{
-    Basis, DateTimeRangeQuery, DateTimeRangeResponse, DemandGroup, PortfolioRecord,
+    Basis, DateTimeRangeQuery, DateTimeRangeResponse, Weights, PortfolioRecord,
 };
 
 /// Repository interface for portfolio CRUD operations and history tracking.
@@ -23,16 +23,16 @@ pub trait PortfolioRepository<PortfolioData>: super::Repository {
         portfolio_id: Self::PortfolioId,
         bidder_id: Self::BidderId,
         app_data: PortfolioData,
-        demand_group: DemandGroup<Self::DemandId>,
+        demand: Weights<Self::DemandId>,
         basis: Basis<Self::ProductId>,
         as_of: Self::DateTime,
     ) -> impl Future<Output = Result<PortfolioRecord<Self, PortfolioData>, Self::Error>> + Send;
 
     /// Update a portfolio's demand group.
-    fn update_portfolio_demand_group(
+    fn update_portfolio_demand(
         &self,
         portfolio_id: Self::PortfolioId,
-        demand_group: DemandGroup<Self::DemandId>,
+        demand: Weights<Self::DemandId>,
         as_of: Self::DateTime,
     ) -> impl Future<Output = Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error>> + Send;
 
@@ -45,10 +45,10 @@ pub trait PortfolioRepository<PortfolioData>: super::Repository {
     ) -> impl Future<Output = Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error>> + Send;
 
     /// Update both the demand- and product- groups at once.
-    fn update_portfolio_groups(
+    fn update_portfolio(
         &self,
         portfolio_id: Self::PortfolioId,
-        demand_group: DemandGroup<Self::DemandId>,
+        demand: Weights<Self::DemandId>,
         basis: Basis<Self::ProductId>,
         as_of: Self::DateTime,
     ) -> impl Future<Output = Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error>> + Send;
@@ -90,7 +90,7 @@ pub trait PortfolioRepository<PortfolioData>: super::Repository {
         limit: usize,
     ) -> impl Future<
         Output = Result<
-            DateTimeRangeResponse<DemandGroup<Self::DemandId>, Self::DateTime>,
+            DateTimeRangeResponse<Weights<Self::DemandId>, Self::DateTime>,
             Self::Error,
         >,
     > + Send;

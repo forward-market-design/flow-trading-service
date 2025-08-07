@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "\n            insert into\n                demand (id, as_of, bidder_id, app_data, curve_data)\n            values\n                ($1, $2, $3, jsonb($4), jsonb($5))\n            returning\n                id as \"id!: DemandId\",\n                as_of as \"valid_from!: DateTime\",\n                null as \"valid_until?: DateTime\",\n                bidder_id as \"bidder_id!: BidderId\",\n                json(app_data) as \"app_data!: sqlx::types::Json<DemandData>\",\n                json(curve_data) as \"curve_data?: sqlx::types::Json<DemandCurveDto>\",\n                null as \"portfolio_group?: sqlx::types::Json<PortfolioGroup<PortfolioId>>\"\n            ",
+  "query": "\n            update\n                demand\n            set\n                as_of = $2,\n                curve_data = jsonb($3)\n            where\n                id = $1\n            returning\n                id as \"id!: DemandId\",\n                as_of as \"valid_from!: DateTime\",\n                null as \"valid_until?: DateTime\",\n                bidder_id as \"bidder_id!: BidderId\",\n                json(app_data) as \"app_data!: sqlx::types::Json<DemandData>\",\n                json(curve_data) as \"curve_data?: sqlx::types::Json<DemandCurveDto>\",\n                null as \"portfolios?: sqlx::types::Json<Sum<PortfolioId>>\"\n            ",
   "describe": {
     "columns": [
       {
@@ -34,23 +34,23 @@
         "type_info": "Null"
       },
       {
-        "name": "portfolio_group?: sqlx::types::Json<PortfolioGroup<PortfolioId>>",
+        "name": "portfolios?: sqlx::types::Json<Sum<PortfolioId>>",
         "ordinal": 6,
         "type_info": "Null"
       }
     ],
     "parameters": {
-      "Right": 5
+      "Right": 3
     },
     "nullable": [
       false,
       false,
-      true,
+      null,
       false,
       null,
       null,
-      true
+      null
     ]
   },
-  "hash": "a2bd08e78e59676fd409fff46d00382ebf10c6ccc7fa65c9a91bac487c8ef568"
+  "hash": "4bca1ec8d02137f5aaa9005898fef27dd5199854aa872cefefdb64a7cdc812f6"
 }

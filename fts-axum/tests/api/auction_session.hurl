@@ -39,7 +39,7 @@ POST {{baseurl}}/portfolio
 Authorization: Bearer bidder_id={{bidder1}}&can_create_bid=true
 {
     "app_data": "{{portfolio1}}",
-    "demand_group": { "{{demand1}}": 1 },
+    "demand": { "{{demand1}}": 1 },
     "basis": { "{{product1}}": 1 }
 }
 HTTP 201
@@ -49,7 +49,7 @@ POST {{baseurl}}/portfolio
 Authorization: Bearer bidder_id={{bidder2}}&can_create_bid=true
 {
     "app_data": "{{portfolio2}}",
-    "demand_group": { "{{demand2}}": 1 },
+    "demand": { "{{demand2}}": 1 },
     "basis": { "{{product1}}": 1 }
 }
 HTTP 201

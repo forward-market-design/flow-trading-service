@@ -10,9 +10,9 @@ with dc as (
 dg as (
         select
             portfolio_id,
-            jsonb_group_object(demand_id, weight) as demand_group
+            jsonb_group_object(demand_id, weight) as demand
         from
-            demand_group
+            portfolio_demand
         where
             valid_from <= $1 and ($1 < valid_until or valid_until is null)
         group by
@@ -37,7 +37,7 @@ pg as (
 
 portfolios as (
     select
-        jsonb_group_object(pg.portfolio_id, jsonb_array(coalesce(demand_group, jsonb_object()), basis)) as portfolios
+        jsonb_group_object(pg.portfolio_id, jsonb_array(coalesce(demand, jsonb_object()), basis)) as portfolios
     from
         pg
     left join
@@ -48,7 +48,7 @@ portfolios as (
 
 select
     json(demand_curves) as "demands?: sqlx::types::Json<Map<DemandId, DemandCurveDto>>",
-    json(portfolios) as "portfolios?: sqlx::types::Json<Map<PortfolioId, (DemandGroup<DemandId>, Basis<ProductId>)>>"
+    json(portfolios) as "portfolios?: sqlx::types::Json<Map<PortfolioId, (Weights<DemandId>, Basis<ProductId>)>>"
 from
     dc
 full join

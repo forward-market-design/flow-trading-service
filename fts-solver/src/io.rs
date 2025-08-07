@@ -1,6 +1,6 @@
 use crate::export::{export_lp, export_mps};
 use fts_core::{
-    models::{DemandCurve, DemandGroup, Map, Basis},
+    models::{Basis, DemandCurve, Weights, Map},
     ports::Solver,
 };
 use serde::{Deserialize, Serialize};
@@ -32,7 +32,7 @@ string_wrapper!(ProductId);
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Portfolio {
     /// the demand curves
-    demand_group: DemandGroup<DemandId>,
+    demand: Weights<DemandId>,
     /// the products
     basis: Basis<ProductId>,
 }
@@ -64,15 +64,7 @@ impl Auction {
         let portfolios = self
             .portfolios
             .into_iter()
-            .map(
-                |(
-                    portfolio_id,
-                    Portfolio {
-                        demand_group,
-                        basis,
-                    },
-                )| (portfolio_id, (demand_group, basis)),
-            )
+            .map(|(portfolio_id, Portfolio { demand, basis })| (portfolio_id, (demand, basis)))
             .collect::<Map<_, _>>();
 
         let (portfolio_outcomes, product_outcomes) = solver
@@ -91,15 +83,7 @@ impl Auction {
         let portfolios = self
             .portfolios
             .into_iter()
-            .map(
-                |(
-                    portfolio_id,
-                    Portfolio {
-                        demand_group,
-                        basis,
-                    },
-                )| (portfolio_id, (demand_group, basis)),
-            )
+            .map(|(portfolio_id, Portfolio { demand, basis })| (portfolio_id, (demand, basis)))
             .collect();
         export_lp(self.demand_curves, portfolios, buffer)
     }
@@ -109,15 +93,7 @@ impl Auction {
         let portfolios = self
             .portfolios
             .into_iter()
-            .map(
-                |(
-                    portfolio_id,
-                    Portfolio {
-                        demand_group,
-                        basis,
-                    },
-                )| (portfolio_id, (demand_group, basis)),
-            )
+            .map(|(portfolio_id, Portfolio { demand, basis })| (portfolio_id, (demand, basis)))
             .collect();
         export_mps(self.demand_curves, portfolios, buffer)
     }

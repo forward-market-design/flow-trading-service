@@ -1,5 +1,5 @@
 use crate::{
-    models::{DemandGroup, Basis},
+    models::{Basis, Weights},
     ports::Repository,
 };
 
@@ -64,7 +64,7 @@ pub struct PortfolioRecord<T: Repository, AppData> {
     pub bidder_id: T::BidderId,
 
     /// Map of demands associated with this portfolio and their weights.
-    pub demand_group: DemandGroup<T::DemandId>,
+    pub demand: Weights<T::DemandId>,
 
     /// Map of products this portfolio can trade and their weights.
     pub basis: Basis<T::ProductId>,

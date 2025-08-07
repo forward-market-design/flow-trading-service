@@ -1,5 +1,5 @@
 use crate::{
-    models::{DemandCurve, PortfolioGroup},
+    models::{DemandCurve, Sum},
     ports::Repository,
 };
 
@@ -65,5 +65,5 @@ pub struct DemandRecord<T: Repository, AppData> {
     /// The map keys are portfolio IDs and values are weights that determine
     /// how this demand is distributed across portfolios. An empty map means
     /// the demand is not yet associated with any portfolios.
-    pub portfolio_group: PortfolioGroup<T::PortfolioId>,
+    pub portfolios: Sum<T::PortfolioId>,
 }

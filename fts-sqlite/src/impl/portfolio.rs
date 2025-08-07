@@ -3,7 +3,7 @@ use crate::{
     types::{BidderId, DateTime, DemandId, PortfolioId, PortfolioRow, ProductId, ValueRow},
 };
 use fts_core::{
-    models::{Basis, DateTimeRangeQuery, DateTimeRangeResponse, DemandGroup, PortfolioRecord},
+    models::{Basis, DateTimeRangeQuery, DateTimeRangeResponse, PortfolioRecord, Weights},
     ports::PortfolioRepository,
 };
 
@@ -46,7 +46,7 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
                     null as "valid_until?: DateTime",
                     bidder_id as "bidder_id!: BidderId",
                     json(app_data) as "app_data!: sqlx::types::Json<PortfolioData>",
-                    json(demand_group) as "demand_group?: sqlx::types::Json<DemandGroup<DemandId>>",
+                    json(demand) as "demand?: sqlx::types::Json<Weights<DemandId>>",
                     json(basis) as "basis?: sqlx::types::Json<Basis<ProductId>>"
                 from
                     portfolio
@@ -55,7 +55,7 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
                 on
                     portfolio.bidder_id = bidder_ids.atom
                 where
-                    portfolio.demand_group is not null
+                    portfolio.demand is not null
                 or
                     portfolio.basis is not null
                 "#,
@@ -73,15 +73,15 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
         portfolio_id: Self::PortfolioId,
         bidder_id: Self::BidderId,
         app_data: PortfolioData,
-        demand_group: DemandGroup<Self::DemandId>,
+        demand: Weights<Self::DemandId>,
         basis: Basis<Self::ProductId>,
         as_of: Self::DateTime,
     ) -> Result<PortfolioRecord<Self, PortfolioData>, Self::Error> {
         let app_data = sqlx::types::Json(app_data);
-        let demand_group = if demand_group.is_empty() {
+        let demand = if demand.is_empty() {
             None
         } else {
-            Some(sqlx::types::Json(demand_group))
+            Some(sqlx::types::Json(demand))
         };
         let basis = if basis.is_empty() {
             None
@@ -92,7 +92,7 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
             PortfolioRow,
             r#"
             insert into
-                portfolio (id, as_of, bidder_id, app_data, demand_group, basis)
+                portfolio (id, as_of, bidder_id, app_data, demand, basis)
             values
                 ($1, $2, $3, jsonb($4), jsonb($5), jsonb($6))
             returning
@@ -101,14 +101,14 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
                 null as "valid_until?: DateTime",
                 bidder_id as "bidder_id!: BidderId",
                 json(app_data) as "app_data!: sqlx::types::Json<PortfolioData>",
-                json(demand_group) as "demand_group?: sqlx::types::Json<DemandGroup<DemandId>>",
+                json(demand) as "demand?: sqlx::types::Json<Weights<DemandId>>",
                 json(basis) as "basis?: sqlx::types::Json<Basis<ProductId>>"
             "#,
             portfolio_id,
             as_of,
             bidder_id,
             app_data,
-            demand_group,
+            demand,
             basis
         )
         .fetch_one(&self.writer)
@@ -116,16 +116,16 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
         Ok(portfolio.into())
     }
 
-    async fn update_portfolio_demand_group(
+    async fn update_portfolio_demand(
         &self,
         portfolio_id: Self::PortfolioId,
-        demand_group: DemandGroup<Self::DemandId>,
+        demand: Weights<Self::DemandId>,
         as_of: Self::DateTime,
     ) -> Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error> {
-        let demand_group = if demand_group.is_empty() {
+        let demand = if demand.is_empty() {
             None
         } else {
-            Some(sqlx::types::Json(demand_group))
+            Some(sqlx::types::Json(demand))
         };
         let updated = sqlx::query_as!(
             PortfolioRow,
@@ -134,7 +134,7 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
                 portfolio
             set
                 as_of = $2,
-                demand_group = jsonb($3)
+                demand = jsonb($3)
             where
                 id = $1
             returning
@@ -143,12 +143,12 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
                 null as "valid_until?: DateTime",
                 bidder_id as "bidder_id!: BidderId",
                 json(app_data) as "app_data!: sqlx::types::Json<PortfolioData>",
-                json(demand_group) as "demand_group?: sqlx::types::Json<DemandGroup<DemandId>>",
+                json(demand) as "demand?: sqlx::types::Json<Weights<DemandId>>",
                 json(basis) as "basis?: sqlx::types::Json<Basis<ProductId>>"
             "#,
             portfolio_id,
             as_of,
-            demand_group,
+            demand,
         )
         .fetch_optional(&self.writer)
         .await?;
@@ -183,7 +183,7 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
                 null as "valid_until?: DateTime",
                 bidder_id as "bidder_id!: BidderId",
                 json(app_data) as "app_data!: sqlx::types::Json<PortfolioData>",
-                json(demand_group) as "demand_group?: sqlx::types::Json<DemandGroup<DemandId>>",
+                json(demand) as "demand?: sqlx::types::Json<Weights<DemandId>>",
                 json(basis) as "basis?: sqlx::types::Json<Basis<ProductId>>"
             "#,
             portfolio_id,
@@ -196,17 +196,17 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
         Ok(updated.map(Into::into))
     }
 
-    async fn update_portfolio_groups(
+    async fn update_portfolio(
         &self,
         portfolio_id: Self::PortfolioId,
-        demand_group: DemandGroup<Self::DemandId>,
+        demand: Weights<Self::DemandId>,
         basis: Basis<Self::ProductId>,
         as_of: Self::DateTime,
     ) -> Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error> {
-        let demand_group = if demand_group.is_empty() {
+        let demand = if demand.is_empty() {
             None
         } else {
-            Some(sqlx::types::Json(demand_group))
+            Some(sqlx::types::Json(demand))
         };
         let basis = if basis.is_empty() {
             None
@@ -220,7 +220,7 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
                 portfolio
             set
                 as_of = $2,
-                demand_group = jsonb($3),
+                demand = jsonb($3),
                 basis = jsonb($4)
             where
                 id = $1
@@ -230,12 +230,12 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
                 null as "valid_until?: DateTime",
                 bidder_id as "bidder_id!: BidderId",
                 json(app_data) as "app_data!: sqlx::types::Json<PortfolioData>",
-                json(demand_group) as "demand_group?: sqlx::types::Json<DemandGroup<DemandId>>",
+                json(demand) as "demand?: sqlx::types::Json<Weights<DemandId>>",
                 json(basis) as "basis?: sqlx::types::Json<Basis<ProductId>>"
             "#,
             portfolio_id,
             as_of,
-            demand_group,
+            demand,
             basis,
         )
         .fetch_optional(&self.writer)
@@ -283,24 +283,23 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
     /// This returns a list of records, each containing the state of the portfolio's demand group
     /// at a specific point in time. The records are ordered by `valid_from` in descending order
     /// and are grouped by `valid_from`. This is important for a `more` pointer to work correctly,
-    /// so the demand_group is actually a map of `demand_id` to `weight` at that point in time.
+    /// so the demand is actually a map of `demand_id` to `weight` at that point in time.
     async fn get_portfolio_demand_history(
         &self,
         portfolio_id: Self::PortfolioId,
         query: DateTimeRangeQuery<Self::DateTime>,
         limit: usize,
-    ) -> Result<DateTimeRangeResponse<DemandGroup<Self::DemandId>, Self::DateTime>, Self::Error>
-    {
+    ) -> Result<DateTimeRangeResponse<Weights<Self::DemandId>, Self::DateTime>, Self::Error> {
         let limit_p1 = (limit + 1) as i64;
         let mut rows = sqlx::query_as!(
-            ValueRow::<DemandGroup<DemandId>>,
+            ValueRow::<Weights<DemandId>>,
             r#"
                 select
                     valid_from as "valid_from!: crate::types::DateTime",
                     valid_until as "valid_until?: crate::types::DateTime",
-                    json_group_object(demand_id, weight) as "value!: sqlx::types::Json<DemandGroup<DemandId>>"
+                    json_group_object(demand_id, weight) as "value!: sqlx::types::Json<Weights<DemandId>>"
                 from
-                    demand_group
+                    portfolio_demand
                 where
                     portfolio_id = $1
                 and
@@ -358,7 +357,7 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
                     valid_until as "valid_until?: crate::types::DateTime",
                     json_group_object(product_id, weight) as "value!: sqlx::types::Json<Basis<ProductId>>"
                 from
-                    basis
+                    portfolio_product
                 where
                     portfolio_id = $1
                 and

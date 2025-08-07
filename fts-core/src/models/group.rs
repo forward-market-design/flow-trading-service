@@ -85,11 +85,11 @@ macro_rules! hashmap_newtype {
 
 // For now, we implement demand- and product-groups the same way, though this
 // allows us to change the implementations separately. (For example, maybe we
-// switch the DemandGroup implementation to be optimal for assumed-small hash
+// switch the Sum implementation to be optimal for assumed-small hash
 // tables.)
 
-hashmap_newtype!(DemandGroup, "DemandGroup");
-hashmap_newtype!(PortfolioGroup, "PortfolioGroup");
+hashmap_newtype!(Weights, "Weights");
+hashmap_newtype!(Sum, "Sum");
 hashmap_newtype!(Basis, "Basis");
 
 // This type spells out the 3 ways to define a collection

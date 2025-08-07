@@ -53,25 +53,25 @@
     },
     "portfolios": {
         "buyerx": {
-            "demand_group": [
+            "demand": [
                 "buyerx",
                 "buyerxy"
             ],
             "basis": "A"
         },
         "buyery": {
-            "demand_group": [
+            "demand": [
                 "buyery",
                 "buyerxy"
             ],
             "basis": "B"
         },
         "sellerx": {
-            "demand_group": "sellerx",
+            "demand": "sellerx",
             "basis": "A"
         },
         "sellery": {
-            "demand_group": "sellery",
+            "demand": "sellery",
             "basis": "B"
         }
     }
