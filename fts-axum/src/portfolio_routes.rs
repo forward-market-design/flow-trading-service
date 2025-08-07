@@ -81,7 +81,7 @@ pub fn router<T: ApiApplication>() -> ApiRouter<T> {
         )
 }
 
-fn list_portfolios_docs(op: TransformOperation) -> TransformOperation<'_> {
+fn list_portfolios_docs(op: TransformOperation<'_>) -> TransformOperation<'_> {
     op.summary("List portfolios")
         .description(
             r#"
@@ -96,7 +96,7 @@ fn list_portfolios_docs(op: TransformOperation) -> TransformOperation<'_> {
         .response_with::<500, String, _>(|res| res.description("Database query failed"))
 }
 
-fn create_portfolio_docs(op: TransformOperation) -> TransformOperation<'_> {
+fn create_portfolio_docs(op: TransformOperation<'_>) -> TransformOperation<'_> {
     op.summary("Create Portfolio")
         .description(
             r#"
