@@ -14,7 +14,7 @@ authors = ["Jason Dark <jason.dark@forwardmarketdesign.com>", "Fabio Isler <fabi
 edition = "2024"
 license = "MIT"
 publish = true
-rust-version = "1.85"
+rust-version = "1.88"
 
 [workspace.dependencies]
 fts-axum = { path = "./fts-axum", version = "0.4.1" }
