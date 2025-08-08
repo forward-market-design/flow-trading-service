@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "-- fn(product_id: ProductId, as_of: DateTime) -> ProductRow\nselect\n    product.id as \"id!: ProductId\",\n    json(product.app_data) as \"app_data!: sqlx::types::Json<ProductData>\",\n    case\n        when\n            product.parent_id is null\n        then\n            null\n        else\n            json_array(product.parent_id, product.parent_ratio)\n        end as \"parent?: sqlx::types::Json<(ProductId, f64)>\",\n    json_group_object(product_tree.dst_id, product_tree.ratio) as \"basis!: sqlx::types::Json<Basis<ProductId>>\"\nfrom\n    product\njoin\n    product_tree\non\n    product.id = product_tree.src_id\nwhere\n    product.id = $1\nand\n    product_tree.valid_from <= $2\nand\n    ($2 < product_tree.valid_until or product_tree.valid_until is null)\ngroup by\n    product.id",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: ProductId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "app_data!: sqlx::types::Json<ProductData>",
+        "ordinal": 1,
+        "type_info": "Null"
+      },
+      {
+        "name": "parent?: sqlx::types::Json<(ProductId, f64)>",
+        "ordinal": 2,
+        "type_info": "Null"
+      },
+      {
+        "name": "basis!: sqlx::types::Json<Basis<ProductId>>",
+        "ordinal": 3,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "f67591fcf2e53e785a481675747fba755cecd4545523d3bfd751e692bfb53319"
+}

@@ -59,6 +59,8 @@ impl<ProductData: Send + Unpin + 'static + serde::Serialize + serde::de::Deseria
         .fetch_one(&self.reader)
         .await?;
 
+        // TODO: not being in a transaction, there is a possibility a product gets partitioned after this check but before our partitioning
+
         if npaths == 0 {
             return Ok(None);
         } else if npaths > 1 {
@@ -105,60 +107,14 @@ impl<ProductData: Send + Unpin + 'static + serde::Serialize + serde::de::Deseria
         product_id: Self::ProductId,
         as_of: Self::DateTime,
     ) -> Result<Option<ProductRecord<Self, ProductData>>, Self::Error> {
-        let record: Option<ProductRecord<Self, ProductData>> = sqlx::query_as!(
+        Ok(sqlx::query_file_as!(
             ProductRow,
-            r#"
-            select
-                id as "id!: ProductId",
-                json(app_data) as "app_data!: sqlx::types::Json<ProductData>",
-                case
-                    when
-                        parent_id is null
-                    then
-                        null
-                    else
-                        json_array(parent_id, parent_ratio)
-                    end as "parent?: sqlx::types::Json<(ProductId, f64)>",
-                json_object() as "basis!: sqlx::types::Json<Basis<ProductId>>"
-            from
-                product
-            where
-                id = $1
-            "#,
-            product_id
+            "queries/get_product_by_id.sql",
+            product_id,
+            as_of,
         )
         .fetch_optional(&self.reader)
         .await?
-        .map(Into::into);
-
-        if let Some(mut record) = record {
-            let children = sqlx::query!(
-                r#"
-                select
-                    dst_id as "child_id!: ProductId",
-                    ratio as "ratio!: f64"
-                from
-                    product_tree
-                where
-                    src_id = $1
-                and
-                    valid_from <= $2
-                and
-                    ($2 < valid_until or valid_until is null)
-                "#,
-                product_id,
-                as_of
-            )
-            .fetch_all(&self.reader)
-            .await?
-            .iter()
-            .map(|record| (record.child_id, record.ratio))
-            .collect();
-
-            record.basis = children;
-            Ok(Some(record))
-        } else {
-            Ok(None)
-        }
+        .map(Into::into))
     }
 }
