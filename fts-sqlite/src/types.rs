@@ -88,11 +88,12 @@ where
     }
 }
 
+#[derive(sqlx::FromRow)]
 pub(crate) struct ProductRow<AppData> {
     pub id: ProductId,
     pub app_data: sqlx::types::Json<AppData>,
     pub parent: Option<sqlx::types::Json<(ProductId, f64)>>,
-    pub basis: Option<sqlx::types::Json<Basis<ProductId>>>,
+    pub basis: sqlx::types::Json<Basis<ProductId>>,
 }
 
 impl<T, AppData> Into<ProductRecord<T, AppData>> for ProductRow<AppData>
@@ -110,7 +111,7 @@ where
             id: self.id,
             app_data: self.app_data.0,
             parent: self.parent.map(|x| x.0),
-            basis: self.basis.map(|x| x.0).unwrap_or_default(),
+            basis: self.basis.0,
         }
     }
 }

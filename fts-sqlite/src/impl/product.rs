@@ -30,7 +30,7 @@ impl<ProductData: Send + Unpin + 'static + serde::Serialize + serde::de::Deseria
                 id as "id!: ProductId",
                 json(app_data) as "app_data!: sqlx::types::Json<ProductData>",
                 null as "parent?: sqlx::types::Json<(ProductId, f64)>",
-                null as "basis?: sqlx::types::Json<Basis<ProductId>>"
+                json_object(id, 1.0) as "basis!: sqlx::types::Json<Basis<ProductId>>"
             "#,
             product_id,
             as_of,
@@ -84,25 +84,20 @@ impl<ProductData: Send + Unpin + 'static + serde::Serialize + serde::de::Deseria
                     .push_bind(product_id)
                     .push_bind(child_ratio);
             })
-            .push(" returning id, json(app_data), parent_id, parent_ratio");
+            .push(
+                r#" returning
+                id,
+                json(app_data) as "app_data",
+                json_array(parent_id, parent_ratio) as "parent",
+                json_object(id, 1.0) as "basis""#,
+            );
 
-        let result: Vec<(ProductId, sqlx::types::Json<ProductData>, ProductId, f64)> =
-            query_builder
-                .build_query_as()
-                .fetch_all(&self.writer)
-                .await?;
+        let result: Vec<ProductRow<ProductData>> = query_builder
+            .build_query_as()
+            .fetch_all(&self.writer)
+            .await?;
 
-        Ok(Some(
-            result
-                .into_iter()
-                .map(|(id, app_data, parent_id, parent_ratio)| ProductRecord {
-                    id,
-                    app_data: app_data.0,
-                    parent: Some((parent_id, parent_ratio)),
-                    basis: Default::default(),
-                })
-                .collect(),
-        ))
+        Ok(Some(result.into_iter().map(Into::into).collect()))
     }
 
     async fn get_product(
@@ -124,7 +119,7 @@ impl<ProductData: Send + Unpin + 'static + serde::Serialize + serde::de::Deseria
                     else
                         json_array(parent_id, parent_ratio)
                     end as "parent?: sqlx::types::Json<(ProductId, f64)>",
-                null as "basis?: sqlx::types::Json<Basis<ProductId>>"
+                json_object() as "basis!: sqlx::types::Json<Basis<ProductId>>"
             from
                 product
             where
