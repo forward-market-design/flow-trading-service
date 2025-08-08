@@ -1,13 +1,35 @@
 use crate::Db;
-use crate::types::{
-    BidderId, DateTime, DemandId, DemandRow, PortfolioId, PortfolioRow, ProductId, ValueRow,
-};
-use fts_core::models::{DateTimeRangeQuery, DateTimeRangeResponse, Sum};
+use crate::types::{DateTime, DemandId, PortfolioId, ProductId, ValueRow};
+use fts_core::models::{DateTimeRangeQuery, DateTimeRangeResponse};
 use fts_core::{
     models::{Basis, DemandCurve, DemandCurveDto, Weights},
     ports::{BatchRepository, Solver},
 };
 use tokio::try_join;
+
+struct ActiveDemand {
+    id: DemandId,
+    expires: Option<DateTime>,
+    value: sqlx::types::Json<DemandCurveDto>,
+}
+
+impl ActiveDemand {
+    fn curve(self) -> DemandCurve {
+        // SAFETY: we only serialize validated demand curves
+        unsafe { DemandCurve::new_unchecked(self.value.0) }
+    }
+}
+
+struct ActivePortfolio {
+    id: PortfolioId,
+    expires: Option<DateTime>,
+    demand: sqlx::types::Json<Weights<DemandId>>,
+    basis: sqlx::types::Json<Basis<ProductId>>,
+}
+
+fn coalesce_min<T: Copy + Ord>(a: Option<T>, b: Option<T>) -> Option<T> {
+    a.or(b).min(b.or(a))
+}
 
 impl<T: Solver<DemandId, PortfolioId, ProductId>> BatchRepository<T> for Db
 where
@@ -22,37 +44,38 @@ where
         timestamp: Self::DateTime,
         solver: T,
         state: T::State,
-    ) -> Result<Result<(), T::Error>, Self::Error> {
-        // TH
+    ) -> Result<Result<Option<Self::DateTime>, T::Error>, Self::Error> {
         let demand_records =
-            sqlx::query_file_as!(DemandRow::<()>, "queries/active_demands.sql", timestamp)
+            sqlx::query_file_as!(ActiveDemand, "queries/active_demands.sql", timestamp)
                 .fetch_all(&self.reader);
 
-        let portfolio_records = sqlx::query_file_as!(
-            PortfolioRow::<()>,
-            "queries/active_portfolios.sql",
-            timestamp
-        )
-        .fetch_all(&self.reader);
+        let portfolio_records =
+            sqlx::query_file_as!(ActivePortfolio, "queries/active_portfolios.sql", timestamp)
+                .fetch_all(&self.reader);
 
         let (demand_records, portfolio_records) = try_join!(demand_records, portfolio_records)?;
 
+        let mut expires = coalesce_min(
+            demand_records.get(0).map(|x| x.expires).flatten(),
+            portfolio_records
+                .get(0)
+                .map(|portfolio| portfolio.expires)
+                .flatten(),
+        );
+
         let demands = demand_records
             .into_iter()
-            .filter_map(|row| {
-                row.curve_data
-                    .map(|data| (row.id, unsafe { DemandCurve::new_unchecked(data.0) }))
+            .map(|row| {
+                expires = coalesce_min(expires, row.expires);
+                (row.id, row.curve())
             })
             .collect();
 
         let portfolios = portfolio_records
             .into_iter()
-            .filter_map(|row| {
-                if let (Some(demand), Some(basis)) = (row.demand, row.basis) {
-                    Some((row.id, (demand.0, basis.0)))
-                } else {
-                    None
-                }
+            .map(|row| {
+                expires = coalesce_min(expires, row.expires);
+                (row.id, (row.demand.0, row.basis.0))
             })
             .collect();
 
@@ -60,8 +83,6 @@ where
         // what is the best way to do this? Perhaps we say this is (one of) the responsibilities
         // of the state, e.g. contains a HashSet of the "suspended" portfolio ids, and our solver is
         // responsible.... I actually like this a lot.
-
-        // ^ This fits neatly in the filter map approach above.
 
         let outcome = solver.solve(demands, portfolios, state).await;
 
@@ -84,7 +105,7 @@ where
                 )
                 .execute(&self.writer)
                 .await?;
-                Ok(Ok(()))
+                Ok(Ok(expires))
             }
             Err(error) => Ok(Err(error)),
         }

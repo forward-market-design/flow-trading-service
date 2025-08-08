@@ -5,8 +5,7 @@ with
 demand_by_id as (
     select
         portfolio_id,
-        max(valid_from) as valid_from,
-        min(valid_until) as valid_until,
+        valid_until as expires,
         jsonb_group_object(demand_id, weight) as dgroup
     from
         portfolio_demand
@@ -21,8 +20,7 @@ demand_by_id as (
 basis_by_id as (
     select
         portfolio_id,
-        max(valid_from) as valid_from,
-        min(valid_until) as valid_until,
+        valid_until as expires,
         jsonb_group_object(product_id, weight) as pgroup
     from
         basis_view
@@ -36,22 +34,15 @@ basis_by_id as (
 
 select
     portfolio_id as "id!: PortfolioId",
-    max(demand_by_id.valid_from, basis_by_id.valid_from) as "valid_from!: DateTime",
     min(
-        coalesce(demand_by_id.valid_until, basis_by_id.valid_until),
-        coalesce(basis_by_id.valid_until, demand_by_id.valid_until)
-    ) as "valid_until?: DateTime",
-    bidder_id as "bidder_id!: BidderId",
-    json("null") as "app_data!: sqlx::types::Json<()>",
-    json(dgroup) as "demand?: sqlx::types::Json<Weights<DemandId>>",
-    json(pgroup) as "basis?: sqlx::types::Json<Basis<ProductId>>"
+        coalesce(demand_by_id.expires, basis_by_id.expires),
+        coalesce(basis_by_id.expires, demand_by_id.expires)
+    ) as "expires?: DateTime",
+    json(dgroup) as "demand!: sqlx::types::Json<Weights<DemandId>>",
+    json(pgroup) as "basis!: sqlx::types::Json<Basis<ProductId>>"
 from
     demand_by_id
 join
     basis_by_id
 using
     (portfolio_id)
-join
-    portfolio
-on
-    portfolio_id = portfolio.id
