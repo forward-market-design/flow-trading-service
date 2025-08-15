@@ -6,10 +6,10 @@ select
         when
             product.parent_id is null
         then
-            null
+            json_array(product.id, 1.0)
         else
             json_array(product.parent_id, product.parent_ratio)
-        end as "parent?: sqlx::types::Json<(ProductId, f64)>",
+        end as "parent!: sqlx::types::Json<(ProductId, f64)>",
     json_group_object(product_tree.dst_id, product_tree.ratio) as "basis!: sqlx::types::Json<Basis<ProductId>>"
 from
     product

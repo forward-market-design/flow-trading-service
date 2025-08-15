@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            insert into\n                product (id, as_of, app_data)\n            values\n                ($1, $2, jsonb($3))\n            returning\n                id as \"id!: ProductId\",\n                json(app_data) as \"app_data!: sqlx::types::Json<ProductData>\",\n                json_array(id, 1.0) as \"parent!: sqlx::types::Json<(ProductId, f64)>\",\n                json_object(id, 1.0) as \"basis!: sqlx::types::Json<Basis<ProductId>>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: ProductId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "app_data!: sqlx::types::Json<ProductData>",
+        "ordinal": 1,
+        "type_info": "Null"
+      },
+      {
+        "name": "parent!: sqlx::types::Json<(ProductId, f64)>",
+        "ordinal": 2,
+        "type_info": "Null"
+      },
+      {
+        "name": "basis!: sqlx::types::Json<Basis<ProductId>>",
+        "ordinal": 3,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "712db47969cfd0cf6dbb353ba379f11643a80a1101f7554b0b2ce0e9b6a9bd9c"
+}

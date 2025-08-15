@@ -35,10 +35,11 @@ pub struct ProductRecord<T: Repository, AppData> {
     /// modifying the core schema.
     pub app_data: AppData,
 
-    /// Optional parent child of the product
-    pub parent: Option<(T::ProductId, f64)>,
+    /// Each product is either its own parent (with weight=1) or has a distinct
+    /// parent with an arbitrary weight.
+    pub parent: (T::ProductId, f64),
 
-    /// Each product at any given time is either a basis element
-    /// or can be represented in terms of a finer basis.
+    /// Each product at any given time is either its own basis element
+    /// (with weight=1) or can be represented in terms of a finer basis.
     pub basis: Basis<T::ProductId>,
 }

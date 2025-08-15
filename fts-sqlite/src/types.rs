@@ -92,7 +92,7 @@ where
 pub(crate) struct ProductRow<AppData> {
     pub id: ProductId,
     pub app_data: sqlx::types::Json<AppData>,
-    pub parent: Option<sqlx::types::Json<(ProductId, f64)>>,
+    pub parent: sqlx::types::Json<(ProductId, f64)>,
     pub basis: sqlx::types::Json<Basis<ProductId>>,
 }
 
@@ -110,7 +110,7 @@ where
         ProductRecord {
             id: self.id,
             app_data: self.app_data.0,
-            parent: self.parent.map(|x| x.0),
+            parent: self.parent.0,
             basis: self.basis.0,
         }
     }

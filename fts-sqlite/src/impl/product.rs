@@ -29,7 +29,7 @@ impl<ProductData: Send + Unpin + 'static + serde::Serialize + serde::de::Deseria
             returning
                 id as "id!: ProductId",
                 json(app_data) as "app_data!: sqlx::types::Json<ProductData>",
-                null as "parent?: sqlx::types::Json<(ProductId, f64)>",
+                json_array(id, 1.0) as "parent!: sqlx::types::Json<(ProductId, f64)>",
                 json_object(id, 1.0) as "basis!: sqlx::types::Json<Basis<ProductId>>"
             "#,
             product_id,
