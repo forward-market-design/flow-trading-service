@@ -53,7 +53,7 @@ async fn main() -> anyhow::Result<()> {
                             .run_batch(now.into(), ClarabelSolver::default(), ())
                             .await;
                         match batch {
-                            Ok(Ok(())) => Ok(()),
+                            Ok(Ok(expires)) => Ok(expires),
                             Ok(Err(e)) => Err(anyhow::Error::new(e)),
                             Err(e) => Err(anyhow::Error::new(e)),
                         }

@@ -74,23 +74,23 @@ HTTP 404
 
 # No auth header = bad request
 POST {{baseurl}}/product/{{id1}}
-[{ "data": "{{id2}}", "ratio": 1 }, { "data": "{{id3}}", "ratio": 1 }]
+[{ "app_data": "{{id2}}", "ratio": 1 }, { "app_data": "{{id3}}", "ratio": 1 }]
 HTTP 400
 
 # No permissions = not authorized
 POST {{baseurl}}/product/{{id1}}
 Authorization: Bearer can_manage_products=false
-[{ "data": "{{id2}}", "ratio": 1 }, { "data": "{{id3}}", "ratio": 1 }]
+[{ "app_data": "{{id2}}", "ratio": 1 }, { "app_data": "{{id3}}", "ratio": 1 }]
 HTTP 401
 
 # Good request = created
 POST {{baseurl}}/product/{{id1}}
 Authorization: Bearer can_manage_products=true
-[{ "data": "{{id2}}", "ratio": 1 }, { "data": "{{id3}}", "ratio": 1 }]
+[{ "app_data": "{{id2}}", "ratio": 1 }, { "app_data": "{{id3}}", "ratio": 1 }]
 HTTP 201
 
 # Good request, nonexistent product = 404
 POST {{baseurl}}/product/{{id4}}
 Authorization: Bearer can_manage_products=true
-[{ "data": "{{id5}}", "ratio": 1 }]
+[{ "app_data": "{{id5}}", "ratio": 1 }]
 HTTP 404

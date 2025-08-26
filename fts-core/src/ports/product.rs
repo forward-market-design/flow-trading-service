@@ -1,3 +1,5 @@
+use crate::models::ProductRecord;
+
 /// Repository interface for product hierarchy management.
 ///
 /// This trait encapsulates the functionality related to defining and maintaining
@@ -17,7 +19,7 @@ pub trait ProductRepository<ProductData>: super::Repository {
         product_id: Self::ProductId,
         app_data: ProductData,
         as_of: Self::DateTime,
-    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
+    ) -> impl Future<Output = Result<ProductRecord<Self, ProductData>, Self::Error>> + Send;
 
     /// Partition an existing product into new weighted children.
     ///
@@ -26,17 +28,17 @@ pub trait ProductRepository<ProductData>: super::Repository {
     ///
     /// # Returns
     ///
-    /// Ok(n) if successful, where n is the number of products created.
+    /// Ok(Some(Vec<ProductRecord>)) if the targeted product exists. If the
+    /// product has already been partitioned, the length of this vector will
+    /// be 0 (as no new records will be created).
     ///
-    /// # Errors
-    ///
-    /// Should fail if the product_id does not already exist.
+    /// Ok(None) if the targeted product does not exist.
     fn partition_product<T: Send + IntoIterator<Item = (Self::ProductId, ProductData, f64)>>(
         &self,
         product_id: Self::ProductId,
         children: T,
         as_of: Self::DateTime,
-    ) -> impl Future<Output = Result<usize, Self::Error>> + Send
+    ) -> impl Future<Output = Result<Option<Vec<ProductRecord<Self, ProductData>>>, Self::Error>> + Send
     where
         T::IntoIter: Send + ExactSizeIterator;
 
@@ -49,5 +51,5 @@ pub trait ProductRepository<ProductData>: super::Repository {
         &self,
         product_id: Self::ProductId,
         as_of: Self::DateTime,
-    ) -> impl Future<Output = Result<Option<ProductData>, Self::Error>> + Send;
+    ) -> impl Future<Output = Result<Option<ProductRecord<Self, ProductData>>, Self::Error>> + Send;
 }

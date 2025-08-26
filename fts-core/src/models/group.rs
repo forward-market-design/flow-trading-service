@@ -61,6 +61,7 @@ macro_rules! hashmap_newtype {
         impl<K: Eq + Hash> From<Collection<K>> for $map<K> {
             fn from(value: Collection<K>) -> Self {
                 match value {
+                    Collection::Empty => Default::default(),
                     Collection::OneOf(entry) => std::iter::once((entry, 1.0)).collect(),
                     Collection::SumOf(entries) => {
                         entries.into_iter().zip(std::iter::repeat(1.0)).collect()
@@ -72,7 +73,11 @@ macro_rules! hashmap_newtype {
 
         impl<K: Eq + Hash + Clone> Into<Collection<K>> for $map<K> {
             fn into(self) -> Collection<K> {
-                Collection::MapOf(self.0)
+                if self.0.len() > 0 {
+                    Collection::MapOf(self.0)
+                } else {
+                    Collection::Empty
+                }
             }
         }
     };
@@ -80,11 +85,12 @@ macro_rules! hashmap_newtype {
 
 // For now, we implement demand- and product-groups the same way, though this
 // allows us to change the implementations separately. (For example, maybe we
-// switch the DemandGroup implementation to be optimal for assumed-small hash
+// switch the Sum implementation to be optimal for assumed-small hash
 // tables.)
 
-hashmap_newtype!(DemandGroup, "DemandGroup");
-hashmap_newtype!(ProductGroup, "ProductGroup");
+hashmap_newtype!(Weights, "Weights");
+hashmap_newtype!(Sum, "Sum");
+hashmap_newtype!(Basis, "Basis");
 
 // This type spells out the 3 ways to define a collection
 
@@ -95,6 +101,7 @@ hashmap_newtype!(ProductGroup, "ProductGroup");
     schemars(rename = "{T}Group", untagged)
 )]
 enum Collection<T: Eq + Hash> {
+    Empty,
     OneOf(T),
     SumOf(Vec<T>),
     MapOf(indexmap::IndexMap<T, f64, rustc_hash::FxBuildHasher>),
@@ -107,6 +114,7 @@ impl<'de, T: Eq + Hash + serde::Deserialize<'de>> serde::Deserialize<'de> for Co
         D: serde::Deserializer<'de>,
     {
         serde_untagged::UntaggedEnumVisitor::new()
+            .unit(|| Ok(Self::Empty))
             .string(|one| {
                 T::deserialize(serde::de::value::StrDeserializer::new(one)).map(Self::OneOf)
             })
@@ -123,6 +131,7 @@ impl<T: Eq + Hash + serde::Serialize> serde::Serialize for Collection<T> {
         S: serde::Serializer,
     {
         match self {
+            Self::Empty => serializer.serialize_none(),
             Self::OneOf(one) => one.serialize(serializer),
             Self::SumOf(sum) => sum.serialize(serializer),
             Self::MapOf(map) => map.serialize(serializer),

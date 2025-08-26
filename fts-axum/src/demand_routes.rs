@@ -4,9 +4,10 @@
 //! bidders' pricing preferences in the flow trading system. Demands can be
 //! created, updated, deleted, and queried, with full history tracking.
 
-use std::sync::Arc;
-
-use crate::{ApiApplication, config};
+use crate::{
+    ApiApplication,
+    config::{self, AxumConfig},
+};
 use aide::axum::{ApiRouter, routing::get};
 use axum::{
     Extension, Json,
@@ -15,10 +16,11 @@ use axum::{
 };
 use axum_extra::TypedHeader;
 use fts_core::{
-    models::{DateTimeRangeQuery, DateTimeRangeResponse, DemandCurve, DemandRecord, ValueRecord},
-    ports::{DemandRepository as _, Repository},
+    models::{DateTimeRangeQuery, DateTimeRangeResponse, DemandCurve, DemandRecord},
+    ports::{BatchRepository as _, DemandRepository as _, Repository},
 };
 use headers::{Authorization, authorization::Bearer};
+use std::sync::Arc;
 use tracing::{Level, event};
 
 /// Creates a router with demand-related endpoints.
@@ -37,8 +39,8 @@ pub fn router<T: ApiApplication>() -> ApiRouter<T> {
             |route| route.security_requirement("jwt").tag("demand"),
         )
         .api_route_with(
-            "/{demand_id}/history",
-            get(get_demand_history::<T>),
+            "/{demand_id}/curve-history",
+            get(get_demand_curve_history::<T>),
             |route| {
                 route
                     .security_requirement("jwt")
@@ -71,23 +73,17 @@ struct Id<T> {
 async fn query_demands<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
-) -> Result<Json<Vec<<T::Repository as Repository>::DemandId>>, (StatusCode, String)> {
-    let as_of = app.now();
+) -> Result<Json<Vec<DemandRecord<T::Repository, T::DemandData>>>, StatusCode> {
     let db = app.database();
     let bidder_ids = app.can_query_bid(&auth).await;
 
     if bidder_ids.is_empty() {
-        Err((StatusCode::UNAUTHORIZED, "not authorized".to_string()))
+        Err(StatusCode::UNAUTHORIZED)
     } else {
-        Ok(Json(db.query_demand(&bidder_ids, as_of).await.map_err(
-            |err| {
-                event!(Level::ERROR, err = err.to_string());
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "failed to query demand".to_string(),
-                )
-            },
-        )?))
+        Ok(Json(db.query_demand(&bidder_ids).await.map_err(|err| {
+            event!(Level::ERROR, err = err.to_string());
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?))
     }
 }
 
@@ -106,48 +102,22 @@ async fn query_demands<T: ApiApplication>(
 async fn create_demand<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
-    Json(body): Json<CreateDemandRequestBody<T::DemandData>>,
-) -> Result<
-    (
-        StatusCode,
-        Json<
-            CreateDemandResponseBody<
-                <T::Repository as Repository>::DateTime,
-                <T::Repository as Repository>::DemandId,
-            >,
-        >,
-    ),
-    (StatusCode, String),
-> {
-    let as_of = app.now();
+    Json(body): Json<CreateDemandDto<T::DemandData>>,
+) -> Result<(StatusCode, Json<DemandRecord<T::Repository, T::DemandData>>), StatusCode> {
     let db = app.database();
-    let demand_id = app.generate_demand_id(&body.app_data);
+    let (demand_id, as_of) = app.generate_demand_id(&body.app_data);
     let bidder_id = app
         .can_create_bid(&auth)
         .await
-        .ok_or((StatusCode::UNAUTHORIZED, "not authorized".to_string()))?;
+        .ok_or(StatusCode::UNAUTHORIZED)?;
 
-    db.create_demand(
-        demand_id.clone(),
-        bidder_id,
-        body.app_data,
-        body.curve_data,
-        as_of.clone(),
-    )
-    .await
-    .map(|_| {
-        (
-            StatusCode::CREATED,
-            Json(CreateDemandResponseBody { as_of, demand_id }),
-        )
-    })
-    .map_err(|err| {
-        event!(Level::ERROR, err = err.to_string());
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "failed to create demand".to_string(),
-        )
-    })
+    db.create_demand(demand_id, bidder_id, body.app_data, body.curve_data, as_of)
+        .await
+        .map(|demand| (StatusCode::CREATED, Json(demand)))
+        .map_err(|err| {
+            event!(Level::ERROR, err = err.to_string());
+            StatusCode::INTERNAL_SERVER_ERROR
+        })
 }
 
 /// Retrieve a demand's current state.
@@ -169,39 +139,22 @@ async fn get_demand<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
     Path(Id { demand_id }): Path<Id<<T::Repository as Repository>::DemandId>>,
-) -> Result<
-    Json<
-        DemandRecord<
-            <T::Repository as Repository>::DateTime,
-            <T::Repository as Repository>::BidderId,
-            <T::Repository as Repository>::DemandId,
-            <T::Repository as Repository>::PortfolioId,
-            T::DemandData,
-        >,
-    >,
-    (StatusCode, String),
-> {
+) -> Result<Json<DemandRecord<T::Repository, T::DemandData>>, StatusCode> {
     let as_of = app.now();
     let db = app.database();
     let demand = db
-        .get_demand(demand_id.clone(), as_of)
+        .get_demand(demand_id, as_of)
         .await
         .map_err(|err| {
             event!(Level::ERROR, err = err.to_string());
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("failed to get demand {}", demand_id),
-            )
+            StatusCode::INTERNAL_SERVER_ERROR
         })?
-        .ok_or((
-            StatusCode::NOT_FOUND,
-            format!("unknown demand {}", demand_id),
-        ))?;
+        .ok_or(StatusCode::NOT_FOUND)?;
 
     if app.can_read_bid(&auth, demand.bidder_id.clone()).await {
         Ok(Json(demand))
     } else {
-        Err((StatusCode::UNAUTHORIZED, "not authorized".to_string()))
+        Err(StatusCode::UNAUTHORIZED)
     }
 }
 
@@ -224,8 +177,9 @@ async fn update_demand<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
     Path(Id { demand_id }): Path<Id<<T::Repository as Repository>::DemandId>>,
+    Extension(config): Extension<Arc<AxumConfig>>,
     Json(body): Json<DemandCurve>,
-) -> Result<(StatusCode, String), (StatusCode, String)> {
+) -> Result<Json<DemandRecord<T::Repository, T::DemandData>>, StatusCode> {
     let as_of = app.now();
     let db = app.database();
 
@@ -235,45 +189,48 @@ async fn update_demand<T: ApiApplication>(
         .await
         .map_err(|err| {
             event!(Level::ERROR, err = err.to_string());
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("failed to get demand {}", demand_id),
-            )
+
+            StatusCode::INTERNAL_SERVER_ERROR
         })?
-        .ok_or((
-            StatusCode::NOT_FOUND,
-            format!("unknown demand {}", demand_id),
-        ))?;
+        .ok_or(StatusCode::NOT_FOUND)?;
 
     if !app.can_update_bid(&auth, bidder_id).await {
-        return Err((StatusCode::UNAUTHORIZED, "not authorized".to_string()));
+        return Err(StatusCode::UNAUTHORIZED);
     }
 
     let updated = db
-        .update_demand(demand_id.clone(), Some(body), as_of.clone())
+        .update_demand(demand_id, body, as_of.clone())
         .await
         .map_err(|err| {
             event!(Level::ERROR, err = err.to_string());
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("failed to update demand {}", demand_id),
-            )
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?
+        .ok_or_else(|| {
+            event!(
+                Level::ERROR,
+                err = "failed to update demand after successful read"
+            );
+            StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
-    if updated {
-        Ok((StatusCode::OK, format!("{}", as_of)))
-    } else {
-        // Since we got the demand for the initial permission check,
-        // `updated` should always be true unless something weird happened.
-        event!(
-            Level::ERROR,
-            err = "failed to update demand after successful read"
-        );
-        Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("failed to update demand {}", demand_id),
-        ))
-    }
+    if config.auto_solve {
+        tokio::spawn(async move {
+            let db = app.database();
+            let result = db.run_batch(as_of, app.solver(), Default::default()).await;
+
+            match result {
+                Err(err) => {
+                    event!(Level::ERROR, err = err.to_string());
+                }
+                Ok(Err(err)) => {
+                    event!(Level::ERROR, err = err.to_string());
+                }
+                _ => {}
+            };
+        });
+    };
+
+    Ok(Json(updated))
 }
 
 /// Delete a demand by setting its curve data to None.
@@ -295,7 +252,8 @@ async fn delete_demand<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
     Path(Id { demand_id }): Path<Id<<T::Repository as Repository>::DemandId>>,
-) -> Result<(StatusCode, String), (StatusCode, String)> {
+    Extension(config): Extension<Arc<AxumConfig>>,
+) -> Result<Json<DemandRecord<T::Repository, T::DemandData>>, StatusCode> {
     let as_of = app.now();
     let db = app.database();
 
@@ -305,45 +263,47 @@ async fn delete_demand<T: ApiApplication>(
         .await
         .map_err(|err| {
             event!(Level::ERROR, err = err.to_string());
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("failed to get demand {}", demand_id),
-            )
+            StatusCode::INTERNAL_SERVER_ERROR
         })?
-        .ok_or((
-            StatusCode::NOT_FOUND,
-            format!("unknown demand {}", demand_id),
-        ))?;
+        .ok_or(StatusCode::NOT_FOUND)?;
 
     if !app.can_update_bid(&auth, bidder_id).await {
-        return Err((StatusCode::UNAUTHORIZED, "not authorized".to_string()));
+        return Err(StatusCode::UNAUTHORIZED);
     }
 
     let deleted = db
-        .update_demand(demand_id.clone(), None, as_of.clone())
+        .update_demand(demand_id, DemandCurve::None, as_of.clone())
         .await
         .map_err(|err| {
             event!(Level::ERROR, err = err.to_string());
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("failed to delete demand {}", demand_id),
-            )
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?
+        .ok_or_else(|| {
+            event!(
+                Level::ERROR,
+                err = "failed to delete demand after successful read"
+            );
+            StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
-    if deleted {
-        Ok((StatusCode::OK, format!("{}", as_of)))
-    } else {
-        // Since we got the demand for the initial permission check,
-        // `updated` should always be true unless something weird happened.
-        event!(
-            Level::ERROR,
-            err = "failed to delete demand after successful read"
-        );
-        Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("failed to delete demand {}", demand_id),
-        ))
-    }
+    if config.auto_solve {
+        tokio::spawn(async move {
+            let db = app.database();
+            let result = db.run_batch(as_of, app.solver(), Default::default()).await;
+
+            match result {
+                Err(err) => {
+                    event!(Level::ERROR, err = err.to_string());
+                }
+                Ok(Err(err)) => {
+                    event!(Level::ERROR, err = err.to_string());
+                }
+                _ => {}
+            };
+        });
+    };
+
+    Ok(Json(deleted))
 }
 
 /// Retrieve the historical changes to a demand's curve data.
@@ -361,20 +321,15 @@ async fn delete_demand<T: ApiApplication>(
 /// - `401 Unauthorized`: Missing read permissions
 /// - `404 Not Found`: Demand does not exist
 /// - `500 Internal Server Error`: Database query failed
-async fn get_demand_history<T: ApiApplication>(
+async fn get_demand_curve_history<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
     Path(Id { demand_id }): Path<Id<<T::Repository as Repository>::DemandId>>,
     Extension(config): Extension<Arc<config::AxumConfig>>,
     Query(query): Query<DateTimeRangeQuery<<T::Repository as Repository>::DateTime>>,
 ) -> Result<
-    Json<
-        DateTimeRangeResponse<
-            ValueRecord<<T::Repository as Repository>::DateTime, DemandCurve>,
-            <T::Repository as Repository>::DateTime,
-        >,
-    >,
-    (StatusCode, String),
+    Json<DateTimeRangeResponse<DemandCurve, <T::Repository as Repository>::DateTime>>,
+    StatusCode,
 > {
     let db = app.database();
 
@@ -384,28 +339,21 @@ async fn get_demand_history<T: ApiApplication>(
         .await
         .map_err(|err| {
             event!(Level::ERROR, err = err.to_string());
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("failed to get demand {}", demand_id),
-            )
+
+            StatusCode::INTERNAL_SERVER_ERROR
         })?
-        .ok_or((
-            StatusCode::NOT_FOUND,
-            format!("unknown demand {}", demand_id),
-        ))?;
+        .ok_or(StatusCode::NOT_FOUND)?;
 
     if !app.can_read_bid(&auth, bidder_id).await {
-        return Err((StatusCode::UNAUTHORIZED, "not authorized".to_string()));
+        return Err(StatusCode::UNAUTHORIZED);
     }
     let history = db
-        .get_demand_history(demand_id.clone(), query, config.page_limit)
+        .get_demand_curve_history(demand_id, query, config.page_limit)
         .await
         .map_err(|err| {
             event!(Level::ERROR, err = err.to_string());
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("failed to get demand history {}", demand_id),
-            )
+
+            StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
     Ok(Json(history))
@@ -414,19 +362,9 @@ async fn get_demand_history<T: ApiApplication>(
 /// Request body for creating a new demand.
 #[derive(serde::Deserialize, schemars::JsonSchema)]
 #[schemars(inline)]
-struct CreateDemandRequestBody<D> {
+struct CreateDemandDto<D> {
     /// Application-specific data to associate with the demand
     app_data: D,
     /// Optional initial curve data
-    curve_data: Option<DemandCurve>,
-}
-
-/// Response body for creating a new demand.
-#[derive(serde::Serialize, schemars::JsonSchema)]
-#[schemars(inline)]
-struct CreateDemandResponseBody<T, U> {
-    /// The effective timestamp of the demand
-    as_of: T,
-    /// The system-generated id of the demand curve
-    demand_id: U,
+    curve_data: DemandCurve,
 }

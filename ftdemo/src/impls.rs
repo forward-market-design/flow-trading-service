@@ -15,31 +15,66 @@ use jwt_simple::{
     claims::JWTClaims,
     prelude::{HS256Key, MACLike},
 };
+use rand::RngCore;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 /// Placeholder demand data structure.
 ///
 /// This represents application-specific data that can be attached to demand entities.
 #[derive(Serialize, Deserialize, JsonSchema)]
-pub struct DemandData;
+pub struct DemandData {
+    name: String,
+}
 
 /// Placeholder portfolio data structure.
 ///
 /// This represents application-specific data that can be attached to portfolio entities.
 #[derive(Serialize, Deserialize, JsonSchema)]
-pub struct PortfolioData;
+pub struct PortfolioData {
+    name: String,
+}
+
+/// The various types of products
+#[repr(u32)]
+#[derive(Clone, Copy, Serialize, Deserialize, JsonSchema)]
+#[serde(try_from = "u32", into = "u32")]
+pub enum ProductKind {
+    /// A forward product, settled as a derivative of the actual
+    Forward = 0,
+    /// An option on a product
+    Option = 1,
+}
+
+impl TryFrom<u32> for ProductKind {
+    type Error = u32;
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        // manually keep this in sync with the variants
+        if value > 1 {
+            Err(value)
+        } else {
+            Ok(unsafe { std::mem::transmute(value) })
+        }
+    }
+}
+
+impl Into<u32> for ProductKind {
+    fn into(self) -> u32 {
+        unsafe { std::mem::transmute(self) }
+    }
+}
 
 /// Defines a product characterized by a "kind" and an interval of time ("from", "thru").
 #[derive(Serialize, Deserialize, JsonSchema)]
 pub struct ProductData {
-    kind: String,
     #[schemars(schema_with = "time_schema")]
     #[serde(with = "time::serde::rfc3339")]
     from: time::OffsetDateTime,
     #[schemars(schema_with = "time_schema")]
     #[serde(with = "time::serde::rfc3339")]
     thru: time::OffsetDateTime,
+    kind: ProductKind,
 }
 
 /// Main application implementation combining all system components.
@@ -83,29 +118,60 @@ impl Application for DemoApp {
         time::OffsetDateTime::now_utc().into()
     }
 
-    fn generate_demand_id(&self, _data: &DemandData) -> DemandId {
-        uuid::Uuid::new_v4().into()
+    fn generate_demand_id(&self, _data: &DemandData) -> (DemandId, DateTime) {
+        let now = time::OffsetDateTime::now_utc();
+
+        let id = {
+            let rng56 = rand::rng().next_u64() >> 8; // 56 random bits
+
+            // Current timestamp, partitioned into (48, 12, 4) bits and splatted into a V8 pattern with id tag
+            let now = now.unix_timestamp() as u64;
+            let now48 = 0xffff_ffff_ffff_0000 & now;
+            let now12 = (0xfff0 & now) >> 4;
+            let now04 = (0x000f & now) << 56;
+
+            let hi = 0x0000_0000_0000_8000 | now48 | now12;
+            let lo = 0x9000_0000_0000_0000 | now04 | rng56;
+
+            Uuid::from_u64_pair(hi, lo)
+        };
+
+        (id.into(), now.into())
     }
 
-    fn generate_portfolio_id(&self, _data: &PortfolioData) -> PortfolioId {
-        uuid::Uuid::new_v4().into()
+    fn generate_portfolio_id(&self, _data: &PortfolioData) -> (PortfolioId, DateTime) {
+        let now = time::OffsetDateTime::now_utc();
+
+        let id = {
+            let rng56 = rand::rng().next_u64() >> 8; // 56 random bits
+
+            // Current timestamp, partitioned into (48, 12, 4) bits and splatted into a V8 pattern with id tag
+            let now = now.unix_timestamp() as u64;
+            let now48 = 0xffff_ffff_ffff_0000 & now;
+            let now12 = (0xfff0 & now) >> 4;
+            let now04 = (0x000f & now) << 56;
+
+            let hi = 0x0000_0000_0000_8000 | now48 | now12;
+            let lo = 0xa000_0000_0000_0000 | now04 | rng56;
+            Uuid::from_u64_pair(hi, lo)
+        };
+
+        (id.into(), now.into())
     }
 
-    fn generate_product_id(&self, _data: &ProductData) -> ProductId {
-        uuid::Uuid::new_v4().into()
-        // // The other id generators make random ids, but this one creates
-        // // a deterministic id based on the content of the product data, roughly
-        // // (FROM)(THRU)(KIND)
-        // // so that "nearby" products are sorted together.
-        // let pattern = ((data.from.unix_timestamp() as u128) << 65)
-        //     | ((data.thru.unix_timestamp() << 2) as u128)
-        //     | match data.kind {
-        //         ProductKind::Forward => 1u128,
-        //         ProductKind::Option => 2u128,
-        //     };
+    fn generate_product_id(&self, data: &ProductData) -> (ProductId, DateTime) {
+        // Starting time, partitioned into (48, 12, 4) bits and splatted into a V8 pattern with id tag
+        let now = data.from.unix_timestamp() as u64;
+        let now48 = 0xffff_ffff_ffff_0000 & now;
+        let now12 = (0xfff0 & now) >> 4;
+        let now04 = (0x000f & now) << 56;
 
-        // // TODO: this is wrong, (v8 will overwrite a few bytes)
-        // uuid::Uuid::new_v8(pattern.to_le_bytes()).into()
+        let duration = (((data.thru - data.from).whole_seconds() as u64) & 0xffff_ffff) << 24; // first 8 zero, middle 32 useful, last 24 zero
+        let kind = (<ProductKind as Into<u32>>::into(data.kind) as u64) & 0x00ff_ffff;
+
+        let hi = 0x0000_0000_0000_8000 | now48 | now12;
+        let lo = 0xb000_0000_0000_0000 | now04 | duration | kind;
+        (Uuid::from_u64_pair(hi, lo).into(), self.now())
     }
 
     async fn can_create_bid(&self, context: &Self::Context) -> Option<BidderId> {

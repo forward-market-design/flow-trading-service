@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            update\n                portfolio\n            set\n                as_of = $2,\n                demand = jsonb($3)\n            where\n                id = $1\n            returning\n                id as \"id!: PortfolioId\",\n                as_of as \"valid_from!: DateTime\",\n                null as \"valid_until?: DateTime\",\n                bidder_id as \"bidder_id!: BidderId\",\n                json(app_data) as \"app_data!: sqlx::types::Json<PortfolioData>\",\n                json(demand) as \"demand?: sqlx::types::Json<Weights<DemandId>>\",\n                json(basis) as \"basis?: sqlx::types::Json<Basis<ProductId>>\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: PortfolioId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "valid_from!: DateTime",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "valid_until?: DateTime",
+        "ordinal": 2,
+        "type_info": "Null"
+      },
+      {
+        "name": "bidder_id!: BidderId",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "app_data!: sqlx::types::Json<PortfolioData>",
+        "ordinal": 4,
+        "type_info": "Null"
+      },
+      {
+        "name": "demand?: sqlx::types::Json<Weights<DemandId>>",
+        "ordinal": 5,
+        "type_info": "Null"
+      },
+      {
+        "name": "basis?: sqlx::types::Json<Basis<ProductId>>",
+        "ordinal": 6,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "295d8684cfe07d17e3895b2d92499160d2355460f19ed648d1f1bf2470a0bb32"
+}

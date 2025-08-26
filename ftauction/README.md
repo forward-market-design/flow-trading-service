@@ -11,14 +11,14 @@ The JSON format is very simple. Given the following type definitions:
 type ProductId = string;
 type PortfolioId = string;
 
-type DemandGroup = Record<DemandId, number> | Array<DemandId> | DemandId;
-type ProductGroup = Record<ProductId, number> | Array<ProductId> | ProductId;
-// The canonical types in DemandGroup and ProductGroup are Records, but we implicitly
+type Sum = Record<DemandId, number> | Array<DemandId> | DemandId;
+type Basis = Record<ProductId, number> | Array<ProductId> | ProductId;
+// The canonical types in Sum and Basis are Records, but we implicitly
 // transform arrays and values for convenience according to:
 //   X => { X: 1.0 },
 //   [X, Y, ...] => { X: 1.0, Y: 1.0, ...}
 
-type Portfolio = { demand_group: DemandGroup, product_group: ProductGroup };
+type Portfolio = { demand: Sum, basis: Basis };
 
 type Point = {
     rate: number,

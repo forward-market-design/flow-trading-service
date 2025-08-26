@@ -3,24 +3,24 @@
 -- However, the effective composition can also change by the creation of new
 -- child products. This view synthesizes the changes from the bidder and the
 -- product creator, allowing for simplified querying.
-create view product_group_view (
+create view basis_view (
     portfolio_id, product_id, weight, valid_from, valid_until
 ) as
 
 select
-    product_group.portfolio_id,
+    portfolio_product.portfolio_id,
     product_tree.dst_id,
     product_tree.ratio * weight as weight,
-    max(product_group.valid_from, product_tree.valid_from) as combined_from,
+    max(portfolio_product.valid_from, product_tree.valid_from) as combined_from,
     min(
-        coalesce(product_group.valid_until, product_tree.valid_until),
-        coalesce(product_tree.valid_until, product_group.valid_until)
+        coalesce(portfolio_product.valid_until, product_tree.valid_until),
+        coalesce(product_tree.valid_until, portfolio_product.valid_until)
     ) as combined_until
 from
-    product_group
+    portfolio_product
 join
     product_tree
     on
-        product_group.product_id = product_tree.src_id
+        portfolio_product.product_id = product_tree.src_id
 where
     combined_until is null or combined_from < combined_until

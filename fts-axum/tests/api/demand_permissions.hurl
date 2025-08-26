@@ -140,25 +140,25 @@ HTTP 200
 # Check GET /demand/{demand_id}/history
 
 # No auth header
-GET {{baseurl}}/demand/{{demand_id}}/history
+GET {{baseurl}}/demand/{{demand_id}}/curve-history
 HTTP 400
 
 # No permission, wrong bidder
-GET {{baseurl}}/demand/{{demand_id}}/history
+GET {{baseurl}}/demand/{{demand_id}}/curve-history
 Authorization: Bearer bidder_id={{bidder2}}
 HTTP 401
 
 # No permission, right bidder
-GET {{baseurl}}/demand/{{demand_id}}/history
+GET {{baseurl}}/demand/{{demand_id}}/curve-history
 Authorization: Bearer bidder_id={{bidder1}}
 HTTP 401
 
 # Good permissions, wrong bidder
-GET {{baseurl}}/demand/{{demand_id}}/history
+GET {{baseurl}}/demand/{{demand_id}}/curve-history
 Authorization: Bearer bidder_id={{bidder2}}&can_read_bid=true
 HTTP 401
 
 # Good permissions, right bidder
-GET {{baseurl}}/demand/{{demand_id}}/history
+GET {{baseurl}}/demand/{{demand_id}}/curve-history
 Authorization: Bearer bidder_id={{bidder1}}&can_read_bid=true
 HTTP 200

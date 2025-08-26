@@ -69,17 +69,17 @@ A _portfolio_ acts as a container that groups together related demands and produ
 
 ### Product Weights
 
-Suppose a market contains products `A` and `B`. A portfolio's product group might be:
+Suppose a market contains products `A` and `B`. A portfolio's basis might be:
 
 ```typescript
 // Trade only product A
-product_group1 = { A: 1.0 };
+basis1 = { A: 1.0 };
 // Trade A and B in strictly equal amounts
-product_group2 = { A: 1.0, B: 1.0 };
+basis2 = { A: 1.0, B: 1.0 };
 // Replace A with B (or vice versa) at some fixed ratio
-product_group3 = { A: 0.5, B: -0.75 };
+basis3 = { A: 0.5, B: -0.75 };
 ```
-There are no restrictions on the signs or magnitudes of the weights. Buying 1 unit of portfolio `product_group3` corresponds to buying 0.5 units of `A` and selling 0.75 units of `B`.
+There are no restrictions on the signs or magnitudes of the weights. Buying 1 unit of portfolio `basis3` corresponds to buying 0.5 units of `A` and selling 0.75 units of `B`.
 
 ### Demand Weights
 
@@ -88,15 +88,15 @@ Similarly, a portfolio can aggregate multiple demands:
 ```typescript
 // We expect most often that a portfolio is
 // associated to a single demand, and vice versa
-demand_group1 = { D1: 1.0 };
+demand1 = { D1: 1.0 };
 // However, if portfolios are substitutes, multiple
 // portfolios may be associated to a single demand,
 // and a single portfolio may be associated to multiple
 // demands.
-demand_group2 = { D1: 1, D2: 1 };
+demand2 = { D1: 1, D2: 1 };
 // As before, there are no restrictions
 // on the signs or magnitudes of these weights.
-demand_group3 = { D1: 0.8, D2: 0.2 };
+demand3 = { D1: 0.8, D2: 0.2 };
 ```
 
 This allows bidders to express substitution preferences between different pricing strategies while maintaining a unified trading interface.

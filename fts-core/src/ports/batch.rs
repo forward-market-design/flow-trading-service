@@ -1,4 +1,4 @@
-use crate::models::{DateTimeRangeQuery, DateTimeRangeResponse, OutcomeRecord};
+use crate::models::{DateTimeRangeQuery, DateTimeRangeResponse};
 
 /// Repository interface for batch auction execution and outcome retrieval.
 ///
@@ -14,7 +14,7 @@ pub trait BatchRepository<T: super::Solver<Self::DemandId, Self::PortfolioId, Se
     ///
     /// # Returns
     ///
-    /// - Ok(Ok(())) if the batch completed successfully
+    /// - Ok(Ok(Option<DateTime>)) if the batch completed successfully, return the (optional) expiration time of the batch (typically None)
     /// - Ok(Err(solver_error)) if the solver failed
     /// - Err(repository_error) if there is some other error
     fn run_batch(
@@ -22,7 +22,7 @@ pub trait BatchRepository<T: super::Solver<Self::DemandId, Self::PortfolioId, Se
         timestamp: Self::DateTime,
         solver: T,
         state: T::State,
-    ) -> impl Future<Output = Result<Result<(), T::Error>, Self::Error>> + Send;
+    ) -> impl Future<Output = Result<Result<Option<Self::DateTime>, T::Error>, Self::Error>> + Send;
 
     /// Retrieve historical batch outcomes for a portfolio.
     ///
@@ -35,13 +35,7 @@ pub trait BatchRepository<T: super::Solver<Self::DemandId, Self::PortfolioId, Se
         query: DateTimeRangeQuery<Self::DateTime>,
         limit: usize,
     ) -> impl Future<
-        Output = Result<
-            DateTimeRangeResponse<
-                OutcomeRecord<Self::DateTime, T::PortfolioOutcome>,
-                Self::DateTime,
-            >,
-            Self::Error,
-        >,
+        Output = Result<DateTimeRangeResponse<T::PortfolioOutcome, Self::DateTime>, Self::Error>,
     > + Send;
 
     /// Retrieve historical batch outcomes for a product.
@@ -55,9 +49,6 @@ pub trait BatchRepository<T: super::Solver<Self::DemandId, Self::PortfolioId, Se
         query: DateTimeRangeQuery<Self::DateTime>,
         limit: usize,
     ) -> impl Future<
-        Output = Result<
-            DateTimeRangeResponse<OutcomeRecord<Self::DateTime, T::ProductOutcome>, Self::DateTime>,
-            Self::Error,
-        >,
+        Output = Result<DateTimeRangeResponse<T::ProductOutcome, Self::DateTime>, Self::Error>,
     > + Send;
 }

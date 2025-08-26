@@ -1,6 +1,4 @@
-use crate::models::{
-    DateTimeRangeQuery, DateTimeRangeResponse, DemandCurve, DemandRecord, ValueRecord,
-};
+use crate::models::{DateTimeRangeQuery, DateTimeRangeResponse, DemandCurve, DemandRecord};
 
 /// Repository interface for demand curve submission and retrieval.
 ///
@@ -23,9 +21,9 @@ pub trait DemandRepository<DemandData>: super::Repository {
         demand_id: Self::DemandId,
         bidder_id: Self::BidderId,
         app_data: DemandData,
-        curve_data: Option<DemandCurve>,
+        curve_data: DemandCurve,
         as_of: Self::DateTime,
-    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
+    ) -> impl Future<Output = Result<DemandRecord<Self, DemandData>, Self::Error>> + Send;
 
     /// Update the curve data for an existing demand.
     ///
@@ -40,9 +38,9 @@ pub trait DemandRepository<DemandData>: super::Repository {
     fn update_demand(
         &self,
         demand_id: Self::DemandId,
-        curve_data: Option<DemandCurve>,
+        curve_data: DemandCurve,
         as_of: Self::DateTime,
-    ) -> impl Future<Output = Result<bool, Self::Error>> + Send;
+    ) -> impl Future<Output = Result<Option<DemandRecord<Self, DemandData>>, Self::Error>> + Send;
 
     /// Retrieve a demand at a specific point in time.
     ///
@@ -51,32 +49,17 @@ pub trait DemandRepository<DemandData>: super::Repository {
         &self,
         demand_id: Self::DemandId,
         as_of: Self::DateTime,
-    ) -> impl Future<
-        Output = Result<
-            Option<
-                DemandRecord<
-                    Self::DateTime,
-                    Self::BidderId,
-                    Self::DemandId,
-                    Self::PortfolioId,
-                    DemandData,
-                >,
-            >,
-            Self::Error,
-        >,
-    > + Send;
+    ) -> impl Future<Output = Result<Option<DemandRecord<Self, DemandData>>, Self::Error>> + Send;
 
-    /// Query all the demand curves with non-null data associated to any of `bidder_ids`
-    /// as-of the specified time.
+    /// Query all the demand curves with non-null data associated to any of `bidder_ids`.
     ///
     /// # Returns
     ///
-    /// A vector of demand IDs that have active curves at the specified time.
+    /// A vector of "active" (as of the time of querying) demand records.
     fn query_demand(
         &self,
         bidder_ids: &[Self::BidderId],
-        as_of: Self::DateTime,
-    ) -> impl Future<Output = Result<Vec<Self::DemandId>, Self::Error>> + Send;
+    ) -> impl Future<Output = Result<Vec<DemandRecord<Self, DemandData>>, Self::Error>> + Send;
 
     /// Retrieve the history of curve changes for a demand.
     ///
@@ -84,15 +67,12 @@ pub trait DemandRepository<DemandData>: super::Repository {
     ///
     /// A paginated response containing historical curve records, including
     /// when the curve was created, modified, or deleted (None).
-    fn get_demand_history(
+    fn get_demand_curve_history(
         &self,
         demand_id: Self::DemandId,
         query: DateTimeRangeQuery<Self::DateTime>,
         limit: usize,
     ) -> impl Future<
-        Output = Result<
-            DateTimeRangeResponse<ValueRecord<Self::DateTime, DemandCurve>, Self::DateTime>,
-            Self::Error,
-        >,
+        Output = Result<DateTimeRangeResponse<DemandCurve, Self::DateTime>, Self::Error>,
     > + Send;
 }

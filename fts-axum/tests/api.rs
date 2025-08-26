@@ -4,7 +4,6 @@ use fts_sqlite::{Db, config::SqliteConfig, types::DateTime};
 use hurl::runner::{self, VariableSet};
 use hurl::runner::{RunnerOptionsBuilder, Value};
 use hurl::util::logger::LoggerOptionsBuilder;
-use hurl_core::input::Input;
 use rstest::*;
 use std::path::PathBuf;
 
@@ -43,16 +42,14 @@ async fn test_api(#[files("tests/api/**/*.hurl")] test: PathBuf) {
 
     // Set the baseurl variable
     let mut variables = VariableSet::new();
-    variables
-        .insert("baseurl".to_string(), Value::String(baseurl.to_string()))
-        .unwrap();
+    variables.insert("baseurl".to_string(), Value::String(baseurl.to_string()));
 
     // Run it
     let runner_opts = RunnerOptionsBuilder::new().follow_location(true).build();
     let logger_opts = LoggerOptionsBuilder::new().build();
     let result = runner::run(
         &content,
-        test.to_str().map(|s| Input::new(s)).as_ref(),
+        Some(&test.into()),
         &runner_opts,
         &variables,
         &logger_opts,

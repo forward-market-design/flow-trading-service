@@ -35,7 +35,7 @@ pub use solver::Solver;
 /// implementing a trait across multiple files. By breaking this trait apart,
 /// this allows an implementation to keep the logic separated and ease
 /// development.
-pub trait Repository {
+pub trait Repository: Sized {
     /// The error type for underlying operations
     type Error: std::error::Error;
 
@@ -99,23 +99,32 @@ pub trait Application {
     /// Get the current time
     fn now(&self) -> <Self::Repository as Repository>::DateTime;
 
-    /// Generate an appropriate id for the provided demand data
+    /// Generate an appropriate id for the provided demand data and the time at which it was generated
     fn generate_demand_id(
         &self,
         data: &Self::DemandData,
-    ) -> <Self::Repository as Repository>::DemandId;
+    ) -> (
+        <Self::Repository as Repository>::DemandId,
+        <Self::Repository as Repository>::DateTime,
+    );
 
-    /// Generate an appropriate id for the provided portfolio data
+    /// Generate an appropriate id for the provided portfolio data and the time at which it was generated
     fn generate_portfolio_id(
         &self,
         data: &Self::PortfolioData,
-    ) -> <Self::Repository as Repository>::PortfolioId;
+    ) -> (
+        <Self::Repository as Repository>::PortfolioId,
+        <Self::Repository as Repository>::DateTime,
+    );
 
-    /// Generate an appropriate id for the provided product data
+    /// Generate an appropriate id for the provided product data and the time at which it was generated
     fn generate_product_id(
         &self,
         data: &Self::ProductData,
-    ) -> <Self::Repository as Repository>::ProductId;
+    ) -> (
+        <Self::Repository as Repository>::ProductId,
+        <Self::Repository as Repository>::DateTime,
+    );
 
     /// Check if the context can create new demands or portfolios.
     ///

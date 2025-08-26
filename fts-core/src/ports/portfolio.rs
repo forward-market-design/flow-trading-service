@@ -1,7 +1,4 @@
-use crate::models::{
-    DateTimeRangeQuery, DateTimeRangeResponse, DemandGroup, PortfolioRecord, ProductGroup,
-    ValueRecord,
-};
+use crate::models::{Basis, DateTimeRangeQuery, DateTimeRangeResponse, PortfolioRecord, Weights};
 
 /// Repository interface for portfolio CRUD operations and history tracking.
 ///
@@ -24,65 +21,60 @@ pub trait PortfolioRepository<PortfolioData>: super::Repository {
         portfolio_id: Self::PortfolioId,
         bidder_id: Self::BidderId,
         app_data: PortfolioData,
-        demand_group: DemandGroup<Self::DemandId>,
-        product_group: ProductGroup<Self::ProductId>,
+        demand: Weights<Self::DemandId>,
+        basis: Basis<Self::ProductId>,
         as_of: Self::DateTime,
-    ) -> impl Future<Output = Result<(), Self::Error>> + Send;
+    ) -> impl Future<Output = Result<PortfolioRecord<Self, PortfolioData>, Self::Error>> + Send;
 
-    /// Update a portfolio's demand and/or product associations.
-    ///
-    /// Optionally updates the demand curves and products the portfolio is associated to.
-    /// (Provide a `None` value to not update the respective data.)
-    ///
-    /// # Returns
-    ///
-    /// - Ok(true) if successful
-    /// - Ok(false) if portfolio does not exist
-    /// - Err otherwise
+    /// Update a portfolio's demand group.
+    fn update_portfolio_demand(
+        &self,
+        portfolio_id: Self::PortfolioId,
+        demand: Weights<Self::DemandId>,
+        as_of: Self::DateTime,
+    ) -> impl Future<Output = Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error>> + Send;
+
+    /// Update a portfolio's product group
+    fn update_portfolio_basis(
+        &self,
+        portfolio_id: Self::PortfolioId,
+        basis: Basis<Self::ProductId>,
+        as_of: Self::DateTime,
+    ) -> impl Future<Output = Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error>> + Send;
+
+    /// Update both the demand- and product- groups at once.
     fn update_portfolio(
         &self,
         portfolio_id: Self::PortfolioId,
-        demand_group: Option<DemandGroup<Self::DemandId>>,
-        product_group: Option<ProductGroup<Self::ProductId>>,
+        demand: Weights<Self::DemandId>,
+        basis: Basis<Self::ProductId>,
         as_of: Self::DateTime,
-    ) -> impl Future<Output = Result<bool, Self::Error>> + Send;
+    ) -> impl Future<Output = Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error>> + Send;
 
     /// Retrieve a portfolio at a specific point in time.
-    ///
-    /// Retrieve the requested portfolio and associated demand curves, returning Option::None if it does not exist.
-    /// The portfolio's product_group will be *fully expanded* in the contemporary product basis (in the event that
-    /// any products have been partitioned since the initial creation).
     fn get_portfolio(
         &self,
         portfolio_id: Self::PortfolioId,
         as_of: Self::DateTime,
-    ) -> impl Future<
-        Output = Result<
-            Option<
-                PortfolioRecord<
-                    Self::DateTime,
-                    Self::BidderId,
-                    Self::PortfolioId,
-                    Self::DemandId,
-                    Self::ProductId,
-                    PortfolioData,
-                >,
-            >,
-            Self::Error,
-        >,
-    > + Send;
+    ) -> impl Future<Output = Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error>> + Send;
 
-    /// Query all the portfolios with non-empty groups associated to `bidder_id`
-    /// as-of the specified time.
+    /// Retrieve a portfolio at a specific point in time, with the product group expanded in the
+    /// contemporary product basis.
+    fn get_portfolio_with_expanded_products(
+        &self,
+        portfolio_id: Self::PortfolioId,
+        as_of: Self::DateTime,
+    ) -> impl Future<Output = Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error>> + Send;
+
+    /// Query all the portfolios with non-empty groups associated to `bidder_id`.
     ///
     /// # Returns
     ///
-    /// A vector of portfolio IDs that match the query criteria.
+    /// A vector of "active" (as of the time of querying) portfolio records.
     fn query_portfolio(
         &self,
         bidder_ids: &[Self::BidderId],
-        as_of: Self::DateTime,
-    ) -> impl Future<Output = Result<Vec<Self::PortfolioId>, Self::Error>> + Send;
+    ) -> impl Future<Output = Result<Vec<PortfolioRecord<Self, PortfolioData>>, Self::Error>> + Send;
 
     /// Retrieve the history of demand group changes for a portfolio.
     ///
@@ -96,10 +88,7 @@ pub trait PortfolioRepository<PortfolioData>: super::Repository {
         limit: usize,
     ) -> impl Future<
         Output = Result<
-            DateTimeRangeResponse<
-                ValueRecord<Self::DateTime, DemandGroup<Self::DemandId>>,
-                Self::DateTime,
-            >,
+            DateTimeRangeResponse<Weights<Self::DemandId>, Self::DateTime>,
             Self::Error,
         >,
     > + Send;
@@ -115,12 +104,6 @@ pub trait PortfolioRepository<PortfolioData>: super::Repository {
         query: DateTimeRangeQuery<Self::DateTime>,
         limit: usize,
     ) -> impl Future<
-        Output = Result<
-            DateTimeRangeResponse<
-                ValueRecord<Self::DateTime, ProductGroup<Self::ProductId>>,
-                Self::DateTime,
-            >,
-            Self::Error,
-        >,
+        Output = Result<DateTimeRangeResponse<Basis<Self::ProductId>, Self::DateTime>, Self::Error>,
     > + Send;
 }

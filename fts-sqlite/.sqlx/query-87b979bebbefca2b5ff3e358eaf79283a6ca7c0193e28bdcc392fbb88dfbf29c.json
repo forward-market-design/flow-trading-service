@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "-- A demand is considered active if and only if\n-- * it has non-null curve data, AND\n-- * it is associated to at least 1 portfolio.\nwith\nportfolio_by_id as (\n    select\n        demand_id,\n        valid_until as expires\n    from\n        portfolio_demand\n    where\n        valid_from <= $1\n    and\n        ($1 < valid_until or valid_until is null)\n),\n\ncurve_data_by_id as (\n    select\n        demand_id,\n        valid_until as expires,\n        value\n    from\n        curve_data\n    where\n        value is not null\n    and\n        valid_from <= $1\n    and\n        ($1 < valid_until or valid_until is null)\n)\n\nselect\n    demand_id as \"id!: DemandId\",\n    min(\n        coalesce(portfolio_by_id.expires, curve_data_by_id.expires),\n        coalesce(curve_data_by_id.expires, portfolio_by_id.expires)\n    ) as \"expires?: DateTime\",\n    json(curve_data_by_id.value) as \"value!: sqlx::types::Json<DemandCurveDto>\"\nfrom\n    portfolio_by_id\njoin\n    curve_data_by_id\nusing\n    (demand_id)",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: DemandId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "expires?: DateTime",
+        "ordinal": 1,
+        "type_info": "Null"
+      },
+      {
+        "name": "value!: sqlx::types::Json<DemandCurveDto>",
+        "ordinal": 2,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "87b979bebbefca2b5ff3e358eaf79283a6ca7c0193e28bdcc392fbb88dfbf29c"
+}

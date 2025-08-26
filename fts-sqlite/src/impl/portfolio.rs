@@ -1,15 +1,9 @@
 use crate::{
     Db,
-    types::{
-        BidderId, DemandId, PortfolioDemandHistoryRow, PortfolioId, PortfolioProductHistoryRow,
-        PortfolioRow, ProductId,
-    },
+    types::{BidderId, DateTime, DemandId, PortfolioId, PortfolioRow, ProductId, ValueRow},
 };
 use fts_core::{
-    models::{
-        DateTimeRangeQuery, DateTimeRangeResponse, DemandGroup, PortfolioRecord, ProductGroup,
-        ValueRecord,
-    },
+    models::{Basis, DateTimeRangeQuery, DateTimeRangeResponse, PortfolioRecord, Weights},
     ports::PortfolioRepository,
 };
 
@@ -38,36 +32,39 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
     async fn query_portfolio(
         &self,
         bidder_ids: &[Self::BidderId],
-        as_of: Self::DateTime,
-    ) -> Result<Vec<Self::PortfolioId>, Self::Error> {
+    ) -> Result<Vec<PortfolioRecord<Self, PortfolioData>>, Self::Error> {
         if bidder_ids.len() == 0 {
             Ok(Vec::new())
         } else {
             let bidder_ids = sqlx::types::Json(bidder_ids);
-            sqlx::query_scalar!(
+            let query = sqlx::query_as!(
+                PortfolioRow,
                 r#"
-                select distinct
-                    portfolio.id as "id!: PortfolioId"
+                select
+                    portfolio.id as "id!: PortfolioId",
+                    as_of as "valid_from!: DateTime",
+                    null as "valid_until?: DateTime",
+                    bidder_id as "bidder_id!: BidderId",
+                    json(app_data) as "app_data!: sqlx::types::Json<PortfolioData>",
+                    json(demand) as "demand?: sqlx::types::Json<Weights<DemandId>>",
+                    json(basis) as "basis?: sqlx::types::Json<Basis<ProductId>>"
                 from
                     portfolio
-                join
-                    demand_group
-                on
-                    portfolio.id = demand_group.portfolio_id
                 join
                     json_each($1) as bidder_ids
                 on
                     portfolio.bidder_id = bidder_ids.atom
                 where
-                    valid_from <= $2
-                and
-                    ($2 < valid_until or valid_until is null) 
+                    portfolio.demand is not null
+                or
+                    portfolio.basis is not null
                 "#,
-                bidder_ids,
-                as_of,
+                bidder_ids
             )
             .fetch_all(&self.reader)
-            .await
+            .await?;
+
+            Ok(query.into_iter().map(Into::into).collect())
         }
     }
 
@@ -76,126 +73,182 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
         portfolio_id: Self::PortfolioId,
         bidder_id: Self::BidderId,
         app_data: PortfolioData,
-        demand_group: DemandGroup<Self::DemandId>,
-        product_group: ProductGroup<Self::ProductId>,
+        demand: Weights<Self::DemandId>,
+        basis: Basis<Self::ProductId>,
         as_of: Self::DateTime,
-    ) -> Result<(), Self::Error> {
+    ) -> Result<PortfolioRecord<Self, PortfolioData>, Self::Error> {
         let app_data = sqlx::types::Json(app_data);
-        let demand_group = sqlx::types::Json(demand_group);
-        let product_group = sqlx::types::Json(product_group);
-        sqlx::query!(
+        let demand = if demand.is_empty() {
+            None
+        } else {
+            Some(sqlx::types::Json(demand))
+        };
+        let basis = if basis.is_empty() {
+            None
+        } else {
+            Some(sqlx::types::Json(basis))
+        };
+        let portfolio = sqlx::query_as!(
+            PortfolioRow,
             r#"
             insert into
-                portfolio (id, as_of, bidder_id, app_data, demand_group, product_group)
+                portfolio (id, as_of, bidder_id, app_data, demand, basis)
             values
                 ($1, $2, $3, jsonb($4), jsonb($5), jsonb($6))
+            returning
+                id as "id!: PortfolioId",
+                as_of as "valid_from!: DateTime",
+                null as "valid_until?: DateTime",
+                bidder_id as "bidder_id!: BidderId",
+                json(app_data) as "app_data!: sqlx::types::Json<PortfolioData>",
+                json(demand) as "demand?: sqlx::types::Json<Weights<DemandId>>",
+                json(basis) as "basis?: sqlx::types::Json<Basis<ProductId>>"
             "#,
             portfolio_id,
             as_of,
             bidder_id,
             app_data,
-            demand_group,
-            product_group
+            demand,
+            basis
         )
-        .execute(&self.writer)
+        .fetch_one(&self.writer)
         .await?;
-        Ok(())
+        Ok(portfolio.into())
+    }
+
+    async fn update_portfolio_demand(
+        &self,
+        portfolio_id: Self::PortfolioId,
+        demand: Weights<Self::DemandId>,
+        as_of: Self::DateTime,
+    ) -> Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error> {
+        let demand = if demand.is_empty() {
+            None
+        } else {
+            Some(sqlx::types::Json(demand))
+        };
+        let updated = sqlx::query_as!(
+            PortfolioRow,
+            r#"
+            update
+                portfolio
+            set
+                as_of = $2,
+                demand = jsonb($3)
+            where
+                id = $1
+            returning
+                id as "id!: PortfolioId",
+                as_of as "valid_from!: DateTime",
+                null as "valid_until?: DateTime",
+                bidder_id as "bidder_id!: BidderId",
+                json(app_data) as "app_data!: sqlx::types::Json<PortfolioData>",
+                json(demand) as "demand?: sqlx::types::Json<Weights<DemandId>>",
+                json(basis) as "basis?: sqlx::types::Json<Basis<ProductId>>"
+            "#,
+            portfolio_id,
+            as_of,
+            demand,
+        )
+        .fetch_optional(&self.writer)
+        .await?;
+
+        Ok(updated.map(Into::into))
+    }
+
+    async fn update_portfolio_basis(
+        &self,
+        portfolio_id: Self::PortfolioId,
+        basis: Basis<Self::ProductId>,
+        as_of: Self::DateTime,
+    ) -> Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error> {
+        let basis = if basis.is_empty() {
+            None
+        } else {
+            Some(sqlx::types::Json(basis))
+        };
+        let updated = sqlx::query_as!(
+            PortfolioRow,
+            r#"
+            update
+                portfolio
+            set
+                as_of = $2,
+                basis = jsonb($3)
+            where
+                id = $1
+            returning
+                id as "id!: PortfolioId",
+                as_of as "valid_from!: DateTime",
+                null as "valid_until?: DateTime",
+                bidder_id as "bidder_id!: BidderId",
+                json(app_data) as "app_data!: sqlx::types::Json<PortfolioData>",
+                json(demand) as "demand?: sqlx::types::Json<Weights<DemandId>>",
+                json(basis) as "basis?: sqlx::types::Json<Basis<ProductId>>"
+            "#,
+            portfolio_id,
+            as_of,
+            basis,
+        )
+        .fetch_optional(&self.writer)
+        .await?;
+
+        Ok(updated.map(Into::into))
     }
 
     async fn update_portfolio(
         &self,
         portfolio_id: Self::PortfolioId,
-        demand_group: Option<DemandGroup<Self::DemandId>>,
-        product_group: Option<ProductGroup<Self::ProductId>>,
+        demand: Weights<Self::DemandId>,
+        basis: Basis<Self::ProductId>,
         as_of: Self::DateTime,
-    ) -> Result<bool, Self::Error> {
-        let updated = match (demand_group, product_group) {
-            (Some(demand_group), Some(product_group)) => {
-                let demand_group = sqlx::types::Json(demand_group);
-                let product_group = sqlx::types::Json(product_group);
-                let query = sqlx::query!(
-                    r#"
-                    update
-                        portfolio
-                    set
-                        as_of = $2,
-                        demand_group = jsonb($3),
-                        product_group = jsonb($4)
-                    where
-                        id = $1
-                    "#,
-                    portfolio_id,
-                    as_of,
-                    demand_group,
-                    product_group,
-                )
-                .execute(&self.writer)
-                .await?;
-                query.rows_affected() > 0
-            }
-            (Some(demand_group), None) => {
-                let demand_group = sqlx::types::Json(demand_group);
-                let query = sqlx::query!(
-                    r#"
-                    update
-                        portfolio
-                    set
-                        as_of = $2,
-                        demand_group = jsonb($3)
-                    where
-                        id = $1
-                    "#,
-                    portfolio_id,
-                    as_of,
-                    demand_group,
-                )
-                .execute(&self.writer)
-                .await?;
-                query.rows_affected() > 0
-            }
-            (None, Some(product_group)) => {
-                let product_group = sqlx::types::Json(product_group);
-                let query = sqlx::query!(
-                    r#"
-                    update
-                        portfolio
-                    set
-                        as_of = $2,
-                        product_group = jsonb($3)
-                    where
-                        id = $1
-                    "#,
-                    portfolio_id,
-                    as_of,
-                    product_group,
-                )
-                .execute(&self.writer)
-                .await?;
-                query.rows_affected() > 0
-            }
-            (None, None) => false,
+    ) -> Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error> {
+        let demand = if demand.is_empty() {
+            None
+        } else {
+            Some(sqlx::types::Json(demand))
         };
+        let basis = if basis.is_empty() {
+            None
+        } else {
+            Some(sqlx::types::Json(basis))
+        };
+        let updated = sqlx::query_as!(
+            PortfolioRow,
+            r#"
+            update
+                portfolio
+            set
+                as_of = $2,
+                demand = jsonb($3),
+                basis = jsonb($4)
+            where
+                id = $1
+            returning
+                id as "id!: PortfolioId",
+                as_of as "valid_from!: DateTime",
+                null as "valid_until?: DateTime",
+                bidder_id as "bidder_id!: BidderId",
+                json(app_data) as "app_data!: sqlx::types::Json<PortfolioData>",
+                json(demand) as "demand?: sqlx::types::Json<Weights<DemandId>>",
+                json(basis) as "basis?: sqlx::types::Json<Basis<ProductId>>"
+            "#,
+            portfolio_id,
+            as_of,
+            demand,
+            basis,
+        )
+        .fetch_optional(&self.writer)
+        .await?;
 
-        Ok(updated)
+        Ok(updated.map(Into::into))
     }
 
     async fn get_portfolio(
         &self,
         portfolio_id: Self::PortfolioId,
         as_of: Self::DateTime,
-    ) -> Result<
-        Option<
-            PortfolioRecord<
-                Self::DateTime,
-                Self::BidderId,
-                Self::PortfolioId,
-                Self::DemandId,
-                Self::ProductId,
-                PortfolioData,
-            >,
-        >,
-        Self::Error,
-    > {
+    ) -> Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error> {
         let query = sqlx::query_file_as!(
             PortfolioRow,
             "queries/get_portfolio_by_id.sql",
@@ -205,14 +258,24 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
         .fetch_optional(&self.reader)
         .await?;
 
-        Ok(query.map(|row| PortfolioRecord {
-            id: portfolio_id,
-            as_of,
-            bidder_id: row.bidder_id,
-            app_data: row.app_data.0,
-            demand_group: row.demand_group.map(|data| data.0).unwrap_or_default(),
-            product_group: row.product_group.map(|data| data.0).unwrap_or_default(),
-        }))
+        Ok(query.map(Into::into))
+    }
+
+    async fn get_portfolio_with_expanded_products(
+        &self,
+        portfolio_id: Self::PortfolioId,
+        as_of: Self::DateTime,
+    ) -> Result<Option<PortfolioRecord<Self, PortfolioData>>, Self::Error> {
+        let query = sqlx::query_file_as!(
+            PortfolioRow,
+            "queries/get_portfolio_by_id_expanded.sql",
+            portfolio_id,
+            as_of
+        )
+        .fetch_optional(&self.reader)
+        .await?;
+
+        Ok(query.map(Into::into))
     }
 
     /// Get the history of this portfolio's demands
@@ -220,29 +283,23 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
     /// This returns a list of records, each containing the state of the portfolio's demand group
     /// at a specific point in time. The records are ordered by `valid_from` in descending order
     /// and are grouped by `valid_from`. This is important for a `more` pointer to work correctly,
-    /// so the demand_group is actually a map of `demand_id` to `weight` at that point in time.
+    /// so the demand is actually a map of `demand_id` to `weight` at that point in time.
     async fn get_portfolio_demand_history(
         &self,
         portfolio_id: Self::PortfolioId,
         query: DateTimeRangeQuery<Self::DateTime>,
         limit: usize,
-    ) -> Result<
-        DateTimeRangeResponse<
-            ValueRecord<Self::DateTime, DemandGroup<Self::DemandId>>,
-            Self::DateTime,
-        >,
-        Self::Error,
-    > {
+    ) -> Result<DateTimeRangeResponse<Weights<Self::DemandId>, Self::DateTime>, Self::Error> {
         let limit_p1 = (limit + 1) as i64;
         let mut rows = sqlx::query_as!(
-            PortfolioDemandHistoryRow,
+            ValueRow::<Weights<DemandId>>,
             r#"
                 select
                     valid_from as "valid_from!: crate::types::DateTime",
                     valid_until as "valid_until?: crate::types::DateTime",
-                    json_group_object(demand_id, weight) as "demand_group!: sqlx::types::Json<DemandGroup<DemandId>>"
+                    json_group_object(demand_id, weight) as "value!: sqlx::types::Json<Weights<DemandId>>"
                 from
-                    demand_group
+                    portfolio_demand
                 where
                     portfolio_id = $1
                 and
@@ -284,29 +341,23 @@ impl<PortfolioData: Send + Unpin + serde::Serialize + serde::de::DeserializeOwne
     /// This returns a list of records, each containing the state of the portfolio's product group
     /// at a specific point in time. The records are ordered by `valid_from` in descending order
     /// and are grouped by `valid_from`. This is important for a `more` pointer to work correctly,
-    /// so the product_group is actually a map of `product_id` to `weight` at that point in time.
+    /// so the basis is actually a map of `product_id` to `weight` at that point in time.
     async fn get_portfolio_product_history(
         &self,
         portfolio_id: Self::PortfolioId,
         query: DateTimeRangeQuery<Self::DateTime>,
         limit: usize,
-    ) -> Result<
-        DateTimeRangeResponse<
-            ValueRecord<Self::DateTime, ProductGroup<Self::ProductId>>,
-            Self::DateTime,
-        >,
-        Self::Error,
-    > {
+    ) -> Result<DateTimeRangeResponse<Basis<Self::ProductId>, Self::DateTime>, Self::Error> {
         let limit_p1 = (limit + 1) as i64;
         let mut rows = sqlx::query_as!(
-            PortfolioProductHistoryRow,
+            ValueRow::<Basis<ProductId>>,
             r#"
                 select
                     valid_from as "valid_from!: crate::types::DateTime",
                     valid_until as "valid_until?: crate::types::DateTime",
-                    json_group_object(product_id, weight) as "product_group!: sqlx::types::Json<ProductGroup<ProductId>>"
+                    json_group_object(product_id, weight) as "value!: sqlx::types::Json<Basis<ProductId>>"
                 from
-                    product_group
+                    portfolio_product
                 where
                     portfolio_id = $1
                 and

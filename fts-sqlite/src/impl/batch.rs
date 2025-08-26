@@ -1,10 +1,35 @@
 use crate::Db;
-use crate::types::{BatchData, DemandId, OutcomeRow, PortfolioId, ProductId};
-use fts_core::models::{DateTimeRangeQuery, DateTimeRangeResponse, Map, OutcomeRecord};
+use crate::types::{DateTime, DemandId, PortfolioId, ProductId, ValueRow};
+use fts_core::models::{DateTimeRangeQuery, DateTimeRangeResponse};
 use fts_core::{
-    models::{DemandCurve, DemandCurveDto, DemandGroup, ProductGroup},
+    models::{Basis, DemandCurve, DemandCurveDto, Weights},
     ports::{BatchRepository, Solver},
 };
+use tokio::try_join;
+
+struct ActiveDemand {
+    id: DemandId,
+    expires: Option<DateTime>,
+    value: sqlx::types::Json<DemandCurveDto>,
+}
+
+impl ActiveDemand {
+    fn curve(self) -> DemandCurve {
+        // SAFETY: we only serialize validated demand curves
+        unsafe { DemandCurve::new_unchecked(self.value.0) }
+    }
+}
+
+struct ActivePortfolio {
+    id: PortfolioId,
+    expires: Option<DateTime>,
+    demand: sqlx::types::Json<Weights<DemandId>>,
+    basis: sqlx::types::Json<Basis<ProductId>>,
+}
+
+fn coalesce_min<T: Copy + Ord>(a: Option<T>, b: Option<T>) -> Option<T> {
+    a.or(b).min(b.or(a))
+}
 
 impl<T: Solver<DemandId, PortfolioId, ProductId>> BatchRepository<T> for Db
 where
@@ -19,33 +44,45 @@ where
         timestamp: Self::DateTime,
         solver: T,
         state: T::State,
-    ) -> Result<Result<(), T::Error>, Self::Error> {
+    ) -> Result<Result<Option<Self::DateTime>, T::Error>, Self::Error> {
+        let demand_records =
+            sqlx::query_file_as!(ActiveDemand, "queries/active_demands.sql", timestamp)
+                .fetch_all(&self.reader);
+
+        let portfolio_records =
+            sqlx::query_file_as!(ActivePortfolio, "queries/active_portfolios.sql", timestamp)
+                .fetch_all(&self.reader);
+
+        let (demand_records, portfolio_records) = try_join!(demand_records, portfolio_records)?;
+
+        let mut expires = coalesce_min(
+            demand_records.get(0).map(|x| x.expires).flatten(),
+            portfolio_records
+                .get(0)
+                .map(|portfolio| portfolio.expires)
+                .flatten(),
+        );
+
+        let demands = demand_records
+            .into_iter()
+            .map(|row| {
+                expires = coalesce_min(expires, row.expires);
+                (row.id, row.curve())
+            })
+            .collect();
+
+        let portfolios = portfolio_records
+            .into_iter()
+            .map(|row| {
+                expires = coalesce_min(expires, row.expires);
+                (row.id, (row.demand.0, row.basis.0))
+            })
+            .collect();
+
         // TODO: we may wish to filter the portfolios we include for administrative reasons./
         // what is the best way to do this? Perhaps we say this is (one of) the responsibilities
         // of the state, e.g. contains a HashSet of the "suspended" portfolio ids, and our solver is
         // responsible.... I actually like this a lot.
-        let data = sqlx::query_file_as!(BatchData, "queries/gather_batch.sql", timestamp)
-            .fetch_optional(&self.reader)
-            .await?;
-
-        let (demands, portfolios) = if let Some(BatchData {
-            demands,
-            portfolios,
-        }) = data
-        {
-            let demands = demands
-                .map(|x| x.0)
-                .unwrap_or_default()
-                .into_iter()
-                .map(|(key, value)| (key, unsafe { DemandCurve::new_unchecked(value) }))
-                .collect();
-
-            let portfolios = portfolios.map(|x| x.0).unwrap_or_default();
-
-            (demands, portfolios)
-        } else {
-            Default::default()
-        };
 
         let outcome = solver.solve(demands, portfolios, state).await;
 
@@ -68,7 +105,7 @@ where
                 )
                 .execute(&self.writer)
                 .await?;
-                Ok(Ok(()))
+                Ok(Ok(expires))
             }
             Err(error) => Ok(Err(error)),
         }
@@ -84,17 +121,15 @@ where
         portfolio_id: Self::PortfolioId,
         query: DateTimeRangeQuery<Self::DateTime>,
         limit: usize,
-    ) -> Result<
-        DateTimeRangeResponse<OutcomeRecord<Self::DateTime, T::PortfolioOutcome>, Self::DateTime>,
-        Self::Error,
-    > {
+    ) -> Result<DateTimeRangeResponse<T::PortfolioOutcome, Self::DateTime>, Self::Error> {
         let limit_p1 = (limit + 1) as i64;
         let mut rows = sqlx::query_as!(
-            OutcomeRow::<T::PortfolioOutcome>,
+            ValueRow::<T::PortfolioOutcome>,
             r#"
                 select
-                    valid_from as "as_of!: crate::types::DateTime",
-                    json(value) as "outcome!: sqlx::types::Json<T::PortfolioOutcome>"
+                    valid_from as "valid_from!: crate::types::DateTime",
+                    valid_until as "valid_until?: crate::types::DateTime",
+                    json(value) as "value!: sqlx::types::Json<T::PortfolioOutcome>"
                 from
                     portfolio_outcome
                 where
@@ -120,7 +155,7 @@ where
         let more = if rows.len() == limit + 1 {
             let extra = rows.pop().unwrap();
             Some(DateTimeRangeQuery {
-                before: Some(extra.as_of),
+                before: Some(extra.valid_from),
                 after: query.after,
             })
         } else {
@@ -128,13 +163,7 @@ where
         };
 
         Ok(DateTimeRangeResponse {
-            results: rows
-                .into_iter()
-                .map(|row| OutcomeRecord {
-                    as_of: row.as_of,
-                    outcome: row.outcome.0,
-                })
-                .collect(),
+            results: rows.into_iter().map(Into::into).collect(),
             more,
         })
     }
@@ -149,17 +178,15 @@ where
         product_id: Self::ProductId,
         query: DateTimeRangeQuery<Self::DateTime>,
         limit: usize,
-    ) -> Result<
-        DateTimeRangeResponse<OutcomeRecord<Self::DateTime, T::ProductOutcome>, Self::DateTime>,
-        Self::Error,
-    > {
+    ) -> Result<DateTimeRangeResponse<T::ProductOutcome, Self::DateTime>, Self::Error> {
         let limit_p1 = (limit + 1) as i64;
         let mut rows = sqlx::query_as!(
-            OutcomeRow::<T::ProductOutcome>,
+            ValueRow::<T::ProductOutcome>,
             r#"
                 select
-                    valid_from as "as_of!: crate::types::DateTime",
-                    json(value) as "outcome!: sqlx::types::Json<T::ProductOutcome>"
+                    valid_from as "valid_from!: crate::types::DateTime",
+                    valid_until as "valid_until?: crate::types::DateTime",
+                    json(value) as "value!: sqlx::types::Json<T::ProductOutcome>"
                 from
                     product_outcome
                 where
@@ -185,7 +212,7 @@ where
         let more = if rows.len() == limit + 1 {
             let extra = rows.pop().unwrap();
             Some(DateTimeRangeQuery {
-                before: Some(extra.as_of),
+                before: Some(extra.valid_from),
                 after: query.after,
             })
         } else {
@@ -193,13 +220,7 @@ where
         };
 
         Ok(DateTimeRangeResponse {
-            results: rows
-                .into_iter()
-                .map(|row| OutcomeRecord {
-                    as_of: row.as_of,
-                    outcome: row.outcome.0,
-                })
-                .collect(),
+            results: rows.into_iter().map(Into::into).collect(),
             more,
         })
     }

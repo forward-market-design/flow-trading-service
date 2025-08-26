@@ -1,0 +1,56 @@
+{
+  "db_name": "SQLite",
+  "query": "\n                select\n                    demand.id as \"id!: DemandId\",\n                    as_of as \"valid_from!: DateTime\",\n                    null as \"valid_until?: DateTime\",\n                    bidder_id as \"bidder_id!: BidderId\",\n                    json(app_data) as \"app_data!: sqlx::types::Json<DemandData>\",\n                    json(curve_data) as \"curve_data?: sqlx::types::Json<DemandCurveDto>\",\n                    null as \"portfolios?: sqlx::types::Json<Sum<PortfolioId>>\"\n                from\n                    demand\n                join\n                    json_each($1) as bidder_ids\n                on\n                    demand.bidder_id = bidder_ids.atom\n                where\n                    curve_data is not null\n                ",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: DemandId",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "valid_from!: DateTime",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "valid_until?: DateTime",
+        "ordinal": 2,
+        "type_info": "Null"
+      },
+      {
+        "name": "bidder_id!: BidderId",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "app_data!: sqlx::types::Json<DemandData>",
+        "ordinal": 4,
+        "type_info": "Null"
+      },
+      {
+        "name": "curve_data?: sqlx::types::Json<DemandCurveDto>",
+        "ordinal": 5,
+        "type_info": "Null"
+      },
+      {
+        "name": "portfolios?: sqlx::types::Json<Sum<PortfolioId>>",
+        "ordinal": 6,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "242999954b6d4fc6b971daf282a667c8b85954ee2a57b8ea219098e08df6b515"
+}

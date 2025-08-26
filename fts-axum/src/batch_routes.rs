@@ -43,7 +43,8 @@ async fn batch_solve<T: ApiApplication>(
     if app.can_run_batch(&auth).await {
         let db = app.database();
 
-        db.run_batch(as_of.clone(), app.solver(), Default::default())
+        let _expires = db
+            .run_batch(as_of.clone(), app.solver(), Default::default())
             .await
             .map_err(|err| {
                 event!(Level::ERROR, err = err.to_string());
@@ -59,6 +60,8 @@ async fn batch_solve<T: ApiApplication>(
                     format!("failed to solve batch"),
                 )
             })?;
+
+        // assert _expires.is_none()?
 
         Ok((StatusCode::OK, format!("{}", as_of)))
     } else {

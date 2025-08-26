@@ -1,6 +1,6 @@
 use crate::{PortfolioOutcome, ProductOutcome, disaggregate};
 use fts_core::{
-    models::{DemandCurve, DemandGroup, Map, ProductGroup},
+    models::{Basis, DemandCurve, Map, Weights},
     ports::Solver,
 };
 use osqp::{CscMatrix, Problem, Settings, Solution, Status};
@@ -42,7 +42,7 @@ impl<
     fn solve(
         settings: Settings,
         demand_curves: Map<DemandId, DemandCurve>,
-        portfolios: Map<PortfolioId, (DemandGroup<DemandId>, ProductGroup<ProductId>)>,
+        portfolios: Map<PortfolioId, (Weights<DemandId>, Basis<ProductId>)>,
     ) -> Result<
         (
             Map<PortfolioId, PortfolioOutcome>,
@@ -83,9 +83,9 @@ impl<
         let mut a_colptr = Vec::new();
 
         // We begin by setting up the portfolio variables.
-        for (demand_group, product_group) in portfolios.values() {
+        for (demand, basis) in portfolios.values() {
             // We can skip any portfolio variable that does not have associated products or demands
-            if product_group.len() == 0 || demand_group.len() == 0 {
+            if basis.len() == 0 || demand.len() == 0 {
                 continue;
             }
 
@@ -97,7 +97,7 @@ impl<
             a_colptr.push(a_nzval.len());
 
             // We copy the product weights into the matrix
-            for (product_id, &weight) in product_group.iter() {
+            for (product_id, &weight) in basis.iter() {
                 // SAFETY: this unwrap() is guaranteed by the logic in prepare()
                 let idx = product_outcomes.get_index_of(product_id).unwrap();
                 a_nzval.push(weight);
@@ -105,7 +105,7 @@ impl<
             }
 
             // We copy the demand weights into the matrix as well
-            for (demand_id, &weight) in demand_group.iter() {
+            for (demand_id, &weight) in demand.iter() {
                 // SAFETY: this unwrap() is guaranteed by the logic in prepare()
                 let idx = demand_curves.get_index_of(demand_id).unwrap();
                 a_nzval.push(weight);
@@ -226,7 +226,7 @@ impl<
     async fn solve(
         &self,
         demand_curves: Map<DemandId, DemandCurve>,
-        portfolios: Map<PortfolioId, (DemandGroup<DemandId>, ProductGroup<ProductId>)>,
+        portfolios: Map<PortfolioId, (Weights<DemandId>, Basis<ProductId>)>,
         _state: Self::State,
     ) -> Result<
         (

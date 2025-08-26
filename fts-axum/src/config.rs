@@ -21,6 +21,7 @@ use std::net::SocketAddr;
 /// let config = AxumConfig {
 ///     bind_address: "127.0.0.1:3000".parse().unwrap(),
 ///     page_limit: 50,
+///     auto_solve: false,
 /// };
 /// ```
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -32,6 +33,10 @@ pub struct AxumConfig {
     /// The page limit for paginated responses
     #[serde(default = "default_page_limit")]
     pub page_limit: usize,
+
+    /// A flag that, if true, will execute a full auction solve on every bid update
+    #[serde(default)]
+    pub auto_solve: bool,
 }
 
 fn default_bind_address() -> SocketAddr {
@@ -47,6 +52,7 @@ impl Default for AxumConfig {
         Self {
             bind_address: default_bind_address(),
             page_limit: default_page_limit(),
+            auto_solve: Default::default(),
         }
     }
 }

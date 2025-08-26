@@ -2,7 +2,7 @@ mod common;
 
 use common::TestApp;
 use fts_core::{
-    models::{DateTimeRangeQuery, DemandGroup, ProductGroup},
+    models::{Basis, DateTimeRangeQuery, DemandCurve, Weights},
     ports::{Application, DemandRepository as _, PortfolioRepository, ProductRepository as _},
 };
 use fts_sqlite::{Db, config::SqliteConfig, types::BidderId};
@@ -16,13 +16,13 @@ async fn test_portfolio_history() -> anyhow::Result<()> {
     let db = app.database();
 
     let bidder_id = BidderId(uuid::Uuid::new_v4());
-    let portfolio_id = app.generate_portfolio_id(&());
+    let portfolio_id = app.generate_portfolio_id(&()).0;
 
     // Create some products and demands for testing
-    let product1 = app.generate_product_id(&());
-    let product2 = app.generate_product_id(&());
-    let demand1 = app.generate_demand_id(&());
-    let demand2 = app.generate_demand_id(&());
+    let product1 = app.generate_product_id(&()).0;
+    let product2 = app.generate_product_id(&()).0;
+    let demand1 = app.generate_demand_id(&()).0;
+    let demand2 = app.generate_demand_id(&()).0;
 
     // Create products and demands
     db.create_product(product1, (), now.into()).await?;
@@ -33,49 +33,49 @@ async fn test_portfolio_history() -> anyhow::Result<()> {
     )
     .await?;
 
-    db.create_demand(demand1, bidder_id, (), None, now.into())
+    db.create_demand(demand1, bidder_id, (), DemandCurve::None, now.into())
         .await?;
 
     db.create_demand(
         demand2,
         bidder_id,
         (),
-        None,
+        DemandCurve::None,
         (now + std::time::Duration::from_secs(1)).into(),
     )
     .await?;
 
     // Create initial portfolio
-    let mut initial_product_group = ProductGroup::default();
-    initial_product_group.insert(product1, 1.0);
+    let mut initial_basis = Basis::default();
+    initial_basis.insert(product1, 1.0);
 
-    let mut initial_demand_group = DemandGroup::default();
-    initial_demand_group.insert(demand1, 0.5);
+    let mut initial_demand = Weights::default();
+    initial_demand.insert(demand1, 0.5);
 
     db.create_portfolio(
         portfolio_id,
         bidder_id,
         (),
-        initial_demand_group,
-        initial_product_group,
+        initial_demand,
+        initial_basis,
         (now + std::time::Duration::from_secs(2)).into(),
     )
     .await?;
 
     // Update portfolio to include more products and demands
-    let mut updated_product_group = ProductGroup::default();
-    updated_product_group.insert(product1, 0.7);
-    updated_product_group.insert(product2, 1.5);
+    let mut updated_basis = Basis::default();
+    updated_basis.insert(product1, 0.7);
+    updated_basis.insert(product2, 1.5);
 
-    let mut updated_demand_group = DemandGroup::default();
-    updated_demand_group.insert(demand1, 0.3);
-    updated_demand_group.insert(demand2, 0.8);
+    let mut updated_demand = Weights::default();
+    updated_demand.insert(demand1, 0.3);
+    updated_demand.insert(demand2, 0.8);
 
     <Db as PortfolioRepository<()>>::update_portfolio(
         db,
         portfolio_id,
-        Some(updated_demand_group),
-        Some(updated_product_group),
+        updated_demand,
+        updated_basis,
         (now + std::time::Duration::from_secs(4)).into(),
     )
     .await?;

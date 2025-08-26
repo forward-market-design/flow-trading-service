@@ -3,14 +3,14 @@ create table portfolio (
     as_of text not null,
     bidder_id text not null,
     app_data blob not null, -- Json<Any>
-    demand_group blob, -- Option<Json<Record<DemandId, number>>>
-    product_group blob -- Option<Json<Record<ProductId, number>>>
+    demand blob, -- Option<Json<Record<DemandId, number>>>
+    basis blob -- Option<Json<Record<ProductId, number>>>
 ) strict, without rowid;
 --
 create index portfolio_by_bidder on portfolio (bidder_id, id);
 --
 -- we track the lifetimes of the portfolio's demand group
-create table demand_group (
+create table portfolio_demand (
     portfolio_id text not null,
     demand_id text not null,
     weight real not null,
@@ -26,7 +26,7 @@ create table demand_group (
 ) strict, without rowid;
 --
 -- we track the lifetimes of the portfolio's product group
-create table product_group (
+create table portfolio_product (
     portfolio_id text not null,
     product_id text not null,
     weight real not null,
@@ -45,7 +45,7 @@ create trigger portfolio_insert_trigger
 after insert on portfolio
 begin
 -- track the demand lifetime
-insert into demand_group (
+insert into portfolio_demand (
     portfolio_id, demand_id, weight, valid_from, valid_until
 )
 select
@@ -55,10 +55,10 @@ select
     new.as_of,
     null
 from
-    json_each(new.demand_group);
+    json_each(new.demand);
     -- track the product lifetime
 insert into
-product_group (portfolio_id, product_id, weight, valid_from, valid_until)
+portfolio_product (portfolio_id, product_id, weight, valid_from, valid_until)
 select
     new.id, -- noqa: RF01
     key,
@@ -66,13 +66,13 @@ select
     new.as_of,
     null
 from
-    json_each(new.product_group);
+    json_each(new.basis);
 end;
--- when an existing portfolio has its demand_group updated:
-create trigger portfolio_update_demand_group_trigger
-after update of demand_group on portfolio
+-- when an existing portfolio has its demand updated:
+create trigger portfolio_update_demand_trigger
+after update of demand on portfolio
 begin
-update demand_group
+update portfolio_demand
 set
     valid_until = new.as_of
 where
@@ -81,7 +81,7 @@ where
     valid_from <= old.as_of
     and
     valid_until is null;
-insert into demand_group (
+insert into portfolio_demand (
     portfolio_id,
     demand_id,
     weight,
@@ -95,13 +95,13 @@ select
     new.as_of,
     null
 from
-    json_each(new.demand_group);
+    json_each(new.demand);
 end;
--- when an existing portfolio has its product_group updated:
-create trigger portfolio_update_product_group_trigger
-after update of product_group on portfolio
+-- when an existing portfolio has its basis updated:
+create trigger portfolio_update_basis_trigger
+after update of basis on portfolio
 begin
-update product_group
+update portfolio_product
 set
     valid_until = new.as_of
 where
@@ -110,7 +110,7 @@ where
     valid_from <= old.as_of
     and
     valid_until is null;
-insert into product_group (
+insert into portfolio_product (
     portfolio_id,
     product_id,
     weight,
@@ -124,5 +124,5 @@ select
     new.as_of,
     null
 from
-    json_each(new.product_group);
+    json_each(new.basis);
 end;

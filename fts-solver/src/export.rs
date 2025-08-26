@@ -1,5 +1,5 @@
 use crate::{HashSet, Segment, disaggregate};
-use fts_core::models::{DemandCurve, DemandGroup, Map, ProductGroup};
+use fts_core::models::{Basis, DemandCurve, Map, Weights};
 use std::fmt::Display;
 use std::hash::Hash;
 use std::io::Write;
@@ -12,7 +12,7 @@ pub fn export_mps<
     ProductId: Display + Eq + Hash + Clone + Ord,
 >(
     demand_curves: Map<DemandId, DemandCurve>,
-    portfolios: Map<PortfolioId, (DemandGroup<DemandId>, ProductGroup<ProductId>)>,
+    portfolios: Map<PortfolioId, (Weights<DemandId>, Basis<ProductId>)>,
     buffer: &mut impl Write,
 ) -> Result<(), std::io::Error> {
     // MPS is a somewhat archaic format, but is easy enough to generate.
@@ -135,7 +135,7 @@ pub fn export_lp<
     ProductId: Display + Eq + Hash + Clone + Ord,
 >(
     demand_curves: Map<DemandId, DemandCurve>,
-    portfolios: Map<PortfolioId, (DemandGroup<DemandId>, ProductGroup<ProductId>)>,
+    portfolios: Map<PortfolioId, (Weights<DemandId>, Basis<ProductId>)>,
     buffer: &mut impl Write,
 ) -> Result<(), std::io::Error> {
     // This prepare method canonicalizes the input in an appropriate manner

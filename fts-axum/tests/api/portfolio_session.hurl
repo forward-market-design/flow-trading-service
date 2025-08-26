@@ -70,23 +70,23 @@ POST {{baseurl}}/portfolio
 Authorization: Bearer bidder_id={{bidder1}}&can_create_bid=true
 {
     "app_data": "{{portfolio1}}",
-    "demand_group": { "{{demand1}}": 1 },
-    "product_group": { "{{product1}}": 1 }
+    "demand": { "{{demand1}}": 1 },
+    "basis": { "{{product1}}": 1 }
 }
 HTTP 201
 [Asserts]
-jsonpath "$.portfolio_id" == "{{portfolio1}}"
+jsonpath "$.id" == "{{portfolio1}}"
 
 POST {{baseurl}}/portfolio
 Authorization: Bearer bidder_id={{bidder1}}&can_create_bid=true
 {
     "app_data": "{{portfolio2}}",
-    "demand_group": { "{{demand1}}": 2, "{{demand2}}": 1 },
-    "product_group": { "{{product2}}": 1 }
+    "demand": { "{{demand1}}": 2, "{{demand2}}": 1 },
+    "basis": { "{{product2}}": 1 }
 }
 HTTP 201
 [Asserts]
-jsonpath "$.portfolio_id" == "{{portfolio2}}"
+jsonpath "$.id" == "{{portfolio2}}"
 
 GET {{baseurl}}/portfolio/{{portfolio2}}/demand-history
 Authorization: Bearer bidder_id={{bidder1}}&can_read_bid=true
@@ -109,8 +109,8 @@ Authorization: Bearer bidder_id={{bidder1}}&can_query_bid=true
 HTTP 200
 [Asserts]
 jsonpath "$" count == 2
-jsonpath "$" contains "{{portfolio1}}"
-jsonpath "$" contains "{{portfolio2}}"
+jsonpath "$[*].id" contains "{{portfolio1}}"
+jsonpath "$[*].id" contains "{{portfolio2}}"
 
 
 # Let's make sure the portfolios are associated to the demand curves
@@ -118,22 +118,22 @@ GET {{baseurl}}/demand/{{demand1}}
 Authorization: Bearer bidder_id={{bidder1}}&can_read_bid=true
 HTTP 200
 [Asserts]
-jsonpath "$.portfolio_group[*]" count == 2
-jsonpath "$.portfolio_group['{{portfolio1}}']" == 1
-jsonpath "$.portfolio_group['{{portfolio2}}']" == 2
+jsonpath "$.portfolios[*]" count == 2
+jsonpath "$.portfolios['{{portfolio1}}']" == 1
+jsonpath "$.portfolios['{{portfolio2}}']" == 2
 
 GET {{baseurl}}/demand/{{demand2}}
 Authorization: Bearer bidder_id={{bidder1}}&can_read_bid=true
 HTTP 200
 [Asserts]
-jsonpath "$.portfolio_group[*]" count == 1
-jsonpath "$.portfolio_group['{{portfolio2}}']" == 1
+jsonpath "$.portfolios[*]" count == 1
+jsonpath "$.portfolios['{{portfolio2}}']" == 1
 
 
 # Let's update portfolio 2 to add product3
 PATCH {{baseurl}}/portfolio/{{portfolio2}}
 Authorization: Bearer bidder_id={{bidder1}}&can_update_bid=true
-{ "product_group": { "{{product2}}": 1, "{{product3}}": 1 } }
+{ "basis": { "{{product2}}": 1, "{{product3}}": 1 } }
 HTTP 200
 
 GET {{baseurl}}/portfolio/{{portfolio2}}/product-history
@@ -148,14 +148,14 @@ GET {{baseurl}}/portfolio/{{portfolio2}}
 Authorization: Bearer bidder_id={{bidder1}}&can_read_bid=true
 HTTP 200
 [Asserts]
-jsonpath "$.product_group[*]" count == 2
-jsonpath "$.product_group['{{product3}}']" == 1
-jsonpath "$.demand_group[*]" count == 2
+jsonpath "$.basis[*]" count == 2
+jsonpath "$.basis['{{product3}}']" == 1
+jsonpath "$.demand[*]" count == 2
 
 # Now we tweak the coefficient of demand1 in portfolio2
 PATCH {{baseurl}}/portfolio/{{portfolio2}}
 Authorization: Bearer bidder_id={{bidder1}}&can_update_bid=true
-{ "demand_group": { "{{demand1}}": 1 } }
+{ "demand": { "{{demand1}}": 1 } }
 HTTP 200
 
 GET {{baseurl}}/portfolio/{{portfolio2}}/demand-history
@@ -169,13 +169,13 @@ GET {{baseurl}}/portfolio/{{portfolio2}}
 Authorization: Bearer bidder_id={{bidder1}}&can_read_bid=true
 HTTP 200
 [Asserts]
-jsonpath "$.demand_group[*]" count == 1
-jsonpath "$.demand_group['{{demand1}}']" == 1
+jsonpath "$.demand[*]" count == 1
+jsonpath "$.demand['{{demand1}}']" == 1
 
-# Finally we jointly change both the demand_group and product_group
+# Finally we jointly change both the demand and basis
 PATCH {{baseurl}}/portfolio/{{portfolio2}}
 Authorization: Bearer bidder_id={{bidder1}}&can_update_bid=true
-{ "demand_group": { "{{demand2}}": 1 }, "product_group": { "{{product3}}": 1 } }
+{ "demand": { "{{demand2}}": 1 }, "basis": { "{{product3}}": 1 } }
 HTTP 200
 
 GET {{baseurl}}/portfolio/{{portfolio2}}/demand-history
@@ -196,10 +196,10 @@ GET {{baseurl}}/portfolio/{{portfolio2}}
 Authorization: Bearer bidder_id={{bidder1}}&can_read_bid=true
 HTTP 200
 [Asserts]
-jsonpath "$.demand_group[*]" count == 1
-jsonpath "$.demand_group['{{demand2}}']" == 1
-jsonpath "$.product_group[*]" count == 1
-jsonpath "$.product_group['{{product3}}']" == 1
+jsonpath "$.demand[*]" count == 1
+jsonpath "$.demand['{{demand2}}']" == 1
+jsonpath "$.basis[*]" count == 1
+jsonpath "$.basis['{{product3}}']" == 1
 
 # Now we delete the portfolio
 DELETE {{baseurl}}/portfolio/{{portfolio2}}
@@ -210,8 +210,8 @@ GET {{baseurl}}/portfolio/{{portfolio2}}
 Authorization: Bearer bidder_id={{bidder1}}&can_read_bid=true
 HTTP 200
 [Asserts]
-jsonpath "$.demand_group[*]" count == 0
-jsonpath "$.product_group[*]" count == 0
+jsonpath "$.demand[*]" count == 0
+jsonpath "$.basis[*]" count == 0
 
 GET {{baseurl}}/portfolio/{{portfolio2}}/demand-history
 Authorization: Bearer bidder_id={{bidder1}}&can_read_bid=true
@@ -233,7 +233,7 @@ GET {{baseurl}}/demand/{{demand2}}
 Authorization: Bearer bidder_id={{bidder1}}&can_read_bid=true
 HTTP 200
 [Asserts]
-jsonpath "$.portfolio_group[*]" count == 0
+jsonpath "$.portfolios[*]" count == 0
 
 # We should also only have 1 "active" portfolio
 GET {{baseurl}}/portfolio
@@ -242,4 +242,4 @@ HTTP 200
 Content-Type: application/json
 [Asserts]
 jsonpath "$" count == 1
-jsonpath "$[0]" == "{{portfolio1}}"
+jsonpath "$[0].id" == "{{portfolio1}}"
