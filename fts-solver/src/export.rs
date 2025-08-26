@@ -1,5 +1,5 @@
 use crate::{HashSet, Segment, disaggregate};
-use fts_core::models::{DemandCurve, Weights, Map, Basis};
+use fts_core::models::{Basis, DemandCurve, Map, Weights};
 use std::fmt::Display;
 use std::hash::Hash;
 use std::io::Write;

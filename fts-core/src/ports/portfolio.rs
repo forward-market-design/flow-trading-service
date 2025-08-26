@@ -1,6 +1,4 @@
-use crate::models::{
-    Basis, DateTimeRangeQuery, DateTimeRangeResponse, Weights, PortfolioRecord,
-};
+use crate::models::{Basis, DateTimeRangeQuery, DateTimeRangeResponse, PortfolioRecord, Weights};
 
 /// Repository interface for portfolio CRUD operations and history tracking.
 ///

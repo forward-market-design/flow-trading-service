@@ -8,7 +8,7 @@ use axum::{
 };
 use axum_extra::TypedHeader;
 use fts_core::{
-    models::{DateTimeRangeQuery, DateTimeRangeResponse, Weights, Basis},
+    models::{Basis, DateTimeRangeQuery, DateTimeRangeResponse, Weights},
     ports::{PortfolioRepository as _, Repository},
 };
 use headers::{Authorization, authorization::Bearer};

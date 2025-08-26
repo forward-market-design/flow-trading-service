@@ -1,7 +1,7 @@
 use crate::{PortfolioOutcome, ProductOutcome, disaggregate};
 use clarabel::{algebra::*, solver::*};
 use fts_core::{
-    models::{Basis, DemandCurve, Weights, Map},
+    models::{Basis, DemandCurve, Map, Weights},
     ports::Solver,
 };
 use std::{hash::Hash, marker::PhantomData};

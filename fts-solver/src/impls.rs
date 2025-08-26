@@ -1,5 +1,5 @@
 use crate::{HashSet, PortfolioOutcome, ProductOutcome};
-use fts_core::models::{Basis, DemandCurve, Weights, Map};
+use fts_core::models::{Basis, DemandCurve, Map, Weights};
 use std::hash::Hash;
 
 /// Implementation using the Clarabel interior point solver

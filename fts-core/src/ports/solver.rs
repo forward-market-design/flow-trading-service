@@ -1,4 +1,4 @@
-use crate::models::{DemandCurve, Weights, Map, Basis};
+use crate::models::{Basis, DemandCurve, Map, Weights};
 use std::hash::Hash;
 
 /// Interface for optimization solvers that compute market clearing solutions.

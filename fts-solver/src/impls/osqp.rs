@@ -1,6 +1,6 @@
 use crate::{PortfolioOutcome, ProductOutcome, disaggregate};
 use fts_core::{
-    models::{Basis, DemandCurve, Weights, Map},
+    models::{Basis, DemandCurve, Map, Weights},
     ports::Solver,
 };
 use osqp::{CscMatrix, Problem, Settings, Solution, Status};

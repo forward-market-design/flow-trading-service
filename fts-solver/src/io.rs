@@ -1,6 +1,6 @@
 use crate::export::{export_lp, export_mps};
 use fts_core::{
-    models::{Basis, DemandCurve, Weights, Map},
+    models::{Basis, DemandCurve, Map, Weights},
     ports::Solver,
 };
 use serde::{Deserialize, Serialize};

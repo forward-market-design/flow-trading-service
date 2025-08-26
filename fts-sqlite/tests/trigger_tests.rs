@@ -2,7 +2,7 @@ mod common;
 
 use common::TestApp;
 use fts_core::{
-    models::{Basis, ConstantCurve, DateTimeRangeQuery, DemandCurve, Weights, Point, PwlCurve},
+    models::{Basis, ConstantCurve, DateTimeRangeQuery, DemandCurve, Point, PwlCurve, Weights},
     ports::{Application, DemandRepository, PortfolioRepository, ProductRepository},
 };
 use fts_sqlite::{Db, config::SqliteConfig, types::BidderId};
@@ -114,7 +114,7 @@ async fn test_portfolio_triggers_empty_groups() -> anyhow::Result<()> {
         bidder_id,
         (),
         Weights::default(), // empty demand group
-        Basis::default(),       // empty product group
+        Basis::default(),   // empty product group
         now.into(),
     )
     .await?;
