@@ -1,7 +1,7 @@
-use crate::{PortfolioOutcome, ProductOutcome, disaggregate};
+use crate::disaggregate;
 use fts_core::{
     models::{Basis, DemandCurve, Map, Weights},
-    ports::Solver,
+    ports::{Outcome, Solver},
 };
 use osqp::{CscMatrix, Problem, Settings, Solution, Status};
 use std::{hash::Hash, marker::PhantomData};
@@ -43,13 +43,7 @@ impl<
         settings: Settings,
         demand_curves: Map<DemandId, DemandCurve>,
         portfolios: Map<PortfolioId, (Weights<DemandId>, Basis<ProductId>)>,
-    ) -> Result<
-        (
-            Map<PortfolioId, PortfolioOutcome>,
-            Map<ProductId, ProductOutcome>,
-        ),
-        OsqpStatus,
-    > {
+    ) -> Result<(Map<PortfolioId, Outcome<()>>, Map<ProductId, Outcome<()>>), OsqpStatus> {
         // This prepare method canonicalizes the input in a manner appropriate for naive CSC construction
         let (demand_curves, portfolios, mut portfolio_outcomes, mut product_outcomes) =
             super::prepare(demand_curves, portfolios);
@@ -218,8 +212,8 @@ impl<
 > Solver<DemandId, PortfolioId, ProductId> for OsqpSolver<DemandId, PortfolioId, ProductId>
 {
     type Error = tokio::task::JoinError;
-    type PortfolioOutcome = PortfolioOutcome;
-    type ProductOutcome = ProductOutcome;
+    type PortfolioOutcome = ();
+    type ProductOutcome = ();
 
     type State = Option<Map<PortfolioId>>;
 
@@ -230,8 +224,8 @@ impl<
         _state: Self::State,
     ) -> Result<
         (
-            Map<PortfolioId, Self::PortfolioOutcome>,
-            Map<ProductId, Self::ProductOutcome>,
+            Map<PortfolioId, Outcome<Self::PortfolioOutcome>>,
+            Map<ProductId, Outcome<Self::ProductOutcome>>,
         ),
         Self::Error,
     > {

@@ -1,6 +1,7 @@
 use crate::Db;
 use crate::types::{DateTime, DemandId, PortfolioId, ProductId, ValueRow};
 use fts_core::models::{DateTimeRangeQuery, DateTimeRangeResponse};
+use fts_core::ports::Outcome;
 use fts_core::{
     models::{Basis, DemandCurve, DemandCurveDto, Weights},
     ports::{BatchRepository, Solver},
@@ -121,15 +122,16 @@ where
         portfolio_id: Self::PortfolioId,
         query: DateTimeRangeQuery<Self::DateTime>,
         limit: usize,
-    ) -> Result<DateTimeRangeResponse<T::PortfolioOutcome, Self::DateTime>, Self::Error> {
+    ) -> Result<DateTimeRangeResponse<Outcome<T::PortfolioOutcome>, Self::DateTime>, Self::Error>
+    {
         let limit_p1 = (limit + 1) as i64;
         let mut rows = sqlx::query_as!(
-            ValueRow::<T::PortfolioOutcome>,
+            ValueRow::<Outcome<T::PortfolioOutcome>>,
             r#"
                 select
                     valid_from as "valid_from!: crate::types::DateTime",
                     valid_until as "valid_until?: crate::types::DateTime",
-                    json(value) as "value!: sqlx::types::Json<T::PortfolioOutcome>"
+                    json_object('trade', trade, 'price', price, 'data', data) as "value!: sqlx::types::Json<Outcome<T::PortfolioOutcome>>"
                 from
                     portfolio_outcome
                 where
@@ -178,15 +180,16 @@ where
         product_id: Self::ProductId,
         query: DateTimeRangeQuery<Self::DateTime>,
         limit: usize,
-    ) -> Result<DateTimeRangeResponse<T::ProductOutcome, Self::DateTime>, Self::Error> {
+    ) -> Result<DateTimeRangeResponse<Outcome<T::ProductOutcome>, Self::DateTime>, Self::Error>
+    {
         let limit_p1 = (limit + 1) as i64;
         let mut rows = sqlx::query_as!(
-            ValueRow::<T::ProductOutcome>,
+            ValueRow::<Outcome<T::ProductOutcome>>,
             r#"
                 select
                     valid_from as "valid_from!: crate::types::DateTime",
                     valid_until as "valid_until?: crate::types::DateTime",
-                    json(value) as "value!: sqlx::types::Json<T::ProductOutcome>"
+                    json_object('trade', trade, 'price', price, 'data', data) as "value!: sqlx::types::Json<Outcome<T::ProductOutcome>>"
                 from
                     product_outcome
                 where

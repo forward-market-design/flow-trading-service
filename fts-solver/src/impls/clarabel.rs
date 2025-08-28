@@ -1,8 +1,8 @@
-use crate::{PortfolioOutcome, ProductOutcome, disaggregate};
+use crate::disaggregate;
 use clarabel::{algebra::*, solver::*};
 use fts_core::{
     models::{Basis, DemandCurve, Map, Weights},
-    ports::Solver,
+    ports::{Outcome, Solver},
 };
 use std::{hash::Hash, marker::PhantomData};
 
@@ -41,13 +41,7 @@ impl<
         settings: DefaultSettings<f64>,
         demand_curves: Map<DemandId, DemandCurve>,
         portfolios: Map<PortfolioId, (Weights<DemandId>, Basis<ProductId>)>,
-    ) -> Result<
-        (
-            Map<PortfolioId, PortfolioOutcome>,
-            Map<ProductId, ProductOutcome>,
-        ),
-        SolverStatus,
-    > {
+    ) -> Result<(Map<PortfolioId, Outcome<()>>, Map<ProductId, Outcome<()>>), SolverStatus> {
         // This prepare method canonicalizes the input in a manner appropriate for naive CSC construction
         let (demand_curves, portfolios, mut portfolio_outcomes, mut product_outcomes) =
             super::prepare(demand_curves, portfolios);
@@ -228,9 +222,8 @@ impl<
 > Solver<DemandId, PortfolioId, ProductId> for ClarabelSolver<DemandId, PortfolioId, ProductId>
 {
     type Error = tokio::task::JoinError;
-    type PortfolioOutcome = PortfolioOutcome;
-    type ProductOutcome = ProductOutcome;
-
+    type PortfolioOutcome = ();
+    type ProductOutcome = ();
     type State = ();
 
     async fn solve(
@@ -240,8 +233,8 @@ impl<
         _state: Self::State,
     ) -> Result<
         (
-            Map<PortfolioId, Self::PortfolioOutcome>,
-            Map<ProductId, Self::ProductOutcome>,
+            Map<PortfolioId, Outcome<Self::PortfolioOutcome>>,
+            Map<ProductId, Outcome<Self::ProductOutcome>>,
         ),
         Self::Error,
     > {
