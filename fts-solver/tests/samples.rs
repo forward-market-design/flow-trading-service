@@ -104,7 +104,7 @@ fn check_lp_export(#[files("tests/samples/**/export.lp")] output: PathBuf) {
         .unwrap();
     let mut export_bytes = Vec::with_capacity(output_size);
     auction.export_lp(&mut export_bytes).unwrap();
-    assert!(output_bytes == export_bytes, "mps files are not identical");
+    assert!(output_bytes == export_bytes, "lp files are not identical");
 }
 
 fn cmp(
