@@ -1,6 +1,32 @@
 use crate::models::{Basis, DemandCurve, Map, Weights};
 use std::hash::Hash;
 
+/// A generic outcome for tradeable things.
+///
+/// At a minimum, it must include a semantically-relevant trade amount and optional price
+#[cfg_attr(feature = "schemars", derive(schemars::JsonSchema), schemars(inline))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Outcome<Data> {
+    /// The amount traded of the underyling thing. Must be finite and non-nan.
+    pub trade: f64,
+
+    /// The price of the underlying thing. Must be finite and non-nan, or None.
+    pub price: Option<f64>,
+
+    /// Additional data to attach to the outcome, such as an aggregate demand curve or other statistic.
+    pub data: Data,
+}
+
+impl<Data: Default> Default for Outcome<Data> {
+    fn default() -> Self {
+        Self {
+            trade: 0.0,
+            price: None,
+            data: Default::default(),
+        }
+    }
+}
+
 /// Interface for optimization solvers that compute market clearing solutions.
 ///
 /// A solver takes demand curves and portfolio configurations as input and
@@ -46,8 +72,8 @@ pub trait Solver<DemandId: Eq + Hash, PortfolioId: Eq + Hash, ProductId: Eq + Ha
     ) -> impl Future<
         Output = Result<
             (
-                Map<PortfolioId, Self::PortfolioOutcome>,
-                Map<ProductId, Self::ProductOutcome>,
+                Map<PortfolioId, Outcome<Self::PortfolioOutcome>>,
+                Map<ProductId, Outcome<Self::ProductOutcome>>,
             ),
             Self::Error,
         >,

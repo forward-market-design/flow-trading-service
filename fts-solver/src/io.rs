@@ -50,9 +50,9 @@ pub struct Auction {
 #[derive(Serialize, Deserialize)]
 pub struct Outcome<PortfolioOutcome, ProductOutcome> {
     /// the portfolio outcomes
-    pub portfolios: Map<PortfolioId, PortfolioOutcome>,
+    pub portfolios: Map<PortfolioId, fts_core::ports::Outcome<PortfolioOutcome>>,
     /// the product outcomes
-    pub products: Map<ProductId, ProductOutcome>,
+    pub products: Map<ProductId, fts_core::ports::Outcome<ProductOutcome>>,
 }
 
 impl Auction {

@@ -1,6 +1,5 @@
 use clap::ValueEnum;
 use fts_solver::{
-    PortfolioOutcome, ProductOutcome,
     clarabel::ClarabelSolver,
     io::{Auction, Outcome},
     osqp::OsqpSolver,
@@ -16,7 +15,7 @@ pub enum SolverLib {
 // Conveniently, we can use the same enum to handle the particulars of calling into
 // the various solver implementations
 impl SolverLib {
-    pub async fn solve(&self, auction: Auction) -> Outcome<PortfolioOutcome, ProductOutcome> {
+    pub async fn solve(&self, auction: Auction) -> Outcome<(), ()> {
         match self {
             SolverLib::Clarabel => auction.solve(ClarabelSolver::default()).await,
             SolverLib::Osqp => auction.solve(OsqpSolver::default()).await,

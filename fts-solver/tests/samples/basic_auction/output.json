@@ -2,29 +2,35 @@
   "portfolios": {
     "buyerx": {
       "price": 6.25,
-      "rate": 0.5
+      "trade": 0.5,
+      "data": null
     },
     "buyery": {
       "price": 6.25,
-      "rate": 0.5
+      "trade": 0.5,
+      "data": null
     },
     "sellerx": {
       "price": 6.25,
-      "rate": -0.5
+      "trade": -0.5,
+      "data": null
     },
     "sellery": {
       "price": 6.25,
-      "rate": -0.5
+      "trade": -0.5,
+      "data": null
     }
   },
   "products": {
     "A": {
       "price": 6.25,
-      "rate": 0.5
+      "trade": 0.5,
+      "data": null
     },
     "B": {
       "price": 6.25,
-      "rate": 0.5
+      "trade": 0.5,
+      "data": null
     }
   }
 }

@@ -10,7 +10,9 @@ create table batch (
 -- the output of the batch auction with respect to the portfolios
 create table portfolio_outcome (
     portfolio_id text not null,
-    value blob,
+    trade real not null,
+    price real,
+    data blob,
     valid_from text not null,
     valid_until text,
     primary key (portfolio_id, valid_from),
@@ -21,7 +23,9 @@ create table portfolio_outcome (
 -- the output of the batch auction with respect to the products
 create table product_outcome (
     product_id text not null,
-    value blob,
+    trade real not null,
+    price real,
+    data blob,
     valid_from text not null,
     valid_until text,
     primary key (product_id, valid_from),
@@ -41,11 +45,13 @@ where
     valid_from = old.as_of;
 -- create new output
 insert into portfolio_outcome (
-    portfolio_id, value, valid_from, valid_until
+    portfolio_id, trade, price, data, valid_from, valid_until
 )
 select
     "key",
-    jsonb(value) as value,
+    jsonb_extract(value, '$.trade') as trade,
+    jsonb_extract(value, '$.price') as price,
+    jsonb_extract(value, '$.data') as data,
     new.as_of, -- noqa: RF01
     null as valid_until
 from
@@ -64,10 +70,12 @@ where
     valid_from = old.as_of;
 -- create new output
 insert into
-product_outcome (product_id, value, valid_from, valid_until)
+product_outcome (product_id, trade, price, data, valid_from, valid_until)
 select
     "key",
-    jsonb(value) as value,
+    jsonb_extract(value, '$.trade') as trade,
+    jsonb_extract(value, '$.price') as price,
+    jsonb_extract(value, '$.data') as data,
     new.as_of, -- noqa: RF01
     null as valid_until
 from

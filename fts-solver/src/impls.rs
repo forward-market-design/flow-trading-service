@@ -1,5 +1,8 @@
-use crate::{HashSet, PortfolioOutcome, ProductOutcome};
-use fts_core::models::{Basis, DemandCurve, Map, Weights};
+use crate::HashSet;
+use fts_core::{
+    models::{Basis, DemandCurve, Map, Weights},
+    ports::Outcome,
+};
 use std::hash::Hash;
 
 /// Implementation using the Clarabel interior point solver
@@ -22,14 +25,14 @@ pub(crate) fn prepare<
 ) -> (
     Map<DemandId, DemandCurve>,
     Map<PortfolioId, (Weights<DemandId>, Basis<ProductId>)>,
-    Map<PortfolioId, PortfolioOutcome>,
-    Map<ProductId, ProductOutcome>,
+    Map<PortfolioId, Outcome<()>>,
+    Map<ProductId, Outcome<()>>,
 ) {
     // Construct the "basis" of products.
-    let mut product_outcomes = Map::<ProductId, ProductOutcome>::default();
+    let mut product_outcomes = Map::<ProductId, Outcome<()>>::default();
 
     // Initialize the portfolio outcomes.
-    let mut portfolio_outcomes = Map::<PortfolioId, PortfolioOutcome>::default();
+    let mut portfolio_outcomes = Map::<PortfolioId, Outcome<()>>::default();
     portfolio_outcomes.reserve_exact(portfolios.len());
 
     // Canonicalize the input so we can avoid some awkward error handling later
@@ -83,16 +86,16 @@ pub(crate) fn finalize<
     mut primal: impl Iterator<Item = &'a f64>,
     dual: impl Iterator<Item = &'b f64>,
     portfolios: &Map<PortfolioId, (Weights<DemandId>, Basis<ProductId>)>,
-    portfolio_outcomes: &mut Map<PortfolioId, PortfolioOutcome>,
-    product_outcomes: &mut Map<ProductId, ProductOutcome>,
+    portfolio_outcomes: &mut Map<PortfolioId, Outcome<()>>,
+    product_outcomes: &mut Map<ProductId, Outcome<()>>,
 ) {
     // 1. Set the product prices, leaving their trade at 0.
     for (product_outcome, &price) in product_outcomes.values_mut().zip(dual) {
-        product_outcome.price = price;
+        product_outcome.price = if price.is_finite() { Some(price) } else { None };
     }
     // 2. For each portfolio...
     for (portfolio_id, (demand, basis)) in portfolios.iter() {
-        let rate = if demand.len() == 0 || basis.len() == 0 {
+        let trade = if demand.len() == 0 || basis.len() == 0 {
             0.0
         } else {
             // SAFETY: this should never panic, since we always add a decision variable for the above condition
@@ -103,20 +106,25 @@ pub(crate) fn finalize<
         let portfolio_outcome = portfolio_outcomes.get_mut(portfolio_id).unwrap();
 
         // Copy the determined rate...
-        portfolio_outcome.rate = rate;
+        portfolio_outcome.trade = trade;
+
         // ... and simultaneously construct the effective price and update the product trade volume
-        if basis.len() > 0 {
-            portfolio_outcome.price = 0.0;
+        if trade != 0.0 && basis.len() > 0 {
+            let mut price = 0.0;
             for (product_id, weight) in basis.iter() {
                 let product_outcome = product_outcomes.get_mut(product_id).unwrap();
-                portfolio_outcome.price += product_outcome.price * weight;
-                product_outcome.rate += (weight * rate).abs();
+                price += product_outcome
+                    .price
+                    .expect("a traded portfolio somehow did not produce an underlying price")
+                    * weight;
+                product_outcome.trade += (weight * trade).abs();
             }
+            portfolio_outcome.price = Some(price);
         }
     }
 
     // We have double-counted the trade for each product, so we halve it
     for product_outcome in product_outcomes.values_mut() {
-        product_outcome.rate *= 0.5;
+        product_outcome.trade *= 0.5;
     }
 }

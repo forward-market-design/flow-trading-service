@@ -1,8 +1,5 @@
 use approx::assert_abs_diff_eq;
-use fts_solver::{
-    PortfolioOutcome, ProductOutcome,
-    io::{Auction, DemandId, Outcome, PortfolioId, ProductId},
-};
+use fts_solver::io::{Auction, DemandId, Outcome, PortfolioId, ProductId};
 use rstest::*;
 use rstest_reuse::{self, *};
 use serde::de::DeserializeOwned;
@@ -45,8 +42,8 @@ async fn run_auction<
             DemandId,
             PortfolioId,
             ProductId,
-            PortfolioOutcome = fts_solver::PortfolioOutcome,
-            ProductOutcome = fts_solver::ProductOutcome,
+            PortfolioOutcome = (),
+            ProductOutcome = (),
         >,
 >(
     solver: T,
@@ -107,24 +104,19 @@ fn check_lp_export(#[files("tests/samples/**/export.lp")] output: PathBuf) {
     assert!(output_bytes == export_bytes, "lp files are not identical");
 }
 
-fn cmp(
-    a: &Outcome<PortfolioOutcome, ProductOutcome>,
-    b: &Outcome<PortfolioOutcome, ProductOutcome>,
-    qeps: f64,
-    peps: f64,
-) {
+fn cmp(a: &Outcome<(), ()>, b: &Outcome<(), ()>, qeps: f64, peps: f64) {
     assert_eq!(a.products.len(), b.products.len());
     for ((p1, o1), (p2, o2)) in a.products.iter().zip(b.products.iter()) {
         assert_eq!(p1, p2);
-        assert_abs_diff_eq!(o1.rate, o2.rate, epsilon = qeps);
-        assert_abs_diff_eq!(o1.price, o2.price, epsilon = peps);
+        assert_abs_diff_eq!(o1.trade, o2.trade, epsilon = qeps);
+        assert_abs_diff_eq!(o1.price.unwrap(), o2.price.unwrap(), epsilon = peps);
     }
 
     assert_eq!(a.portfolios.len(), b.portfolios.len());
 
     for ((p1, o1), (p2, o2)) in a.portfolios.iter().zip(b.portfolios.iter()) {
         assert_eq!(p1, p2);
-        assert_abs_diff_eq!(o1.rate, o2.rate, epsilon = qeps);
-        assert_abs_diff_eq!(o1.price, o2.price, epsilon = peps);
+        assert_abs_diff_eq!(o1.trade, o2.trade, epsilon = qeps);
+        assert_abs_diff_eq!(o1.price.unwrap(), o2.price.unwrap(), epsilon = peps);
     }
 }
