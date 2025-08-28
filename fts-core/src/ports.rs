@@ -21,8 +21,11 @@ pub use portfolio::PortfolioRepository;
 mod batch;
 pub use batch::BatchRepository;
 
+// mod settlement;
+// pub use settlement::SettlementRepository;
+
 mod solver;
-pub use solver::Solver;
+pub use solver::{Outcome, Solver};
 
 /// A base trait for defining the fundamental data- and error-types.
 ///

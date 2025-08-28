@@ -9,7 +9,7 @@ use axum::{
 use axum_extra::TypedHeader;
 use fts_core::{
     models::{DateTimeRangeQuery, DateTimeRangeResponse},
-    ports::{BatchRepository, PortfolioRepository as _, Repository, Solver},
+    ports::{BatchRepository, Outcome, PortfolioRepository as _, Repository, Solver},
 };
 use headers::{Authorization, authorization::Bearer};
 use std::sync::Arc;
@@ -39,11 +39,13 @@ pub(crate) async fn get_portfolio_outcomes<T: ApiApplication>(
 ) -> Result<
     Json<
         DateTimeRangeResponse<
-            <T::Solver as Solver<
-                <T::Repository as Repository>::DemandId,
-                <T::Repository as Repository>::PortfolioId,
-                <T::Repository as Repository>::ProductId,
-            >>::PortfolioOutcome,
+            Outcome<
+                <T::Solver as Solver<
+                    <T::Repository as Repository>::DemandId,
+                    <T::Repository as Repository>::PortfolioId,
+                    <T::Repository as Repository>::ProductId,
+                >>::PortfolioOutcome,
+            >,
             <T::Repository as Repository>::DateTime,
         >,
     >,
