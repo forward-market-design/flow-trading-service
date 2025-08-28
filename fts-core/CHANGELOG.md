@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0](https://github.com/forward-market-design/flow-trading-service/compare/fts-core-v0.4.0...fts-core-v0.5.0) - 2025-08-28
+
+### Added
+
+- require nonnull product parent
+- rename demand_group to demand
+- add explit Empty type so collections can be serialized as null
+- distinguishable id types and affordances for v7-like uuids
+- improved product api
+- flatten portfolio implementation
+- internalize "null" demandcurve to type
+- make crud endpoints return entity
+- simpler queries for active bids and cleaned up batch generation
+- beefier active demand/portfolio queries
+- heavier, but more useful, demand/portfolio record queries
+- simplified datetimerangequery
+- unified record types
+- product hierarchy reflected in endpoints
+
+### Other
+
+- fix formatting
+- more flexible batches
+- rename product_group to basis
+
 ## [0.4.0](https://github.com/forward-market-design/flow-trading-service/compare/fts-core-v0.3.0...fts-core-v0.4.0) - 2025-07-03
 
 ### Added
