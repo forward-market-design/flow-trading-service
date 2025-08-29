@@ -38,7 +38,7 @@ async fn main() -> anyhow::Result<()> {
             } = AppConfig::load(config)?;
 
             // Open database with config
-            let db = Db::open(&database, OffsetDateTime::now_utc().into()).await?;
+            let db = Db::open(&database).await?;
             let db2 = db.clone();
             let app = DemoApp { db, key };
 

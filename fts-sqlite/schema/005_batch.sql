@@ -2,82 +2,70 @@
 -- An auction is then run, asynchronously updating the *_outcomes fields with the outcomes.
 create table batch (
     id integer primary key,
-    as_of text not null,
-    portfolio_outcomes blob not null, -- Json<Record<PortfolioId, PortfolioOutcome>>
-    product_outcomes blob not null -- Json<Record<ProductId, ProductOutcome>>
+    valid_from text not null,
+    valid_until text,
+    portfolio_outcomes blob not null, -- Json<Record<PortfolioId, Outcome<PortfolioOutcome>>>
+    product_outcomes blob not null -- Json<Record<ProductId, Outcome<ProductOutcome>>>
 ) strict;
 --
 -- the output of the batch auction with respect to the portfolios
-create table portfolio_outcome (
+create table batch_portfolio (
+    batch_id integer not null,
     portfolio_id text not null,
     trade real not null,
     price real,
     data blob,
-    valid_from text not null,
-    valid_until text,
-    primary key (portfolio_id, valid_from),
-    unique (valid_from, valid_until, portfolio_id),
+    primary key (batch_id, portfolio_id),
+    foreign key (batch_id) references batch (id),
     foreign key (portfolio_id) references portfolio (id)
 ) strict, without rowid;
 --
 -- the output of the batch auction with respect to the products
-create table product_outcome (
+create table batch_product (
+    batch_id integer not null,
     product_id text not null,
     trade real not null,
     price real,
     data blob,
-    valid_from text not null,
-    valid_until text,
-    primary key (product_id, valid_from),
-    unique (valid_from, valid_until, product_id),
+    primary key (batch_id, product_id),
+    foreign key (batch_id) references batch (id),
     foreign key (product_id) references product (id)
 ) strict, without rowid;
 --
 -- as with the other tables, we use triggers to maintain the outputs
-create trigger batch_update_portfolio_trigger
-after update of portfolio_outcomes on batch
+create trigger batch_insert_trigger
+after insert on batch
 begin
--- invalidate existing output
-update portfolio_outcome
+-- 1. Terminate "old" batches by setting old.valid_until = new.valid_from.
+update batch
 set
-    valid_until = new.as_of
+    valid_until = new.valid_from
 where
-    valid_from = old.as_of;
--- create new output
-insert into portfolio_outcome (
-    portfolio_id, trade, price, data, valid_from, valid_until
+    valid_from < new.valid_from
+    and
+    valid_until is null;
+-- 2. Destructure and propagate the portfolio outcomes
+insert into batch_portfolio (
+    batch_id, portfolio_id, trade, price, data
 )
 select
+    new.id,
     "key",
     jsonb_extract(value, '$.trade') as trade,
     jsonb_extract(value, '$.price') as price,
-    jsonb_extract(value, '$.data') as data,
-    new.as_of, -- noqa: RF01
-    null as valid_until
+    jsonb_extract(value, '$.data') as data
 from
     json_each(new.portfolio_outcomes);
-end;
-
-create trigger batch_update_product_trigger
-after update of product_outcomes on batch
-begin
--- invalidate existing output
-update
-product_outcome
-set
-    valid_until = new.as_of
-where
-    valid_from = old.as_of;
--- create new output
-insert into
-product_outcome (product_id, trade, price, data, valid_from, valid_until)
+-- 3. Destructure and propagate the product outcomes
+insert into batch_product (
+    batch_id, product_id, trade, price, data
+)
 select
+    new.id,
     "key",
     jsonb_extract(value, '$.trade') as trade,
     jsonb_extract(value, '$.price') as price,
-    jsonb_extract(value, '$.data') as data,
-    new.as_of, -- noqa: RF01
-    null as valid_until
+    jsonb_extract(value, '$.data') as data
 from
     json_each(new.product_outcomes);
 end;
