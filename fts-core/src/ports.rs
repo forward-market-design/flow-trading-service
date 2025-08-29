@@ -21,8 +21,8 @@ pub use portfolio::PortfolioRepository;
 mod batch;
 pub use batch::BatchRepository;
 
-// mod settlement;
-// pub use settlement::SettlementRepository;
+mod settlement;
+pub use settlement::SettlementRepository;
 
 mod solver;
 pub use solver::{Outcome, Solver};
