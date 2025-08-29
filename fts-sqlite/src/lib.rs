@@ -34,8 +34,7 @@ use config::SqliteConfig;
 /// # use fts_sqlite::{Db, config::SqliteConfig, types::DateTime};
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 /// let config = SqliteConfig::default();
-/// let now = DateTime::from(time::OffsetDateTime::now_utc());
-/// let db = Db::open(&config, now).await?;
+/// let db = Db::open(&config).await?;
 /// # Ok(())
 /// # }
 /// ```
@@ -56,7 +55,6 @@ impl Db {
     /// # Arguments
     ///
     /// * `config` - Configuration specifying database path and creation options
-    /// * `as_of` - Initial timestamp for the batch table if creating a new database
     ///
     /// # Database Configuration
     ///
@@ -70,8 +68,7 @@ impl Db {
     /// Returns `sqlx::Error` if:
     /// - Database connection fails
     /// - Migrations fail to apply
-    /// - Initial batch row creation fails
-    pub async fn open(config: &SqliteConfig, as_of: types::DateTime) -> Result<Self, sqlx::Error> {
+    pub async fn open(config: &SqliteConfig) -> Result<Self, sqlx::Error> {
         let db_path = config
             .database_path
             .as_ref()
@@ -100,25 +97,6 @@ impl Db {
 
         // Run any pending migrations before returning
         sqlx::migrate!("./schema").run(&writer).await?;
-
-        // Also, ensure there is one row in the batch table.
-        // This is important because of the trigger-managed temporal tables.
-        // The `batch` table consists of a single row with JSON columns. On update,
-        // a trigger will "explode" the JSON values into the appropriate outcome-tracking
-        // tables, similarly to how we manage portfolios and demand curves.
-        sqlx::query!(
-            r#"
-            insert into
-                batch (id, as_of, portfolio_outcomes, product_outcomes)
-            values
-                (0, $1, jsonb('{}'), jsonb('{}'))
-            on conflict
-                do nothing
-            "#,
-            as_of
-        )
-        .execute(&writer)
-        .await?;
 
         Ok(Self { reader, writer })
     }

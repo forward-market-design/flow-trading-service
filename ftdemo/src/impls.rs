@@ -322,11 +322,9 @@ mod uuid_v8_tests {
 
     /// Create a test app instance for UUID generation testing
     async fn create_test_app() -> DemoApp {
-        let now = time::OffsetDateTime::now_utc();
-        let database =
-            fts_sqlite::Db::open(&fts_sqlite::config::SqliteConfig::default(), now.into())
-                .await
-                .unwrap();
+        let database = fts_sqlite::Db::open(&fts_sqlite::config::SqliteConfig::default())
+            .await
+            .unwrap();
         DemoApp {
             db: database,
             key: jwt_simple::prelude::HS256Key::generate(),
