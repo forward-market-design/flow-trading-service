@@ -13,6 +13,7 @@ mod batch;
 mod demand;
 mod portfolio;
 mod product;
+mod settlement;
 
 impl Repository for Db {
     type Error = sqlx::Error;

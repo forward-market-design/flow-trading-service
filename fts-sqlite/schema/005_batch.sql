@@ -1,3 +1,13 @@
+-- Every so-often, a settlement is compiled from the current batches.
+-- This is declared here so we can establish the foreign key reference,
+-- but the remainder of the settlement logic will be in its own .sql file.
+create table settlement (
+    id integer primary key,
+    as_of text not null,
+    product_decimals integer not null,
+    money_decimals integer not null
+) strict;
+--
 -- Every so-often, a batch is compiled from the current submissions.
 -- An auction is then run, asynchronously updating the *_outcomes fields with the outcomes.
 create table batch (
@@ -5,7 +15,9 @@ create table batch (
     valid_from text not null,
     valid_until text,
     portfolio_outcomes blob not null, -- Json<Record<PortfolioId, Outcome<PortfolioOutcome>>>
-    product_outcomes blob not null -- Json<Record<ProductId, Outcome<ProductOutcome>>>
+    product_outcomes blob not null, -- Json<Record<ProductId, Outcome<ProductOutcome>>>
+    settlement_id integer,
+    foreign key (settlement_id) references settlement (id)
 ) strict;
 --
 -- the output of the batch auction with respect to the portfolios
