@@ -93,12 +93,10 @@ where
                 let product_outcomes = sqlx::types::Json(product_outcomes);
                 sqlx::query!(
                     r#"
-                    update
-                        batch
-                    set
-                        as_of = $1,
-                        portfolio_outcomes = jsonb($2),
-                        product_outcomes = jsonb($3)
+                    insert into
+                        batch (valid_from, portfolio_outcomes, product_outcomes)
+                    values
+                        ($1, jsonb($2), jsonb($3))
                     "#,
                     timestamp,
                     portfolio_outcomes,
@@ -133,15 +131,17 @@ where
                     valid_until as "valid_until?: crate::types::DateTime",
                     json_object('trade', trade, 'price', price, 'data', data) as "value!: sqlx::types::Json<Outcome<T::PortfolioOutcome>>"
                 from
-                    portfolio_outcome
+                    batch
+                join
+                    batch_portfolio
+                on
+                    batch.id = batch_portfolio.batch_id
                 where
                     portfolio_id = $1
                 and
                     ($2 is null or valid_from >= $2)
                 and
                     ($3 is null or valid_until is null or valid_until < $3)
-                group by
-                    valid_from
                 order by
                     valid_from desc
                 limit $4
@@ -191,15 +191,17 @@ where
                     valid_until as "valid_until?: crate::types::DateTime",
                     json_object('trade', trade, 'price', price, 'data', data) as "value!: sqlx::types::Json<Outcome<T::ProductOutcome>>"
                 from
-                    product_outcome
+                    batch
+                join
+                    batch_product
+                on
+                    batch.id = batch_product.batch_id
                 where
                     product_id = $1
                 and
                     ($2 is null or valid_from >= $2)
                 and
                     ($3 is null or valid_until is null or valid_until < $3)
-                group by
-                    valid_from
                 order by
                     valid_from desc
                 limit $4

@@ -10,7 +10,7 @@ use fts_sqlite::{Db, config::SqliteConfig, types::BidderId};
 #[tokio::test]
 async fn test_demand_curve_triggers() -> anyhow::Result<()> {
     let now = time::OffsetDateTime::now_utc();
-    let database = Db::open(&SqliteConfig::default(), now.into()).await?;
+    let database = Db::open(&SqliteConfig::default()).await?;
     let app = TestApp(database);
     let db = app.database();
 
@@ -101,7 +101,7 @@ async fn test_demand_curve_triggers() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_portfolio_triggers_empty_groups() -> anyhow::Result<()> {
     let now = time::OffsetDateTime::now_utc();
-    let database = Db::open(&SqliteConfig::default(), now.into()).await?;
+    let database = Db::open(&SqliteConfig::default()).await?;
     let app = TestApp(database);
     let db = app.database();
 
@@ -134,7 +134,7 @@ async fn test_portfolio_triggers_empty_groups() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_portfolio_triggers_partial_updates() -> anyhow::Result<()> {
     let now = time::OffsetDateTime::now_utc();
-    let database = Db::open(&SqliteConfig::default(), now.into()).await?;
+    let database = Db::open(&SqliteConfig::default()).await?;
     let app = TestApp(database);
     let db = app.database();
 
@@ -302,7 +302,7 @@ async fn test_portfolio_triggers_partial_updates() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_portfolio_triggers_multiple_items() -> anyhow::Result<()> {
     let now = time::OffsetDateTime::now_utc();
-    let database = Db::open(&SqliteConfig::default(), now.into()).await?;
+    let database = Db::open(&SqliteConfig::default()).await?;
     let app = TestApp(database);
     let db = app.database();
 
@@ -433,7 +433,7 @@ async fn test_portfolio_triggers_multiple_items() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_demand_trigger_null_curve() -> anyhow::Result<()> {
     let now = time::OffsetDateTime::now_utc();
-    let database = Db::open(&SqliteConfig::default(), now.into()).await?;
+    let database = Db::open(&SqliteConfig::default()).await?;
     let app = TestApp(database);
     let db = app.database();
 
@@ -509,7 +509,7 @@ async fn test_demand_trigger_null_curve() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_product_tree_trigger_zero_ratio() -> anyhow::Result<()> {
     let now = time::OffsetDateTime::now_utc();
-    let database = Db::open(&SqliteConfig::default(), now.into()).await?;
+    let database = Db::open(&SqliteConfig::default()).await?;
     let app = TestApp(database);
     let db = app.database();
 

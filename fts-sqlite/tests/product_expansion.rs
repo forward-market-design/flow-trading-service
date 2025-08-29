@@ -15,7 +15,7 @@ use fts_sqlite::{
 async fn test_product_expansion() -> anyhow::Result<()> {
     let now = time::OffsetDateTime::now_utc();
 
-    let database = Db::open(&SqliteConfig::default(), now.into()).await?;
+    let database = Db::open(&SqliteConfig::default()).await?;
     let app = TestApp(database);
 
     let db = app.database();

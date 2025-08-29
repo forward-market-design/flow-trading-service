@@ -1,6 +1,6 @@
 use axum_test::{TestServer, TestServerConfig};
 use fts_axum::{config::AxumConfig, router};
-use fts_sqlite::{Db, config::SqliteConfig, types::DateTime};
+use fts_sqlite::{Db, config::SqliteConfig};
 use hurl::runner::{self, VariableSet};
 use hurl::runner::{RunnerOptionsBuilder, Value};
 use hurl::util::logger::LoggerOptionsBuilder;
@@ -17,8 +17,7 @@ use app::TestApp;
 async fn test_api(#[files("tests/api/**/*.hurl")] test: PathBuf) {
     let app = {
         let config = SqliteConfig::default();
-        let now = DateTime::from(time::OffsetDateTime::now_utc());
-        let db = Db::open(&config, now).await.unwrap();
+        let db = Db::open(&config).await.unwrap();
         TestApp(db)
     };
 

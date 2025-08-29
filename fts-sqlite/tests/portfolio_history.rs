@@ -10,7 +10,7 @@ use fts_sqlite::{Db, config::SqliteConfig, types::BidderId};
 #[tokio::test]
 async fn test_portfolio_history() -> anyhow::Result<()> {
     let now = time::OffsetDateTime::now_utc();
-    let database = Db::open(&SqliteConfig::default(), now.into()).await?;
+    let database = Db::open(&SqliteConfig::default()).await?;
     let app = TestApp(database);
 
     let db = app.database();
