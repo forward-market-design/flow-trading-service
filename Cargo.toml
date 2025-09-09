@@ -26,7 +26,7 @@ aide = "0.15"
 anyhow = "1.0"
 clap = "4.5"
 headers = "0.4"
-indexmap = "2.9"
+indexmap = "2.11"
 rstest = { version = "0.25", default-features = false }
 rstest_reuse = "0.7"
 rustc-hash = "2.1"
