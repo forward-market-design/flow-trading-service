@@ -10,7 +10,7 @@ publish.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-indexmap = { version = "2.9" }
+indexmap = { version = "2.11" }
 rustc-hash = { version = "2.1" }
 thiserror = { workspace = true }
 schemars = { workspace = true, features = ["derive", "indexmap2", "preserve_order"], optional = true }
