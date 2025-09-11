@@ -75,15 +75,6 @@ where
     ) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
         self.to_string().encode_by_ref(buf)
     }
-    fn encode(
-        self,
-        buf: &mut <DB as Database>::ArgumentBuffer<'q>,
-    ) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError>
-    where
-        Self: Sized,
-    {
-        self.to_string().encode(buf)
-    }
 }
 
 impl<'r, DB: Database> Decode<'r, DB> for DateTime
@@ -101,9 +92,6 @@ where
 {
     fn type_info() -> <DB as Database>::TypeInfo {
         String::type_info()
-    }
-    fn compatible(ty: &<DB as Database>::TypeInfo) -> bool {
-        String::compatible(ty)
     }
 }
 
