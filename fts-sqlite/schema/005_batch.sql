@@ -17,7 +17,7 @@ create table batch (
     portfolio_outcomes blob not null, -- Json<Record<PortfolioId, Outcome<PortfolioOutcome>>>
     product_outcomes blob not null, -- Json<Record<ProductId, Outcome<ProductOutcome>>>
     settlement_id integer,
-    time_unit_in_ms real not null,
+    time_unit_in_secs real not null,
     foreign key (settlement_id) references settlement (id)
 ) strict;
 --

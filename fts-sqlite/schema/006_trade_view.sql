@@ -10,7 +10,7 @@ select
     batch_product.product_id,
     batch.valid_from,
     batch.valid_until,
-    sum(batch_portfolio.trade * portfolio_product.weight * product_tree.ratio) / batch.time_unit_in_ms,
+    sum(batch_portfolio.trade * portfolio_product.weight * product_tree.ratio) / batch.time_unit_in_secs,
     batch_product.price
 from
     batch

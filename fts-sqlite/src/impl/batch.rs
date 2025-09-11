@@ -92,18 +92,18 @@ where
             Ok((portfolio_outcomes, product_outcomes)) => {
                 let portfolio_outcomes = sqlx::types::Json(portfolio_outcomes);
                 let product_outcomes = sqlx::types::Json(product_outcomes);
-                let time_unit_in_ms = config.time_unit.as_secs_f64() * 1000f64;
+                let time_unit_in_secs = config.time_unit.as_secs_f64();
                 sqlx::query!(
                     r#"
                     insert into
-                        batch (valid_from, portfolio_outcomes, product_outcomes, time_unit_in_ms)
+                        batch (valid_from, portfolio_outcomes, product_outcomes, time_unit_in_secs)
                     values
                         ($1, jsonb($2), jsonb($3), $4)
                     "#,
                     timestamp,
                     portfolio_outcomes,
                     product_outcomes,
-                    time_unit_in_ms,
+                    time_unit_in_secs,
                 )
                 .execute(&self.writer)
                 .await?;

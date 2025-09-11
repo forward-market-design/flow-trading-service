@@ -6,7 +6,7 @@
 bind_address = "0.0.0.0:8080"
 
 # Instead of scheduling every 15s, or whatever, just solve anytime we get a new bid update
-auto_solve = true
+auto_solve = { "time_unit" = "60s" }
 
 # Database Configuration
 [database]
@@ -23,4 +23,4 @@ from = "2025-01-01T00:00:00Z"
 # How often to run a batch auction?
 # every = "15s"
 
-time_unit = "60s"
+#time_unit = "60s"
