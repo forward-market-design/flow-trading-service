@@ -60,6 +60,6 @@ pub trait SettlementRepository: super::Repository {
     fn settle_activity<ProductMap: FromIterator<(Self::ProductId, Amount)>>(
         &self,
         as_of: Self::DateTime,
-        decimals: SettlementConfig,
-    ) -> impl Future<Output = Result<SettlementRecord<Self, ProductMap>, Self::Error>>;
+        config: SettlementConfig,
+    ) -> impl Future<Output = Result<(), Self::Error>>;
 }
