@@ -4,7 +4,8 @@
 //! subsecond precision. It wraps `time::PrimitiveDateTime` and ensures all
 //! serialization happens in RFC3339 format for consistency across the system.
 
-use std::{borrow::Borrow, fmt::Display};
+use sqlx::{Database, Decode, Encode, Type};
+use std::{fmt::Display, str::FromStr};
 use time::format_description::well_known::Rfc3339;
 
 /// A type that represents a datetime with subsecond precision.
@@ -33,48 +34,76 @@ use time::format_description::well_known::Rfc3339;
     Eq,
     PartialOrd,
     Ord,
-    serde::Serialize,
-    serde::Deserialize,
-    sqlx::Type,
+    serde_with::SerializeDisplay,
+    serde_with::DeserializeFromStr,
 )]
-#[serde(from = "DateTimeDto", into = "DateTimeDto")]
-#[sqlx(transparent)]
-pub struct DateTime(time::PrimitiveDateTime);
+pub struct DateTime(time::UtcDateTime);
 
 impl Display for DateTime {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let value: time::OffsetDateTime = self.clone().into();
+        let value: time::OffsetDateTime = self.0.into();
         write!(f, "{}", value.format(&Rfc3339).unwrap())
     }
 }
 
-impl<T: Borrow<time::OffsetDateTime>> From<T> for DateTime {
-    fn from(value: T) -> Self {
-        let utc = value.borrow().to_offset(time::UtcOffset::UTC);
-        Self(time::PrimitiveDateTime::new(utc.date(), utc.time()))
+impl FromStr for DateTime {
+    type Err = time::error::Parse;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        time::OffsetDateTime::parse(s, &Rfc3339).map(Into::into)
+    }
+}
+
+impl From<time::OffsetDateTime> for DateTime {
+    fn from(value: time::OffsetDateTime) -> Self {
+        Self(value.into())
     }
 }
 
 impl Into<time::OffsetDateTime> for DateTime {
     fn into(self) -> time::OffsetDateTime {
-        self.0.assume_utc()
+        self.0.into()
     }
 }
 
-// This is a helper type that ensures (de)serialization happens with respect to RFC3339
-
-#[derive(serde::Serialize, serde::Deserialize)]
-struct DateTimeDto(#[serde(with = "time::serde::rfc3339")] time::OffsetDateTime);
-
-impl From<DateTimeDto> for DateTime {
-    fn from(value: DateTimeDto) -> Self {
-        value.0.into()
+impl<'q, DB: Database> Encode<'q, DB> for DateTime
+where
+    String: Encode<'q, DB>,
+{
+    fn encode_by_ref(
+        &self,
+        buf: &mut <DB as Database>::ArgumentBuffer<'q>,
+    ) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
+        self.to_string().encode_by_ref(buf)
+    }
+    fn encode(
+        self,
+        buf: &mut <DB as Database>::ArgumentBuffer<'q>,
+    ) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError>
+    where
+        Self: Sized,
+    {
+        self.to_string().encode(buf)
     }
 }
 
-impl Into<DateTimeDto> for DateTime {
-    fn into(self) -> DateTimeDto {
-        DateTimeDto(self.into())
+impl<'r, DB: Database> Decode<'r, DB> for DateTime
+where
+    String: Decode<'r, DB>,
+{
+    fn decode(value: <DB as Database>::ValueRef<'r>) -> Result<Self, sqlx::error::BoxDynError> {
+        String::decode(value).and_then(|s| Ok(Self::from_str(&s)?))
+    }
+}
+
+impl<DB: Database> Type<DB> for DateTime
+where
+    String: Type<DB>,
+{
+    fn type_info() -> <DB as Database>::TypeInfo {
+        String::type_info()
+    }
+    fn compatible(ty: &<DB as Database>::TypeInfo) -> bool {
+        String::compatible(ty)
     }
 }
 
