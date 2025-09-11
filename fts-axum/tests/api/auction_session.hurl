@@ -60,10 +60,20 @@ HTTP 400
 
 POST {{baseurl}}/batch
 Authorization: Bearer bidder_id={{bidder1}}
+HTTP 415
+
+POST {{baseurl}}/batch
+Authorization: Bearer bidder_id={{bidder1}}
+{
+    "time_unit": "1h"
+}
 HTTP 401
 
 POST {{baseurl}}/batch
 Authorization: Bearer bidder_id={{bidder1}}&can_run_batch=true
+{
+    "time_unit": "1h"
+}
 HTTP 200
 
 # Check the product outcome

@@ -1,6 +1,6 @@
 use crate::Db;
 use crate::types::{DateTime, DemandId, PortfolioId, ProductId, ValueRow};
-use fts_core::models::{DateTimeRangeQuery, DateTimeRangeResponse};
+use fts_core::models::{BatchConfig, DateTimeRangeQuery, DateTimeRangeResponse};
 use fts_core::ports::Outcome;
 use fts_core::{
     models::{Basis, DemandCurve, DemandCurveDto, Weights},
@@ -43,6 +43,7 @@ where
     async fn run_batch(
         &self,
         timestamp: Self::DateTime,
+        config: BatchConfig,
         solver: T,
         state: T::State,
     ) -> Result<Result<Option<Self::DateTime>, T::Error>, Self::Error> {
@@ -91,16 +92,18 @@ where
             Ok((portfolio_outcomes, product_outcomes)) => {
                 let portfolio_outcomes = sqlx::types::Json(portfolio_outcomes);
                 let product_outcomes = sqlx::types::Json(product_outcomes);
+                let time_unit_in_ms = config.time_unit.as_secs_f64() * 1000f64;
                 sqlx::query!(
                     r#"
                     insert into
-                        batch (valid_from, portfolio_outcomes, product_outcomes)
+                        batch (valid_from, portfolio_outcomes, product_outcomes, time_unit_in_ms)
                     values
-                        ($1, jsonb($2), jsonb($3))
+                        ($1, jsonb($2), jsonb($3), $4)
                     "#,
                     timestamp,
                     portfolio_outcomes,
-                    product_outcomes
+                    product_outcomes,
+                    time_unit_in_ms,
                 )
                 .execute(&self.writer)
                 .await?;

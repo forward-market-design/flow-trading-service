@@ -4,8 +4,8 @@
 create table settlement (
     id integer primary key,
     as_of text not null,
-    product_decimals integer not null,
-    money_decimals integer not null
+    position_decimals integer not null,
+    payment_decimals integer not null
 ) strict;
 --
 -- Every so-often, a batch is compiled from the current submissions.
@@ -17,6 +17,7 @@ create table batch (
     portfolio_outcomes blob not null, -- Json<Record<PortfolioId, Outcome<PortfolioOutcome>>>
     product_outcomes blob not null, -- Json<Record<ProductId, Outcome<ProductOutcome>>>
     settlement_id integer,
+    time_unit_in_ms real not null,
     foreign key (settlement_id) references settlement (id)
 ) strict;
 --

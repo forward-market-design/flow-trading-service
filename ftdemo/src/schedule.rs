@@ -4,6 +4,7 @@
 //! The scheduler can be configured with a start time and execution frequency, and will automatically
 //! align execution times with the configured schedule.
 
+use fts_core::models::BatchConfig;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
@@ -21,6 +22,8 @@ pub struct Scheduler {
     /// How often to execute an auction
     #[serde(with = "humantime_serde::option")]
     pub every: Option<Duration>,
+    /// What is config for each batch?
+    pub batch_config: Option<BatchConfig>,
 }
 
 impl Scheduler {
@@ -46,11 +49,13 @@ impl Scheduler {
     /// use std::time::Duration;
     /// use time::OffsetDateTime;
     /// use ftdemo::Scheduler;
+    /// use fts_core::models::BatchConfig;
     ///
     /// # fn main() -> Result<(), String> {
     /// let scheduler = Scheduler {
     ///     from: Some(OffsetDateTime::now_utc()),
     ///     every: Some(Duration::from_secs(3600)), // Every hour
+    ///     batch_config: Some(BatchConfig { time_unit: Duration::from_secs(3600) }),
     /// };
     ///
     /// # tokio_test::block_on(async {
