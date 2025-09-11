@@ -3,6 +3,7 @@
 //! This module provides configuration options for the REST API server,
 //! including network binding and pagination settings.
 
+use fts_core::models::BatchConfig;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 
@@ -21,7 +22,7 @@ use std::net::SocketAddr;
 /// let config = AxumConfig {
 ///     bind_address: "127.0.0.1:3000".parse().unwrap(),
 ///     page_limit: 50,
-///     auto_solve: false,
+///     auto_solve: None,
 /// };
 /// ```
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -36,7 +37,7 @@ pub struct AxumConfig {
 
     /// A flag that, if true, will execute a full auction solve on every bid update
     #[serde(default)]
-    pub auto_solve: bool,
+    pub auto_solve: Option<BatchConfig>,
 }
 
 fn default_bind_address() -> SocketAddr {

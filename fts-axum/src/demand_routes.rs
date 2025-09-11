@@ -213,10 +213,12 @@ async fn update_demand<T: ApiApplication>(
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
-    if config.auto_solve {
+    if let Some(config) = config.auto_solve.clone() {
         tokio::spawn(async move {
             let db = app.database();
-            let result = db.run_batch(as_of, app.solver(), Default::default()).await;
+            let result = db
+                .run_batch(as_of, config, app.solver(), Default::default())
+                .await;
 
             match result {
                 Err(err) => {
@@ -286,10 +288,12 @@ async fn delete_demand<T: ApiApplication>(
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
-    if config.auto_solve {
+    if let Some(config) = config.auto_solve.clone() {
         tokio::spawn(async move {
             let db = app.database();
-            let result = db.run_batch(as_of, app.solver(), Default::default()).await;
+            let result = db
+                .run_batch(as_of, config, app.solver(), Default::default())
+                .await;
 
             match result {
                 Err(err) => {

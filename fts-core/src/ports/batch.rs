@@ -1,5 +1,5 @@
 use crate::{
-    models::{DateTimeRangeQuery, DateTimeRangeResponse},
+    models::{BatchConfig, DateTimeRangeQuery, DateTimeRangeResponse},
     ports::Outcome,
 };
 
@@ -23,6 +23,7 @@ pub trait BatchRepository<T: super::Solver<Self::DemandId, Self::PortfolioId, Se
     fn run_batch(
         &self,
         timestamp: Self::DateTime,
+        config: BatchConfig,
         solver: T,
         state: T::State,
     ) -> impl Future<Output = Result<Result<Option<Self::DateTime>, T::Error>, Self::Error>> + Send;

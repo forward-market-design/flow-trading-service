@@ -5,9 +5,9 @@
 //! solving for optimal allocations and prices at regular intervals.
 
 use aide::axum::{ApiRouter, routing::post};
-use axum::{extract::State, http::StatusCode};
+use axum::{Json, extract::State, http::StatusCode};
 use axum_extra::TypedHeader;
-use fts_core::ports::BatchRepository as _;
+use fts_core::{models::BatchConfig, ports::BatchRepository as _};
 use headers::{Authorization, authorization::Bearer};
 use tracing::{Level, event};
 
@@ -38,13 +38,14 @@ pub fn router<T: ApiApplication>() -> ApiRouter<T> {
 async fn batch_solve<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
+    Json(config): Json<BatchConfig>,
 ) -> Result<(StatusCode, String), (StatusCode, String)> {
     let as_of = app.now();
     if app.can_run_batch(&auth).await {
         let db = app.database();
 
         let _expires = db
-            .run_batch(as_of.clone(), app.solver(), Default::default())
+            .run_batch(as_of.clone(), config, app.solver(), Default::default())
             .await
             .map_err(|err| {
                 event!(Level::ERROR, err = err.to_string());

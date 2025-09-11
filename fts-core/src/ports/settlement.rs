@@ -8,6 +8,10 @@ Implementation notes:
 
 */
 
+use crate::models::{
+    Amount, DateTimeRangeQuery, DateTimeRangeResponse, SettlementConfig, SettlementRecord,
+};
+
 /// Repository interface for settlements of trade and payments.
 ///
 /// Batches are about individual auctions, which resolve trades on portfolios
@@ -31,16 +35,31 @@ Implementation notes:
 /// bidder x product and net payment for each bidder. Settling multiple batches
 /// at once minimizes losses due to rounding.
 pub trait SettlementRepository: super::Repository {
-    /// Find the "raw", unsettled activity (product trades and bidder payments).
-    ///
-    /// If `bidders` is None,
-    fn unsettled_activity<
-        BidderMap: FromIterator<(Self::BidderId, f64)>,
-        ProductMap: FromIterator<(Self::ProductId, f64)>,
-    >(
+    /// Find the unsettled activity (product trades and bidder payments)
+    /// for the requested bidder.
+    fn get_unsettled_activity<ProductMap: FromIterator<(Self::ProductId, f64)>>(
         &self,
-        bidders: Option<&[Self::BidderId]>,
-    ) -> impl Future<Output = Result<(BidderMap, ProductMap), Self::Error>> + Send;
+        bidder_id: Self::BidderId,
+        as_of: Self::DateTime,
+    ) -> impl Future<Output = Result<(ProductMap, f64), Self::Error>> + Send;
 
-    //fn settle_batches(&self, as_of: Self::DateTime, position_decimals: u8, cash_decimals: u8);
+    /// Query for relevant settlement records.
+    fn get_settlements<ProductMap: FromIterator<(Self::ProductId, Amount)>>(
+        &self,
+        bidder_id: Self::BidderId,
+        query: DateTimeRangeQuery<Self::DateTime>,
+        limit: usize,
+    ) -> impl Future<
+        Output = Result<
+            DateTimeRangeResponse<SettlementRecord<Self, ProductMap>, Self::DateTime>,
+            Self::Error,
+        >,
+    > + Send;
+
+    /// Settle any outstanding batches that could apply to this settlement.
+    fn settle_activity<ProductMap: FromIterator<(Self::ProductId, Amount)>>(
+        &self,
+        as_of: Self::DateTime,
+        decimals: SettlementConfig,
+    ) -> impl Future<Output = Result<SettlementRecord<Self, ProductMap>, Self::Error>>;
 }

@@ -48,9 +48,18 @@ async fn main() -> anyhow::Result<()> {
             // However, we may or may not also run a scheduled batch task
             if schedule.every.is_some() {
                 let solver_task = tokio::spawn(async move {
+                    let batch_config = schedule
+                        .batch_config
+                        .clone()
+                        .expect("config must be provided");
                     let f = async move |now: OffsetDateTime| {
                         let batch = db2
-                            .run_batch(now.into(), ClarabelSolver::default(), ())
+                            .run_batch(
+                                now.into(),
+                                batch_config.clone(),
+                                ClarabelSolver::default(),
+                                (),
+                            )
                             .await;
                         match batch {
                             Ok(Ok(expires)) => Ok(expires),

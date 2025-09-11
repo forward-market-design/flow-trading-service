@@ -12,6 +12,7 @@ rust-version.workspace = true
 [dependencies]
 indexmap = { version = "2.9" }
 rustc-hash = { version = "2.1" }
+humantime-serde = { workspace = true, optional = true }
 thiserror = { workspace = true }
 schemars = { workspace = true, features = ["derive", "indexmap2", "preserve_order"], optional = true }
 serde = { workspace = true, features = ["derive"], optional = true }
@@ -23,4 +24,4 @@ serde_json = { workspace = true }
 
 [features]
 schemars = ["dep:schemars", "serde"]
-serde = ["dep:serde", "dep:serde-untagged", "indexmap/serde"]
+serde = ["dep:serde", "dep:serde-untagged", "dep:humantime-serde", "indexmap/serde"]

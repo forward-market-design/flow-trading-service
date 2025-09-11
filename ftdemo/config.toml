@@ -22,3 +22,5 @@ from = "2025-01-01T00:00:00Z"
 
 # How often to run a batch auction?
 # every = "15s"
+
+time_unit = "60s"

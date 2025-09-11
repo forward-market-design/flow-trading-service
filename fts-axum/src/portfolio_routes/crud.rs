@@ -55,10 +55,12 @@ pub(crate) async fn create_portfolio<T: ApiApplication>(
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
-    if config.auto_solve {
+    if let Some(config) = config.auto_solve.clone() {
         tokio::spawn(async move {
             let db = app.database();
-            let result = db.run_batch(as_of, app.solver(), Default::default()).await;
+            let result = db
+                .run_batch(as_of, config, app.solver(), Default::default())
+                .await;
 
             match result {
                 Err(err) => {
@@ -186,10 +188,12 @@ pub(crate) async fn update_portfolio<T: ApiApplication>(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    if config.auto_solve {
+    if let Some(config) = config.auto_solve.clone() {
         tokio::spawn(async move {
             let db = app.database();
-            let result = db.run_batch(as_of, app.solver(), Default::default()).await;
+            let result = db
+                .run_batch(as_of, config, app.solver(), Default::default())
+                .await;
 
             match result {
                 Err(err) => {
@@ -262,10 +266,12 @@ pub(crate) async fn delete_portfolio<T: ApiApplication>(
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
-    if config.auto_solve {
+    if let Some(config) = config.auto_solve.clone() {
         tokio::spawn(async move {
             let db = app.database();
-            let result = db.run_batch(as_of, app.solver(), Default::default()).await;
+            let result = db
+                .run_batch(as_of, config, app.solver(), Default::default())
+                .await;
 
             match result {
                 Err(err) => {
