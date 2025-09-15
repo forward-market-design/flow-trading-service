@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2](https://github.com/forward-market-design/flow-trading-service/compare/fts-sqlite-v0.2.1...fts-sqlite-v0.2.2) - 2025-09-15
+
+### Added
+
+- require nonnull product parent
+- simplified product query
+- rename demand_group to demand
+- distinguishable id types and affordances for v7-like uuids
+- improved product api
+- flatten portfolio implementation
+- internalize "null" demandcurve to type
+- make crud endpoints return entity
+- simpler queries for active bids and cleaned up batch generation
+- beefier active demand/portfolio queries
+- heavier, but more useful, demand/portfolio record queries
+- simplified datetimerangequery
+- unified record types
+- product hierarchy reflected in endpoints
+
+### Fixed
+
+- product basis property should always nonnull
+- get batch from product view
+
+### Other
+
+- fix formatting
+- more flexible batches
+- rename product_group to basis
+
 ## [0.2.1](https://github.com/forward-market-design/flow-trading-service/compare/fts-sqlite-v0.2.0...fts-sqlite-v0.2.1) - 2025-07-03
 
 ### Added

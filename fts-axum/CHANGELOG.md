@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0](https://github.com/forward-market-design/flow-trading-service/compare/fts-axum-v0.4.1...fts-axum-v0.5.0) - 2025-09-15
+
+### Added
+
+- dep bump and major hurl update
+- rename demand_group to demand
+- capability to autosolve in response to bid changes
+- distinguishable id types and affordances for v7-like uuids
+- improved product api
+- *(axum)* separate product route implementation from openapi spec
+- *(axum)* separate portfolio route implementation from openapi spec
+- flatten portfolio implementation
+- internalize "null" demandcurve to type
+- make crud endpoints return entity
+- simpler queries for active bids and cleaned up batch generation
+- beefier active demand/portfolio queries
+- heavier, but more useful, demand/portfolio record queries
+- simplified datetimerangequery
+- unified record types
+- product hierarchy reflected in endpoints
+- restore CORS functionality to server
+
+### Fixed
+
+- lifetime elision warning
+- consistent naming for app_data
+
+### Other
+
+- *(deps)* bump axum-test from 18.0.2 to 18.1.0
+- *(deps)* bump axum-test from 17.3.0 to 18.0.2
+- fix formatting
+- more flexible batches
+- rename product_group to basis
+- *(axum)* cleanup demand routes
+
 ## [0.4.1](https://github.com/forward-market-design/flow-trading-service/compare/fts-axum-v0.4.0...fts-axum-v0.4.1) - 2025-07-03
 
 ### Added
