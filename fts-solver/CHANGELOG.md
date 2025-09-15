@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2](https://github.com/forward-market-design/flow-trading-service/compare/fts-solver-v0.5.1...fts-solver-v0.5.2) - 2025-09-15
+
+### Added
+
+- rename demand_group to demand
+
+### Other
+
+- *(tests,ftdemo)* add tests for uuid8 handling, and to improve understanding
+- fix formatting
+- rename product_group to basis
+
 ## [0.5.1](https://github.com/forward-market-design/flow-trading-service/compare/fts-solver-v0.5.0...fts-solver-v0.5.1) - 2025-07-03
 
 ### Added

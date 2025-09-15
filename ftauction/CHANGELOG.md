@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.2](https://github.com/forward-market-design/flow-trading-service/compare/ftauction-v0.2.1...ftauction-v0.2.2) - 2025-09-15
+
+### Added
+
+- rename demand_group to demand
+
+### Other
+
+- rename product_group to basis
+
 ## [0.2.1](https://github.com/forward-market-design/flow-trading-service/compare/ftauction-v0.2.0...ftauction-v0.2.1) - 2025-07-03
 
 ### Other
