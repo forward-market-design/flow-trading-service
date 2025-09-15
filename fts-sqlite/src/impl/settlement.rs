@@ -1,10 +1,11 @@
 use crate::{
     Db,
-    types::{BidderId, ProductId},
+    types::{BidderId, DateTime, ProductId, SettlementRow},
 };
 use fts_core::{
     models::{
-        Amount, DateTimeRangeQuery, DateTimeRangeResponse, Map, SettlementConfig, SettlementRecord,
+        DateTimeRangeQuery, DateTimeRangeResponse, Map, SettlementConfig, SettlementRecord,
+        ValueRecord,
     },
     ports::SettlementRepository,
 };
@@ -34,7 +35,7 @@ impl SettlementRepository for Db {
             from
                 trade_view
             where
-                settlement_id is null
+                settled is null
             and
                 price is not null
             and
@@ -61,19 +62,76 @@ impl SettlementRepository for Db {
         Ok((positions, payment))
     }
 
-    async fn get_settlements<ProductMap: FromIterator<(Self::ProductId, Amount)>>(
+    async fn get_settlements(
         &self,
         bidder_id: Self::BidderId,
         query: DateTimeRangeQuery<Self::DateTime>,
         limit: usize,
-    ) -> Result<
-        DateTimeRangeResponse<SettlementRecord<Self, ProductMap>, Self::DateTime>,
-        Self::Error,
-    > {
-        todo!()
+    ) -> Result<DateTimeRangeResponse<SettlementRecord<Self>, Self::DateTime>, Self::Error> {
+        let limit_p1 = (limit + 1) as i64;
+        let mut results = sqlx::query_as!(
+            SettlementRow,
+            r#"
+                select
+                    as_of as "as_of!: DateTime",
+                    bidder_id as "bidder_id!: BidderId",
+                    json_object('position_decimals', position_decimals, 'payment_decimals', payment_decimals) as "config!: sqlx::types::Json<SettlementConfig>",
+                    json_group_object(product_id, position) as "positions!: sqlx::types::Json<Map<ProductId, i64>>",
+                    payment as "payment!: i64"
+                from
+                    settlement
+                join
+                    settlement_payment
+                using
+                    (as_of)
+                join
+                    settlement_position
+                using
+                    (as_of, bidder_id)
+                where
+                    bidder_id = $1
+                and
+                    ($2 is null or as_of >= $2)
+                and
+                    ($3 is null or as_of <= $3)
+                group by
+                    as_of, bidder_id
+                order by
+                    as_of desc
+                limit $4
+            "#,
+            bidder_id,
+            query.after,
+            query.before,
+            limit_p1,
+        )
+        .fetch_all(&self.reader)
+        .await?;
+
+        let more = if results.len() == limit + 1 {
+            let extra = results.pop().unwrap();
+            Some(DateTimeRangeQuery {
+                before: Some(extra.as_of),
+                after: query.after,
+            })
+        } else {
+            None
+        };
+
+        Ok(DateTimeRangeResponse {
+            results: results
+                .into_iter()
+                .map(|row| ValueRecord {
+                    valid_from: row.as_of,
+                    valid_until: None,
+                    value: row.into(),
+                })
+                .collect(),
+            more,
+        })
     }
 
-    async fn settle_activity<ProductMap: FromIterator<(Self::ProductId, Amount)>>(
+    async fn settle_activity(
         &self,
         as_of: Self::DateTime,
         config: SettlementConfig,
@@ -81,9 +139,26 @@ impl SettlementRepository for Db {
         let position_scale = 10f64.powi(config.position_decimals as i32);
         let payment_scale = 10f64.powi(config.payment_decimals as i32);
 
+        // Stub out a new settlement.
+        // This will automatically assign appropriate unsettled batches to this settlement.
+        sqlx::query!(
+            r#"
+            insert into
+                settlement (as_of, position_decimals, payment_decimals)
+            values
+                ($1, $2, $3)
+            "#,
+            as_of,
+            config.position_decimals,
+            config.payment_decimals
+        )
+        .execute(&self.writer)
+        .await?;
+
         // Implementation plan:
         // 1. Gather batches with valid_until <= as_of, including all trades and prices
-        let mut all_trades = sqlx::query!(
+        let mut all_trades = sqlx::query_as!(
+            TradeRecord,
             r#"
             select
                 bidder_id as "bidder_id!: BidderId",
@@ -102,9 +177,7 @@ impl SettlementRepository for Db {
             from
                 trade_view
             where
-                settlement_id is null
-            and
-                trade_until <= $1
+                settled = $1
             and
                 price is not null
             group by
@@ -117,25 +190,27 @@ impl SettlementRepository for Db {
         .fetch_all(&self.reader)
         .await?;
 
-        let mut bidders: Map<BidderId, (f64, i64)> = Default::default();
+        // The value is (scaled payment as float, best rounded integer of payment)
+        let mut payments_by_bidder: Map<BidderId, (f64, i64)> = Default::default();
 
+        // Since we have ordered the rows by product_id, this will chunk by product.
+        // We do chunk_by_mut so that we can reuse the rows as "scratch space" for the rounding.
         for product_trades in all_trades.chunk_by_mut(|a, b| a.product_id == b.product_id) {
-            let mut sell_volume = 0f64;
-            let mut buy_volume = 0f64;
+            let mut traded_volume = 0f64;
 
-            let mut sell_total = 0i64;
-            let mut buy_total = 0i64;
+            let mut rounded_sold = 0i64;
+            let mut rounded_bought = 0i64;
 
             for trade in product_trades.iter_mut() {
                 // Keep track of the payments
-                bidders.entry(trade.bidder_id).or_default().0 += trade.payment * payment_scale;
+                payments_by_bidder.entry(trade.bidder_id).or_default().0 +=
+                    trade.payment * payment_scale;
 
                 // scale the position to the integral basis
                 trade.position *= position_scale;
 
                 // update the trade volume (so we can establish a rounding target)
-                sell_volume -= 0f64.min(trade.position);
-                buy_volume += 0f64.max(trade.position);
+                traded_volume += trade.position.abs();
 
                 // initially, we round towards zero and store the rounded value as an integer
                 // if we have "leftovers" from the rounded, we track it as the position
@@ -144,13 +219,13 @@ impl SettlementRepository for Db {
                 trade.rounded = trunc as i64; // this is the current rounded value
 
                 // finally, we need a "current" set of totals to inform how we adjust rounding
-                sell_total -= 0i64.min(trade.rounded);
-                buy_total += 0i64.max(trade.rounded);
+                rounded_sold -= 0i64.min(trade.rounded);
+                rounded_bought += 0i64.max(trade.rounded);
             }
 
             // We separately round the volumes to nearest amount, taking the smaller of the two as the target
             // It should be sell_volume == buy_volume, but if we wind up near 0.5 +/- eps, this is a safe way to go.
-            let target_volume = sell_volume.round().min(buy_volume.round()) as i64;
+            let target_volume = (traded_volume * 0.5).round_ties_even() as i64;
 
             // We now sort by outstanding position
             product_trades.sort_unstable_by(|x, y| x.position.total_cmp(&y.position));
@@ -158,7 +233,7 @@ impl SettlementRepository for Db {
             // We update the sell trades
             for trade in product_trades
                 .iter_mut()
-                .take((target_volume - sell_total) as usize)
+                .take((target_volume - rounded_sold) as usize)
             {
                 // TODO: prove we do not need this assertion
                 assert!(trade.position < 0.0);
@@ -170,7 +245,7 @@ impl SettlementRepository for Db {
             for trade in product_trades
                 .iter_mut()
                 .rev()
-                .take((target_volume - buy_total) as usize)
+                .take((target_volume - rounded_bought) as usize)
             {
                 // TODO: prove we do not need this assertion
                 assert!(trade.position > 0.0);
@@ -180,56 +255,82 @@ impl SettlementRepository for Db {
         }
 
         // With the positions sorted, we now turn to payments.
-        // This proceeds quite similarly as to the above.
+        // This proceeds quite similarly as to the above, the only
+        // differences being the global/local nature of the quantities
 
-        let mut raw_sell_payment = 0f64;
-        let mut raw_buy_payment = 0f64;
-        let mut rounded_sell_payment = 0i64;
-        let mut rounded_buy_payment = 0i64;
+        let mut total_payment = 0f64;
+        let mut rounded_sold = 0i64;
+        let mut rounded_bought = 0i64;
 
-        for payment in bidders.values_mut() {
-            raw_sell_payment -= 0f64.min(payment.0);
-            raw_buy_payment += 0f64.max(payment.0);
+        for (paid, rounded) in payments_by_bidder.values_mut() {
+            total_payment += paid.abs();
 
-            let trunc = payment.0.trunc();
-            payment.0 -= trunc;
-            payment.1 = trunc as i64;
+            let trunc = paid.trunc();
+            *paid -= trunc;
+            *rounded = trunc as i64;
 
-            rounded_sell_payment -= 0i64.min(payment.1);
-            rounded_buy_payment += 0i64.max(payment.1);
+            rounded_sold -= 0i64.min(*rounded);
+            rounded_bought += 0i64.max(*rounded);
         }
 
-        let target_payment = raw_sell_payment.round().min(raw_buy_payment.round()) as i64;
+        let target_payment = (total_payment * 0.5).round_ties_even() as i64;
 
         // Next, we sort by outstanding rounding error
-        bidders.sort_unstable_by(|_, x, _, y| x.0.total_cmp(&y.0));
+        payments_by_bidder.sort_unstable_by(|_, x, _, y| x.0.total_cmp(&y.0));
 
         // Now it's the same as before:
-        for value in bidders
+        for (delta, rounded) in payments_by_bidder
             .values_mut()
-            .take((target_payment - rounded_sell_payment) as usize)
+            .take((target_payment - rounded_sold) as usize)
         {
-            assert!(value.0 < 0.0);
-            value.0 += 1.0;
-            value.1 -= 1;
+            assert!(*delta < 0.0);
+            *delta += 1.0;
+            *rounded -= 1;
         }
-        for value in bidders
+        for (delta, rounded) in payments_by_bidder
             .values_mut()
             .rev()
-            .take((target_payment - rounded_buy_payment) as usize)
+            .take((target_payment - rounded_bought) as usize)
         {
-            assert!(value.0 > 0.0);
-            value.0 -= 1.0;
-            value.1 += 1;
+            assert!(*delta > 0.0);
+            *delta -= 1.0;
+            *rounded += 1;
         }
 
-        // 3. Write results
+        // 3. Write results. Because inserting lots of records is awkward, we update the json blobs
+        //    and rely on a database trigger to explode the blobs into individual records.
+        {
+            let positions = sqlx::types::Json(all_trades);
+            let payments = sqlx::types::Json(payments_by_bidder);
+            sqlx::query!(
+                r#"
+                update
+                    settlement
+                set
+                    positions = jsonb($2),
+                    payments = jsonb($3)
+                where
+                    as_of = $1
+                "#,
+                as_of,
+                positions,
+                payments,
+            )
+            .execute(&self.writer)
+            .await?;
+        };
 
-        // `bidders` is { [bidder_id]: i64 }
-        // and `all_trade` is { bidder_id, product_id, rounded, ...}.
-        // This is a lot of data to send back to SQL:
-        // * we probably don't want the overhead of a big INSERT clause,
-        //   e.g. we're better of packaging into some JSON blobs.
-        todo!()
+        Ok(())
     }
+}
+
+#[derive(serde::Serialize)]
+struct TradeRecord {
+    bidder_id: BidderId,
+    product_id: ProductId,
+    #[serde(skip_serializing)]
+    position: f64,
+    #[serde(skip_serializing)]
+    payment: f64,
+    rounded: i64,
 }

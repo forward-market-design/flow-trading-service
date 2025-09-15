@@ -6,8 +6,8 @@
 
 use fts_core::{
     models::{
-        Basis, DemandCurve, DemandCurveDto, DemandRecord, PortfolioRecord, ProductRecord, Sum,
-        ValueRecord, Weights,
+        Basis, DemandCurve, DemandCurveDto, DemandRecord, Map, PortfolioRecord, ProductRecord,
+        SettlementConfig, SettlementRecord, Sum, ValueRecord, Weights,
     },
     ports::Repository,
 };
@@ -128,6 +128,35 @@ impl<T> Into<ValueRecord<DateTime, T>> for ValueRow<T> {
             valid_from: self.valid_from,
             valid_until: self.valid_until,
             value: self.value.0,
+        }
+    }
+}
+
+pub(crate) struct SettlementRow {
+    pub as_of: DateTime,
+    pub bidder_id: BidderId,
+    pub config: sqlx::types::Json<SettlementConfig>,
+    pub positions: sqlx::types::Json<Map<ProductId, i64>>,
+    pub payment: i64,
+}
+
+impl<T> Into<SettlementRecord<T>> for SettlementRow
+where
+    T: Repository<
+            DateTime = DateTime,
+            BidderId = BidderId,
+            DemandId = DemandId,
+            PortfolioId = PortfolioId,
+            ProductId = ProductId,
+        >,
+{
+    fn into(self) -> SettlementRecord<T> {
+        SettlementRecord {
+            as_of: self.as_of,
+            bidder_id: self.bidder_id,
+            config: self.config.0,
+            positions: self.positions.0,
+            payment: self.payment,
         }
     }
 }

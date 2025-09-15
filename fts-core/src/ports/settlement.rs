@@ -9,7 +9,7 @@ Implementation notes:
 */
 
 use crate::models::{
-    Amount, DateTimeRangeQuery, DateTimeRangeResponse, SettlementConfig, SettlementRecord,
+    DateTimeRangeQuery, DateTimeRangeResponse, SettlementConfig, SettlementRecord,
 };
 
 /// Repository interface for settlements of trade and payments.
@@ -44,20 +44,17 @@ pub trait SettlementRepository: super::Repository {
     ) -> impl Future<Output = Result<(ProductMap, f64), Self::Error>> + Send;
 
     /// Query for relevant settlement records.
-    fn get_settlements<ProductMap: FromIterator<(Self::ProductId, Amount)>>(
+    fn get_settlements(
         &self,
         bidder_id: Self::BidderId,
         query: DateTimeRangeQuery<Self::DateTime>,
         limit: usize,
     ) -> impl Future<
-        Output = Result<
-            DateTimeRangeResponse<SettlementRecord<Self, ProductMap>, Self::DateTime>,
-            Self::Error,
-        >,
+        Output = Result<DateTimeRangeResponse<SettlementRecord<Self>, Self::DateTime>, Self::Error>,
     > + Send;
 
     /// Settle any outstanding batches that could apply to this settlement.
-    fn settle_activity<ProductMap: FromIterator<(Self::ProductId, Amount)>>(
+    fn settle_activity(
         &self,
         as_of: Self::DateTime,
         config: SettlementConfig,

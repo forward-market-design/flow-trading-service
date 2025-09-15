@@ -1,11 +1,11 @@
 -- A bidder's portfolios may "overlap" with respect to the underlying products.
 -- Accordingly, we can roll up the net trade for each batch x bidder x product.
 create view trade_view (
-    batch_id, settlement_id, bidder_id, product_id, trade_from, trade_until, trade, price
+    batch_id, settled, bidder_id, product_id, trade_from, trade_until, trade, price
 ) as
 select
     batch.id,
-    batch.settlement_id,
+    batch.settled,
     portfolio.bidder_id,
     batch_product.product_id,
     batch.valid_from,
@@ -41,15 +41,15 @@ group by
 --
 -- We can also do the same for payments
 create view payment_view (
-    batch_id, settlement_id, bidder_id, trade_from, trade_until, payment
+    batch_id, settled, bidder_id, trade_from, trade_until, payment
 ) as
 select
     batch.id,
-    batch.settlement_id,
+    batch.settled,
     portfolio.bidder_id,
     batch.valid_from,
     batch.valid_until,
-    sum(batch_portfolio.trade * batch_portfolio.price) / batch.time_unit_in_ms
+    sum(batch_portfolio.trade * batch_portfolio.price) / batch.time_unit_in_secs
 from
     batch
 join
