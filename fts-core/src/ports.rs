@@ -84,7 +84,8 @@ pub trait Application {
     type Repository: DemandRepository<Self::DemandData>
         + PortfolioRepository<Self::PortfolioData>
         + ProductRepository<Self::ProductData>
-        + BatchRepository<Self::Solver>;
+        + BatchRepository<Self::Solver>
+        + SettlementRepository;
 
     /// The solver to use for executing auctions
     type Solver: Solver<

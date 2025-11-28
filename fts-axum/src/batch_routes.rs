@@ -5,13 +5,26 @@
 //! solving for optimal allocations and prices at regular intervals.
 
 use aide::axum::{ApiRouter, routing::post};
-use axum::{Json, extract::State, http::StatusCode};
+use axum::{
+    Json,
+    extract::{Query, State},
+    http::StatusCode,
+};
 use axum_extra::TypedHeader;
-use fts_core::{models::BatchConfig, ports::BatchRepository as _};
+use fts_core::{
+    models::BatchConfig,
+    ports::{BatchRepository as _, Repository},
+};
 use headers::{Authorization, authorization::Bearer};
 use tracing::{Level, event};
 
 use crate::ApiApplication;
+
+#[derive(serde::Deserialize, schemars::JsonSchema)]
+#[schemars(inline)]
+struct BatchDateTime<T> {
+    as_of: Option<T>,
+}
 
 /// Creates a router with batch-related endpoints.
 pub fn router<T: ApiApplication>() -> ApiRouter<T> {
@@ -38,9 +51,10 @@ pub fn router<T: ApiApplication>() -> ApiRouter<T> {
 async fn batch_solve<T: ApiApplication>(
     State(app): State<T>,
     TypedHeader(auth): TypedHeader<Authorization<Bearer>>,
+    query: Query<BatchDateTime<<T::Repository as Repository>::DateTime>>,
     Json(config): Json<BatchConfig>,
 ) -> Result<(StatusCode, String), (StatusCode, String)> {
-    let as_of = app.now();
+    let as_of = query.0.as_of.unwrap_or_else(|| app.now());
     if app.can_run_batch(&auth).await {
         let db = app.database();
 
